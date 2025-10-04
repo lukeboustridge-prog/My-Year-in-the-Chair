@@ -20,12 +20,16 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      # This actually installs/activates pnpm (Corepack under the hood)
+      # Install/activate pnpm (this is the missing piece)
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
           run_install: false
+          standalone: true   # ensures a pnpm binary is placed on PATH
+
+      - name: Verify pnpm
+        run: pnpm -v
 
       - name: Install deps
         run: pnpm install --frozen-lockfile
