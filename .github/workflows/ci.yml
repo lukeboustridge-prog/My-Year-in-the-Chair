@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      # Optional: ensure schema compiles (creates an ephemeral SQLite file)
+      - name: Push Prisma schema (ephemeral)
+        env:
+          DATABASE_URL: "file:./dev.db"
+        run: npm run db:push
+
+      - name: Build Next.js
+        env:
+          # If you set a real secret, add it in repo Settings → Secrets → Actions
+          JWT_SECRET: "dev-only-secret"
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: npm run build
