@@ -26,7 +26,6 @@ export function getSession(): Session | null {
 }
 
 export function setSessionCookie(token: string) {
-  // used only in API routes via Response.cookies
   return { name: COOKIE, value: token, httpOnly: true, sameSite: "lax", path: "/" };
 }
 

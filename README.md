@@ -1,20 +1,22 @@
-# My Year in the Chair (GitHub upload friendly)
+# My Year in the Chair — pnpm edition (upload-friendly)
 
-This version avoids dynamic bracket folders and uses simple JWT auth, so you can upload files directly via GitHub's web UI.
-
-## Stack
-- Next.js 14 (App Router)
-- Prisma + SQLite
-- Tailwind CSS
-- Custom JWT auth (no NextAuth, no bracketed folders)
+This version is ready for GitHub browser uploads (no bracketed routes) and optimized for pnpm.
 
 ## Quick start
 ```bash
-npm i
+corepack enable
+corepack prepare pnpm@9 --activate
+
+pnpm i
 cp .env.example .env
-npm run db:push
-npm run db:seed   # admin@example.com / password123
-npm run dev
+pnpm db:push
+pnpm db:seed    # admin@example.com / password123
+pnpm dev
 ```
 
 Visit http://localhost:3000 and sign in with the seeded user.
+
+## Notes
+- JWT auth via HTTP-only cookie (set `JWT_SECRET` in `.env`)
+- SQLite for dev; switch `DATABASE_URL` for Postgres and run `pnpm db:push`
+- Matches the CI workflow you set for pnpm

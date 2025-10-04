@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   if (!ok) return new Response("Unauthorized", { status: 401 });
   const token = signSession({ userId: user.id, email: user.email });
   const res = new Response(JSON.stringify({ ok: true }), { status: 200 });
-  // @ts-ignore - next runtime adds cookies on Response
+  // @ts-ignore - Next runtime adds cookies on Response
   res.cookies.set(setSessionCookie(token));
   return res;
 }
