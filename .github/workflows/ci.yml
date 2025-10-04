@@ -13,27 +13,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
 
       - name: Install deps
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma client
-        run: npx prisma generate
+        run: pnpm prisma generate
 
-      # Optional: ensure schema compiles (creates an ephemeral SQLite file)
-      - name: Push Prisma schema (ephemeral)
+      - name: Push Prisma schema (ephemeral SQLite)
         env:
           DATABASE_URL: "file:./dev.db"
-        run: npm run db:push
+        run: pnpm db:push
 
-      - name: Build Next.js
+      - name: Build
         env:
-          # If you set a real secret, add it in repo Settings → Secrets → Actions
           JWT_SECRET: "dev-only-secret"
           NEXT_TELEMETRY_DISABLED: "1"
-        run: npm run build
+        run: pnpm build
