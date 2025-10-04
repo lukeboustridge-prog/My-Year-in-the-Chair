@@ -1,32 +1,35 @@
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import NextAuth from "next-auth";
-import type { NextAuthConfig } from "next-auth";
-import Credentials from "next-auth/providers/credentials";
-import { db } from "./db";
-import { compare } from "bcryptjs";
-import { z } from "zod";
+import jwt from "jsonwebtoken";
+import { cookies } from "next/headers";
 
-const creds = z.object({ email: z.string().email(), password: z.string().min(6) });
+const COOKIE = "myyitc_session";
 
-export const authConfig = {
-  adapter: PrismaAdapter(db),
-  session: { strategy: "database" },
-  providers: [
-    Credentials({
-      name: "Email & Password",
-      credentials: { email: {}, password: {} },
-      async authorize(raw) {
-        const parsed = creds.safeParse(raw);
-        if (!parsed.success) return null;
-        const { email, password } = parsed.data;
-        const user = await db.user.findUnique({ where: { email } });
-        if (!user || !user.passwordHash) return null;
-        const ok = await compare(password, user.passwordHash);
-        if (!ok) return null;
-        return { id: user.id, email: user.email, name: user.name };
-      }
-    })
-  ]
-} satisfies NextAuthConfig;
+export type Session = { userId: string; email: string };
 
-export const { handlers, auth } = NextAuth(authConfig);
+export function signSession(payload: Session) {
+  const secret = process.env.JWT_SECRET!;
+  return jwt.sign(payload, secret, { expiresIn: "7d" });
+}
+
+export function verifySessionToken(token: string): Session | null {
+  try {
+    const secret = process.env.JWT_SECRET!;
+    return jwt.verify(token, secret) as Session;
+  } catch {
+    return null;
+  }
+}
+
+export function getSession(): Session | null {
+  const token = cookies().get(COOKIE)?.value;
+  if (!token) return null;
+  return verifySessionToken(token);
+}
+
+export function setSessionCookie(token: string) {
+  // used only in API routes via Response.cookies
+  return { name: COOKIE, value: token, httpOnly: true, sameSite: "lax", path: "/" };
+}
+
+export function clearSessionCookie() {
+  return { name: COOKIE, value: "", httpOnly: true, expires: new Date(0), path: "/" };
+}

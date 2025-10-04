@@ -5,10 +5,10 @@ const prisma = new PrismaClient();
 
 async function main() {
   const passwordHash = await hash('password123', 10);
-  const user = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: 'admin@example.com' },
     update: {},
-    create: { email: 'admin@example.com', name: 'Admin User', passwordHash }
+    create: { email: 'admin@example.com', name: 'Admin User', passwordHash, role: 'ADMIN' }
   });
 
   const resources = [
@@ -28,7 +28,6 @@ async function main() {
     await prisma.badge.upsert({ where: { code: b.code }, update: {}, create: b });
   }
 
-  console.log('Seeded demo user admin@example.com / password123');
+  console.log('Seeded admin@example.com / password123');
 }
-
-main().finally(() => prisma.$disconnect());
+main().finally(()=>prisma.$disconnect());
