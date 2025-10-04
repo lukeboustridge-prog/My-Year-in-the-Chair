@@ -20,13 +20,13 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      # Install/activate pnpm (this is the missing piece)
+      # 🔧 Install pnpm and put it on PATH
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
           run_install: false
-          standalone: true   # ensures a pnpm binary is placed on PATH
+          standalone: true
 
       - name: Verify pnpm
         run: pnpm -v
