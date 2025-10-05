@@ -1,6 +1,6 @@
-# Fix: add @types/bcryptjs
+# Fix: add @types/jsonwebtoken
 
-This updates `package.json` to include `@types/bcryptjs` so the TypeScript build passes.
+This updates `package.json` to include `@types/jsonwebtoken` so the TypeScript build passes.
 
 After replacing your package.json:
 ```bash
