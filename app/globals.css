@@ -1,13 +1,62 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Light theme reset */
+:root {
+  --bg: #ffffff;
+  --fg: #0f172a; /* slate-900 */
+  --muted: #64748b; /* slate-500 */
+  --card: #f8fafc; /* slate-50 */
+  --border: #e2e8f0; /* slate-200 */
+  --accent: #1d4ed8; /* blue-700 */
+  --accent-100: #dbeafe; /* blue-100 */
+}
 
-:root { color-scheme: light dark; }
-body { @apply bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100; }
-.container { @apply mx-auto max-w-5xl px-4; }
-.card { @apply rounded-2xl shadow p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800; }
-.btn { @apply inline-flex items-center gap-2 rounded-xl px-4 py-2 border border-transparent shadow-sm hover:shadow transition; }
-.btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700; }
-.link { @apply text-brand-600 hover:underline; }
-input, textarea { @apply bg-transparent border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2 w-full; }
-label { @apply block text-sm mb-1; }
+html, body {
+  background: var(--bg);
+  color: var(--fg);
+  padding: 0;
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+a { color: inherit; text-decoration: none; }
+* { box-sizing: border-box; }
+
+.container { max-width: 1100px; margin: 0 auto; padding: 1.25rem; }
+
+/* Simple utility classes */
+.nav {
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.nav-inner { display:flex; align-items:center; justify-content:space-between; gap: 1rem; padding: 0.85rem 1rem; }
+.brand { display:flex; align-items:center; gap:.6rem; font-weight:600; }
+.brand img { height: 28px; width: 28px; }
+
+.menu { display:flex; flex-wrap:wrap; gap: .9rem; font-size: .95rem; color: var(--muted); }
+.menu a { padding: .25rem .25rem; border-radius: .5rem; }
+.menu a:hover { background: var(--accent-100); color: var(--accent); }
+
+.main { padding: 1.25rem; }
+
+.grid { display:grid; gap: 1rem; }
+.grid.sm-2 { grid-template-columns: repeat(1, minmax(0,1fr)); }
+@media (min-width: 640px) { .grid.sm-2 { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+.grid.sm-4 { grid-template-columns: repeat(1, minmax(0,1fr)); }
+@media (min-width: 640px) { .grid.sm-4 { grid-template-columns: repeat(4, minmax(0,1fr)); } }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+}
+
+.btn { display:inline-flex; align-items:center; gap:.5rem; padding:.6rem .9rem; border-radius:.6rem; border:1px solid var(--border); background:#fff; }
+.btn:hover { border-color:#cbd5e1; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color:#fff; }
+.btn.primary:hover { filter: brightness(0.95); }
+
+.stat-label { font-size:.8rem; color:var(--muted); }
+.stat-value { font-weight:700; font-size:1.35rem; }
