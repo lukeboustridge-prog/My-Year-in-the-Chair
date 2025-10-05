@@ -1,9 +1,10 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 
 export default function AuthPage() {
-  const [email, setEmail] = useState("admin@example.com");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +28,10 @@ export default function AuthPage() {
         <input type="password" value={password} onChange={e=>setPassword(e.target.value)} required />
         <button className="btn btn-primary w-full" disabled={loading}>{loading ? "Signing in..." : "Sign in"}</button>
       </form>
-      <p className="text-sm mt-4">Demo login is pre-filled. Change after seeding.</p>
+      <div className="text-sm mt-4">
+        <span>Don't have an account? </span>
+        <Link className="link" href="/auth/register">Create one</Link>
+      </div>
     </div>
   );
 }
