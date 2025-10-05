@@ -34,29 +34,27 @@ export default async function LeaderboardPage() {
     .sort((a,b)=> b.count - a.count);
 
   const Table = ({ title, rows }: { title: string; rows: any[] }) => (
-    <div className="space-y-2">
-      <h2 className="text-xl font-semibold">{title}</h2>
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
+    <div className="card">
+      <h2 style={{marginTop:0}}>{title}</h2>
+      <div style={{overflowX:"auto"}}>
+        <table>
           <thead>
-            <tr className="text-left border-b">
-              <th className="py-2 pr-3">#</th>
-              <th className="py-2 pr-3">Name</th>
-              <th className="py-2 pr-3">Lodge</th>
-              <th className="py-2 pr-3">Region</th>
-              <th className="py-2 pr-3">Visits</th>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Lodge</th>
+              <th>Region</th>
+              <th>Visits</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.user?.id || i} className="border-b">
-                <td className="py-2 pr-3">{i+1}</td>
-                <td className="py-2 pr-3">{r.user?.name ?? "—"}</td>
-                <td className="py-2 pr-3">
-                  {(r.user?.lodgeName || "—")}{r.user?.lodgeNumber ? ` (${r.user.lodgeNumber})` : ""}
-                </td>
-                <td className="py-2 pr-3">{r.user?.region || "—"}</td>
-                <td className="py-2 pr-3 font-semibold">{r.count}</td>
+              <tr key={r.user?.id || i}>
+                <td>{i+1}</td>
+                <td>{r.user?.name ?? "—"}</td>
+                <td>{(r.user?.lodgeName || "—")}{r.user?.lodgeNumber ? ` (${r.user.lodgeNumber})` : ""}</td>
+                <td>{r.user?.region || "—"}</td>
+                <td><strong>{r.count}</strong></td>
               </tr>
             ))}
           </tbody>
@@ -66,8 +64,7 @@ export default async function LeaderboardPage() {
   );
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <h1 className="text-2xl font-semibold">Leaderboards</h1>
+    <div className="grid cols-2">
       <Table title="Rolling 12 Months" rows={sortedYear} />
       <Table title="This Month" rows={sortedMonth} />
     </div>
