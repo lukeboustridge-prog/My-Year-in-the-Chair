@@ -1,11 +1,14 @@
+// src/pages/Reports.tsx
+'use client';
 import React from "react";
-import { downloadVisitsPdf, downloadFullPdf, type Visit, type Office, type Profile } from "../utils/pdfReport";
+import type { Visit, Office, Profile } from "../utils/pdfReport";
+import { downloadVisitsPdf, downloadFullPdf } from "../utils/pdfReport";
 
 export default function ReportsPage() {
-  // TODO: Replace with your real profile + data
   const profile: Profile = { prefix: "WBro", fullName: "Luke Boustridge", postNominals: "GSWB" };
   const [dateFrom, setDateFrom] = React.useState<string>("");
   const [dateTo, setDateTo] = React.useState<string>("");
+  const [busy, setBusy] = React.useState<boolean>(false);
 
   // Demo data — replace with store/API
   const visits: Visit[] = [
@@ -24,6 +27,24 @@ export default function ReportsPage() {
     return after && before;
   });
 
+  const onExportVisits = async () => {
+    try {
+      setBusy(true);
+      await downloadVisitsPdf(profile, filteredVisits, { title: "Visits Report", dateFrom, dateTo, includeNotes: true });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onExportFull = async () => {
+    try {
+      setBusy(true);
+      await downloadFullPdf(profile, filteredVisits, offices, { title: "My Year in the Chair – Full Report", dateFrom, dateTo, includeNotes: true });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
       <h1 className="text-xl font-semibold">Reports</h1>
@@ -39,16 +60,18 @@ export default function ReportsPage() {
         </label>
         <div className="flex gap-2">
           <button
-            className="px-3 py-2 border rounded"
-            onClick={() => downloadVisitsPdf(profile, filteredVisits, { title: "Visits Report", dateFrom, dateTo, includeNotes: true })}
+            className="px-3 py-2 border rounded disabled:opacity-50"
+            onClick={onExportVisits}
+            disabled={busy}
           >
-            Export Visits PDF
+            {busy ? "Exporting…" : "Export Visits PDF"}
           </button>
           <button
-            className="px-3 py-2 border rounded"
-            onClick={() => downloadFullPdf(profile, filteredVisits, offices, { title: "My Year in the Chair – Full Report", dateFrom, dateTo, includeNotes: true })}
+            className="px-3 py-2 border rounded disabled:opacity-50"
+            onClick={onExportFull}
+            disabled={busy}
           >
-            Export Full PDF
+            {busy ? "Exporting…" : "Export Full PDF"}
           </button>
         </div>
       </div>

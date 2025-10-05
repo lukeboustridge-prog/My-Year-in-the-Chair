@@ -1,5 +1,5 @@
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+// src/utils/pdfReport.ts
+// Dynamic-import version to avoid SSR bundling errors in Next.js
 
 export type Visit = {
   dateISO: string;
@@ -38,12 +38,18 @@ function formatDate(iso?: string) {
   return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
-export function generateMyYearPdf(
+export async function generateMyYearPdf(
   profile: Profile,
   visits: Visit[],
   offices: Office[],
   opts: ReportOptions = {}
 ) {
+  if (typeof window === "undefined") {
+    throw new Error("PDF generation must run in the browser.");
+  }
+  const { jsPDF } = await import("jspdf");
+  const autoTable = (await import("jspdf-autotable")).default;
+
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const title = opts.title || "My Year in the Chair – Report";
 
@@ -84,7 +90,7 @@ export function generateMyYearPdf(
         doc.setFontSize(9);
         doc.text(str, doc.internal.pageSize.getWidth() - 60, doc.internal.pageSize.getHeight() - 20);
       }
-    });
+    } as any);
   }
 
   // Offices table
@@ -102,18 +108,18 @@ export function generateMyYearPdf(
       styles: { fontSize: 9, cellPadding: 6, overflow: "linebreak" },
       headStyles: { fillColor: [15, 76, 129] },
       theme: "striped",
-    });
+    } as any);
   }
 
   return doc;
 }
 
-export function downloadVisitsPdf(profile: Profile, visits: Visit[], opts?: ReportOptions) {
-  const doc = generateMyYearPdf(profile, visits, [], { ...opts, includeOffices: false, includeVisits: true });
+export async function downloadVisitsPdf(profile: Profile, visits: Visit[], opts?: ReportOptions) {
+  const doc = await generateMyYearPdf(profile, visits, [], { ...opts, includeOffices: false, includeVisits: true });
   doc.save("My-Year-in-the-Chair_Visits.pdf");
 }
 
-export function downloadFullPdf(profile: Profile, visits: Visit[], offices: Office[], opts?: ReportOptions) {
-  const doc = generateMyYearPdf(profile, visits, offices, { includeVisits: true, includeOffices: true, ...opts });
+export async function downloadFullPdf(profile: Profile, visits: Visit[], offices: Office[], opts?: ReportOptions) {
+  const doc = await generateMyYearPdf(profile, visits, offices, { includeVisits: true, includeOffices: true, ...opts });
   doc.save("My-Year-in-the-Chair_Full-Report.pdf");
 }
