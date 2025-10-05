@@ -1,23 +1,27 @@
 export const dynamic = "force-dynamic";
 
 import { db } from "@/lib/db";
-import Link from "next/link";
 
-export default async function Page() {
-  const resources = await db.resource.findMany({ orderBy: { createdAt: "desc" } });
+export default async function ResourcesPage() {
+  const items = await db.resource.findMany({ orderBy: { createdAt: "desc" } });
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Master’s resources</h1>
-      <div className="grid md:grid-cols-2 gap-4">
-        {resources.map(r => (
-          <div key={r.id} className="card">
-            <div className="font-semibold">{r.title}</div>
-            <p className="text-sm text-gray-500">{r.summary}</p>
-            {r.url && <Link href={r.url} className="link mt-2 inline-block" target="_blank">Open resource</Link>}
-          </div>
+    <div className="grid" style={{gap:"1.25rem"}}>
+      <section className="card">
+        <h1 style={{marginTop:0}}>Masters' Resources</h1>
+        <p className="muted" style={{marginTop:".25rem"}}>Helpful references and links.</p>
+      </section>
+
+      <section className="grid cols-2">
+        {items.map(r => (
+          <article key={r.id} className="card">
+            <h3 style={{marginTop:0}}>{r.title}</h3>
+            {r.summary && <p className="muted">{r.summary}</p>}
+            {r.url && <a className="btn" href={r.url} target="_blank" rel="noreferrer">Open</a>}
+          </article>
         ))}
-        {resources.length === 0 && <p className="text-sm text-gray-500">No resources yet.</p>}
-      </div>
+        {items.length === 0 && <div className="card muted">No resources yet.</div>}
+      </section>
     </div>
   );
 }
