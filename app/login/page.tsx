@@ -8,6 +8,7 @@ export default function LoginPage() {
   const [password, setPassword] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [signingOut, setSigningOut] = React.useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,11 +43,32 @@ export default function LoginPage() {
     }
   };
 
+  async function onSignOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
+    } finally {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("access_token");
+        sessionStorage.removeItem("access_token");
+      }
+      setSigningOut(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Sign in</h1>
-        <span className="text-sm text-gray-500">My Year in the Chair</span>
+        <button
+          onClick={onSignOut}
+          disabled={signingOut}
+          className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium border bg-white hover:bg-gray-50 shadow-sm disabled:opacity-50"
+          title="Sign out of your current session"
+        >
+          {signingOut ? 'Signing out…' : 'Sign out'}
+        </button>
       </div>
 
       <div className="bg-white border rounded-2xl shadow-sm">
