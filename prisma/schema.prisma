@@ -17,7 +17,7 @@ model User {
   points        Int      @default(0)
   visits        Visit[]
   awards        Award[]
-  role          Role     @default(USER)
+  role          String   @default("USER") // SQLite has no native enums
 }
 
 model Visit {
@@ -58,9 +58,4 @@ model Award {
   badge     Badge    @relation(fields: [badgeId], references: [id])
   badgeId   String
   awardedAt DateTime @default(now())
-}
-
-enum Role {
-  USER
-  ADMIN
 }
