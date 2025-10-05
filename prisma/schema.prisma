@@ -18,6 +18,8 @@ model User {
   visits        Visit[]
   awards        Award[]
   role          String   @default("USER")
+  termStart     DateTime?
+  termEnd       DateTime?
 }
 
 model Visit {
