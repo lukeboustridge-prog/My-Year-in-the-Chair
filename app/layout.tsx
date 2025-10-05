@@ -1,35 +1,34 @@
-import "./globals.css";
 import Link from "next/link";
-import { getSession } from "@/lib/auth";
+import "./globals.css";
 
 export const metadata = {
   title: "My Year in the Chair",
-  description: "Assist a Master to track visits and compete on a leaderboard"
+  description: "Freemasons Master toolkit",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const session = getSession();
   return (
     <html lang="en">
-      <body>
-        <header className="border-b border-gray-200 dark:border-gray-800">
-          <div className="container flex items-center justify-between py-3">
-            <Link href="/" className="font-semibold text-lg">My Year in the Chair</Link>
-            <nav className="flex items-center gap-4 text-sm">
-              <Link href="/dashboard" className="link">Dashboard</Link>
-              <Link href="/visits" className="link">Visits</Link>
-              <Link href="/leaderboard" className="link">Leaderboard</Link>
-              <Link href="/resources" className="link">Resources</Link>
-              {!session ? (
-                <Link href="/auth" className="btn btn-primary">Sign in</Link>
-              ) : (
-                <form action="/api/auth/logout" method="post"><button className="btn">Sign out</button></form>
-              )}
-            </nav>
-          </div>
+      <body className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+        <header className="border-b border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-900/60 backdrop-blur">
+          <nav className="container mx-auto px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+            <Link className="font-semibold mr-2" href="/">My Year in the Chair</Link>
+            <div className="flex flex-wrap gap-4">
+              <Link href="/dashboard" className="hover:underline">Dashboard</Link>
+              <Link href="/visits" className="hover:underline">Visits</Link>
+              <Link href="/visits/new" className="hover:underline">New Visit</Link>
+              <Link href="/my-work" className="hover:underline">My Work</Link>
+              <Link href="/workings" className="hover:underline">My Lodge Workings</Link>
+              <Link href="/leaderboard/year" className="hover:underline">Leaderboard (Year)</Link>
+              <Link href="/leaderboard/month" className="hover:underline">Leaderboard (Month)</Link>
+              <Link href="/resources" className="hover:underline">Resources</Link>
+              <Link href="/reports" className="hover:underline">Reports</Link>
+              <Link href="/profile" className="hover:underline">Profile</Link>
+              <Link href="/auth" className="hover:underline ml-auto">Sign in</Link>
+            </div>
+          </nav>
         </header>
-        <main className="container py-8">{children}</main>
-        <footer className="container py-8 text-sm text-gray-500">© {new Date().getFullYear()} My Year in the Chair</footer>
+        <main className="container mx-auto px-4 py-6">{children}</main>
       </body>
     </html>
   );
