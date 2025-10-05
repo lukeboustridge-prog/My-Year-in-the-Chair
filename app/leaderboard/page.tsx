@@ -10,19 +10,16 @@ export default async function Page() {
   const yearAgo = new Date(now);
   yearAgo.setFullYear(yearAgo.getFullYear() - 1);
 
-  // last 12 months
+  // Group counts (no orderBy here to avoid Prisma typing issues)
   const lb12 = await db.visit.groupBy({
     by: ["userId"],
     where: { date: { gte: yearAgo, lte: now } },
     _count: { _all: true },
-    orderBy: { _count: { _all: "desc" } },
   });
-  // this month
   const lbMonth = await db.visit.groupBy({
     by: ["userId"],
     where: { date: { gte: monthStart, lte: now } },
     _count: { _all: true },
-    orderBy: { _count: { _all: "desc" } },
   });
 
   const userIds = Array.from(new Set([...lb12.map(r => r.userId), ...lbMonth.map(r => r.userId)]));
