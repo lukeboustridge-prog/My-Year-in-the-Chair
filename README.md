@@ -1,6 +1,6 @@
-# Type packages fix
+# Fix: add @types/bcryptjs
 
-Next.js TypeScript build needs `@types/react` and `@types/node`. This `package.json` adds them.
+This updates `package.json` to include `@types/bcryptjs` so the TypeScript build passes.
 
 After replacing your package.json:
 ```bash
