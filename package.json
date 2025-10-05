@@ -2,6 +2,7 @@
   "name": "my-year-in-the-chair",
   "version": "0.2.3",
   "private": true,
+  "packageManager": "pnpm@9.12.0",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -35,6 +36,6 @@
     "@typescript-eslint/parser": "^7.2.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.12.0"
   }
 }
