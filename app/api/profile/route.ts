@@ -9,15 +9,12 @@ export async function GET() {
   if (!u) return new NextResponse("Unauthorized", { status: 401 });
   return NextResponse.json({
     name: u.name,
+    rank: u.rank,
+    isPastGrand: u.isPastGrand,
     prefix: u.prefix,
     postNominals: u.postNominals,
-    grandRank: u.grandRank,
-    grandPostNominals: u.grandPostNominals,
     lodgeName: u.lodgeName,
     lodgeNumber: u.lodgeNumber,
-    region: u.region,
-    termStart: u.termStart?.toISOString() ?? null,
-    termEnd: u.termEnd?.toISOString() ?? null,
   });
 }
 
@@ -30,15 +27,12 @@ export async function PUT(req: Request) {
     where: { id: uid },
     data: {
       name: body.name ?? null,
+      rank: body.rank ?? null,
+      isPastGrand: Boolean(body.isPastGrand),
       prefix: body.prefix ?? null,
       postNominals: Array.isArray(body.postNominals) ? body.postNominals : [],
-      grandRank: body.grandRank ?? null,
-      grandPostNominals: Array.isArray(body.grandPostNominals) ? body.grandPostNominals : [],
       lodgeName: body.lodgeName ?? null,
       lodgeNumber: body.lodgeNumber ?? null,
-      region: body.region ?? null,
-      termStart: body.termStart ? new Date(body.termStart) : null,
-      termEnd: body.termEnd ? new Date(body.termEnd) : null,
     },
   });
 

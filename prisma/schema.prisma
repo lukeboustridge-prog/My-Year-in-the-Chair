@@ -24,13 +24,12 @@ model User {
   passwordHash  String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  points        Int      @default(0)
 
-  // Profile
+  // Simplified profile
   prefix        String?
   postNominals  String[]
-  grandRank     String?
-  grandPostNominals String[]
+  rank          String?    // e.g., "Master Mason", "Grand Steward", "Deputy Grand Master", "Grand Master"
+  isPastGrand   Boolean    @default(false)
 
   lodgeName     String?
   lodgeNumber   String?
@@ -39,6 +38,7 @@ model User {
   termStart     DateTime?
   termEnd       DateTime?
 
+  points        Int      @default(0)
   visits        Visit[]
   works         LodgeWork[]
   myWorks       MyWork[]
