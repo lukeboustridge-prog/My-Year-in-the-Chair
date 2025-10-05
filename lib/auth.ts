@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 export const COOKIE = "myyitc_session";
 
@@ -33,4 +34,27 @@ export function clearSessionCookie(res: NextResponse) {
     path: "/",
     maxAge: 0,
   });
+}
+
+// ---- New helpers ----
+
+/** Read and verify the JWT from the request cookies (server-only). */
+export function getSession():
+  | { userId: string; email?: string; [k: string]: any }
+  | null {
+  const c = cookies().get(COOKIE);
+  if (!c?.value) return null;
+  try {
+    const data = jwt.verify(c.value, requireSecret());
+    return data as any;
+  } catch {
+    return null;
+  }
+}
+
+/** Convenience to read just the userId, or null if unauthenticated. */
+export function getUserId(): string | null {
+  const s = getSession();
+  // @ts-ignore
+  return s?.userId ?? null;
 }
