@@ -13,28 +13,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Install pnpm first so it's on PATH
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+          standalone: true
+
+      # Then setup Node
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # Use the pnpm version declared in package.json: "packageManager": "pnpm@9.12.0"
-      - name: Setup pnpm (uses package.json packageManager)
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false   # don't auto-install here
-
       - name: Verify pnpm
         run: pnpm -v
 
-      # Optional cache for pnpm store (works with/without lockfile)
+      # Optional cache for pnpm store (works with or without a lockfile)
       - name: Cache pnpm store
         uses: actions/cache@v4
         with:
           path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('package.json') }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('package.json') }}
           restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+            ${{ runner.os }}-pnpm-
 
       - name: Install deps
         run: pnpm install
@@ -42,13 +44,9 @@ jobs:
       - name: Generate Prisma client
         run: pnpm prisma generate
 
-      - name: Push Prisma schema (ephemeral SQLite)
-        env:
-          DATABASE_URL: "file:./dev.db"
-        run: pnpm db:push
-
+      # ⛔ No prisma db:push in CI — avoids needing DATABASE_URL
       - name: Build
         env:
-          JWT_SECRET: "dev-only-secret"
           NEXT_TELEMETRY_DISABLED: "1"
+          JWT_SECRET: "ci-only-secret"
         run: pnpm build
