@@ -26,12 +26,10 @@ model User {
   updatedAt     DateTime @updatedAt
   points        Int      @default(0)
 
-  // Master / lodge details for leaderboard & reporting
   lodgeName     String?
   lodgeNumber   String?
   region        String?
 
-  // Term dates (optional)
   termStart     DateTime?
   termEnd       DateTime?
 
@@ -51,7 +49,8 @@ model Visit {
   lodgeNumber   String
   region        String?
 
-  workOfEvening WorkType
+  // NEW with default so it can be added safely
+  workOfEvening WorkType @default(OTHER)
   candidateName String?
 
   location      String?
@@ -64,9 +63,10 @@ model LodgeWork {
   user          User     @relation(fields: [userId], references: [id])
   userId        String
 
-  month         Int      // 1-12
+  month         Int
   year          Int
-  work          WorkType
+  // Default OTHER to allow schema change without data loss
+  work          WorkType @default(OTHER)
   candidateName String?
   notes         String?
 
