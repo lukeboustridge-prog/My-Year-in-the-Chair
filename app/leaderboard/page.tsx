@@ -1,66 +1,73 @@
-export const dynamic = "force-dynamic";
-
 import { db } from "@/lib/db";
 
-type Row = { id: string; name: string | null; email: string; last12: number; thisMonth: number; };
-
-export default async function Page() {
+export default async function LeaderboardPage() {
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const yearAgo = new Date(now);
-  yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const yearAgo = new Date(now); yearAgo.setFullYear(now.getFullYear() - 1);
 
-  // Group counts (no orderBy here to avoid Prisma typing issues)
-  const lb12 = await db.visit.groupBy({
+  const year = await db.visit.groupBy({
     by: ["userId"],
     where: { date: { gte: yearAgo, lte: now } },
     _count: { _all: true },
   });
-  const lbMonth = await db.visit.groupBy({
+  const month = await db.visit.groupBy({
     by: ["userId"],
-    where: { date: { gte: monthStart, lte: now } },
+    where: { date: { gte: startOfMonth, lte: now } },
     _count: { _all: true },
   });
 
-  const userIds = Array.from(new Set([...lb12.map(r => r.userId), ...lbMonth.map(r => r.userId)]));
-  const users = await db.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true, email: true } });
-  const byId = new Map(users.map(u => [u.id, u]));
+  const ids = Array.from(new Set([...year.map(x=>x.userId), ...month.map(x=>x.userId)]));
+  const users = await db.user.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, name: true, lodgeName: true, lodgeNumber: true, region: true },
+  });
+  const map = new Map(users.map(u=>[u.id,u]));
 
-  const rows: Row[] = userIds.map(id => {
-    const u = byId.get(id)!;
-    const last12 = lb12.find(r => r.userId === id)?._count._all ?? 0;
-    const thisMonth = lbMonth.find(r => r.userId === id)?._count._all ?? 0;
-    return { id, name: u?.name ?? null, email: u?.email ?? "", last12, thisMonth };
-  }).sort((a,b)=> b.last12 - a.last12 || b.thisMonth - a.thisMonth);
+  const sortedYear = year
+    .map(x=>({ user: map.get(x.userId), count: x._count._all }))
+    .sort((a,b)=> b.count - a.count);
 
-  return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Visitor Leaderboard</h1>
-      <div className="card overflow-x-auto">
-        <table className="w-full">
+  const sortedMonth = month
+    .map(x=>({ user: map.get(x.userId), count: x._count._all }))
+    .sort((a,b)=> b.count - a.count);
+
+  const Table = ({ title, rows }: { title: string; rows: any[] }) => (
+    <div className="space-y-2">
+      <h2 className="text-xl font-semibold">{title}</h2>
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm">
           <thead>
-            <tr className="text-left text-sm text-gray-500">
-              <th className="py-2">Rank</th>
-              <th>Name</th>
-              <th>12-month total</th>
-              <th>This month</th>
+            <tr className="text-left border-b">
+              <th className="py-2 pr-3">#</th>
+              <th className="py-2 pr-3">Name</th>
+              <th className="py-2 pr-3">Lodge</th>
+              <th className="py-2 pr-3">Region</th>
+              <th className="py-2 pr-3">Visits</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.id} className="border-t border-gray-200 dark:border-gray-800">
-                <td className="py-2">{i+1}</td>
-                <td>{r.name ?? r.email}</td>
-                <td className="font-medium">{r.last12}</td>
-                <td>{r.thisMonth}</td>
+              <tr key={r.user?.id || i} className="border-b">
+                <td className="py-2 pr-3">{i+1}</td>
+                <td className="py-2 pr-3">{r.user?.name ?? "—"}</td>
+                <td className="py-2 pr-3">
+                  {(r.user?.lodgeName || "—")}{r.user?.lodgeNumber ? ` (${r.user.lodgeNumber})` : ""}
+                </td>
+                <td className="py-2 pr-3">{r.user?.region || "—"}</td>
+                <td className="py-2 pr-3 font-semibold">{r.count}</td>
               </tr>
             ))}
-            {rows.length === 0 && (
-              <tr><td colSpan={4} className="py-4 text-sm text-gray-500">No visits recorded yet.</td></tr>
-            )}
           </tbody>
         </table>
       </div>
+    </div>
+  );
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-8">
+      <h1 className="text-2xl font-semibold">Leaderboards</h1>
+      <Table title="Rolling 12 Months" rows={sortedYear} />
+      <Table title="This Month" rows={sortedMonth} />
     </div>
   );
 }

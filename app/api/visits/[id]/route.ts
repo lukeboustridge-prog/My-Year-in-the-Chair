@@ -2,24 +2,14 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 
-export async function GET() {
-  const uid = getUserId();
-  if (!uid) return NextResponse.json({ visits: [] });
-  const visits = await db.visit.findMany({
-    where: { userId: uid },
-    orderBy: { date: "desc" },
-  });
-  return NextResponse.json({ visits });
-}
-
-export async function POST(req: Request) {
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const uid = getUserId();
   if (!uid) return new NextResponse("Unauthorized", { status: 401 });
   const body = await req.json();
 
-  const v = await db.visit.create({
+  await db.visit.update({
+    where: { id: params.id },
     data: {
-      userId: uid,
       date: new Date(body.date),
       lodgeName: body.lodgeName ?? null,
       lodgeNumber: body.lodgeNumber ?? null,
@@ -29,5 +19,12 @@ export async function POST(req: Request) {
       comments: body.comments ?? null,
     },
   });
-  return NextResponse.json({ visit: v });
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const uid = getUserId();
+  if (!uid) return new NextResponse("Unauthorized", { status: 401 });
+  await db.visit.delete({ where: { id: params.id } });
+  return NextResponse.json({ ok: true });
 }
