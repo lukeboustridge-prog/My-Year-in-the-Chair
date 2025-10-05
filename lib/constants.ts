@@ -3,8 +3,25 @@ export const PREFIX_OPTIONS = [
 ];
 
 export const POST_NOMINAL_OPTIONS = [
-  "O.S.M.", // Order of Service to Masonry
-  "R.H.",   // Roll of Honour
+  "O.S.M.",
+  "R.H.",
+];
+
+// Basic illustrative Grand Rank options – edit to match your jurisdiction.
+export const GRAND_RANK_OPTIONS = [
+  "(None)",
+  "Grand Steward",
+  "Grand Standard Bearer",
+  "Assistant Grand Director of Ceremonies",
+  "Junior Grand Deacon",
+  "Senior Grand Deacon",
+  "Assistant Grand Master",
+  "Deputy Grand Master",
+  "Pro Grand Master",
+];
+
+export const GRAND_POST_NOMINAL_OPTIONS = [
+  "PGM", "DGM", "AGM", "GDC", "JGD", "SGD", "GSwdB", "GStB"
 ];
 
 export const WORK_TYPE_OPTIONS = [

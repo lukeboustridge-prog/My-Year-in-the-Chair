@@ -11,6 +11,8 @@ export async function GET() {
     name: u.name,
     prefix: u.prefix,
     postNominals: u.postNominals,
+    grandRank: u.grandRank,
+    grandPostNominals: u.grandPostNominals,
     lodgeName: u.lodgeName,
     lodgeNumber: u.lodgeNumber,
     region: u.region,
@@ -23,19 +25,20 @@ export async function PUT(req: Request) {
   const uid = getUserId();
   if (!uid) return new NextResponse("Unauthorized", { status: 401 });
   const body = await req.json();
-  const { name, prefix, postNominals, lodgeName, lodgeNumber, region, termStart, termEnd } = body;
 
   await db.user.update({
     where: { id: uid },
     data: {
-      name: name ?? null,
-      prefix: prefix ?? null,
-      postNominals: Array.isArray(postNominals) ? postNominals : [],
-      lodgeName: lodgeName ?? null,
-      lodgeNumber: lodgeNumber ?? null,
-      region: region ?? null,
-      termStart: termStart ? new Date(termStart) : null,
-      termEnd: termEnd ? new Date(termEnd) : null,
+      name: body.name ?? null,
+      prefix: body.prefix ?? null,
+      postNominals: Array.isArray(body.postNominals) ? body.postNominals : [],
+      grandRank: body.grandRank ?? null,
+      grandPostNominals: Array.isArray(body.grandPostNominals) ? body.grandPostNominals : [],
+      lodgeName: body.lodgeName ?? null,
+      lodgeNumber: body.lodgeNumber ?? null,
+      region: body.region ?? null,
+      termStart: body.termStart ? new Date(body.termStart) : null,
+      termEnd: body.termEnd ? new Date(body.termEnd) : null,
     },
   });
 

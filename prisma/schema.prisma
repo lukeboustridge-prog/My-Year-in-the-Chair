@@ -26,21 +26,23 @@ model User {
   updatedAt     DateTime @updatedAt
   points        Int      @default(0)
 
-  // Profile additions
+  // Profile
   prefix        String?
   postNominals  String[]
+  grandRank     String?
+  grandPostNominals String[]
+
   lodgeName     String?
   lodgeNumber   String?
   region        String?
 
-  // Term dates
   termStart     DateTime?
   termEnd       DateTime?
 
   visits        Visit[]
-  awards        Award[]
   works         LodgeWork[]
   myWorks       MyWork[]
+  awards        Award[]
   role          String   @default("USER")
 }
 
