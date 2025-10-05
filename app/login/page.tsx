@@ -9,7 +9,7 @@ export default function LoginPage() {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const onSubmit = async (e: React.FormEvent) => {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
     setBusy(true);
@@ -25,7 +25,7 @@ export default function LoginPage() {
         const msg = await res.text();
         throw new Error(msg || 'Login failed');
       }
-      // Expect either a cookie-based session or a token payload
+      // Store token if API returns one; cookie-only flows still work
       try {
         const data = await res.json().catch(() => null);
         if (data?.token) {
@@ -43,45 +43,61 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-white border rounded-2xl shadow-sm p-6">
-        <h1 className="text-2xl font-semibold mb-1">Sign in</h1>
-        <p className="text-sm text-gray-600 mb-6">Welcome back. Enter your details to continue.</p>
-        {error && <div className="mb-4 rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>}
-        <form className="space-y-4" onSubmit={onSubmit}>
-          <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="you@example.org"
-              autoComplete="email"
-              required
-            />
+    <div className="mx-auto max-w-3xl p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Sign in</h1>
+        <span className="text-sm text-gray-500">My Year in the Chair</span>
+      </div>
+
+      <div className="bg-white border rounded-2xl shadow-sm">
+        <form onSubmit={onSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">
+              {error}
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">Email</span>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="you@example.org"
+                autoComplete="email"
+                required
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">Password</span>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="••••••••"
+                autoComplete="current-password"
+                required
+              />
+            </label>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="••••••••"
-              autoComplete="current-password"
-              required
-            />
+
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button
+              type="submit"
+              disabled={busy}
+              className="inline-flex items-center rounded-lg px-4 py-2.5 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 shadow-sm"
+            >
+              {busy ? 'Signing in…' : 'Sign in'}
+            </button>
           </div>
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 shadow-sm"
-          >
-            {busy ? 'Signing in…' : 'Sign in'}
-          </button>
         </form>
       </div>
+
+      <p className="text-sm text-gray-600">
+        Tip: If you’ve been signed out, use the same credentials you registered with on this device.
+      </p>
     </div>
   );
 }
