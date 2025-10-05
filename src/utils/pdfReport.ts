@@ -1,5 +1,6 @@
 // src/utils/pdfReport.ts
 // Dynamic-import version to avoid SSR bundling errors in Next.js
+// Updated typing to satisfy strict TypeScript (noImplicitAny)
 
 export type Visit = {
   dateISO: string;
@@ -48,7 +49,7 @@ export async function generateMyYearPdf(
     throw new Error("PDF generation must run in the browser.");
   }
   const { jsPDF } = await import("jspdf");
-  const autoTable = (await import("jspdf-autotable")).default;
+  const autoTable = (await import("jspdf-autotable")).default as any;
 
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const title = opts.title || "My Year in the Chair – Report";
@@ -85,7 +86,7 @@ export async function generateMyYearPdf(
       styles: { fontSize: 9, cellPadding: 6, overflow: "linebreak" },
       headStyles: { fillColor: [15, 76, 129] },
       theme: "striped",
-      didDrawPage: data => {
+      didDrawPage: () => {
         const str = `Page ${doc.getCurrentPageInfo().pageNumber}`;
         doc.setFontSize(9);
         doc.text(str, doc.internal.pageSize.getWidth() - 60, doc.internal.pageSize.getHeight() - 20);
