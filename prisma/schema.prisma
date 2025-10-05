@@ -7,6 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum WorkType {
+  INITIATION
+  PASSING
+  RAISING
+  INSTALLATION
+  PRESENTATION
+  LECTURE
+  OTHER
+}
+
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
@@ -15,23 +25,52 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   points        Int      @default(0)
+
+  // Master / lodge details for leaderboard & reporting
+  lodgeName     String?
+  lodgeNumber   String?
+  region        String?
+
+  // Term dates (optional)
+  termStart     DateTime?
+  termEnd       DateTime?
+
   visits        Visit[]
   awards        Award[]
   role          String   @default("USER")
-  termStart     DateTime?
-  termEnd       DateTime?
+  works         LodgeWork[]
 }
 
 model Visit {
-  id          String   @id @default(cuid())
-  user        User     @relation(fields: [userId], references: [id])
-  userId      String
-  date        DateTime
-  lodgeName   String
-  lodgeNumber String
-  location    String?
-  notes       String?
-  createdAt   DateTime @default(now())
+  id            String   @id @default(cuid())
+  user          User     @relation(fields: [userId], references: [id])
+  userId        String
+
+  date          DateTime
+  lodgeName     String
+  lodgeNumber   String
+  region        String?
+
+  workOfEvening WorkType
+  candidateName String?
+
+  location      String?
+  notes         String?
+  createdAt     DateTime @default(now())
+}
+
+model LodgeWork {
+  id            String   @id @default(cuid())
+  user          User     @relation(fields: [userId], references: [id])
+  userId        String
+
+  month         Int      // 1-12
+  year          Int
+  work          WorkType
+  candidateName String?
+  notes         String?
+
+  createdAt     DateTime @default(now())
 }
 
 model Resource {
