@@ -13,28 +13,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ✅ Install pnpm FIRST so it's on PATH
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+          standalone: true
+
+      # Then setup Node (no pnpm cache here to avoid calling pnpm too early)
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          # don't set cache-dependency-path when you don't have a lockfile yet
-          cache: pnpm
 
-      # Ensure pnpm is on PATH (Corepack first, npm fallback)
-      - name: Ensure pnpm@9 is available
-        shell: bash
-        run: |
-          set -euxo pipefail
-          if command -v corepack >/dev/null 2>&1; then
-            corepack enable || true
-            corepack prepare pnpm@9 --activate || true
-          fi
-          if ! command -v pnpm >/dev/null 2>&1; then
-            npm i -g pnpm@9
-          fi
-          pnpm -v
+      - name: Verify pnpm
+        run: pnpm -v
 
-      # No lockfile yet => don't use --frozen-lockfile
+      # Optional cache for pnpm store (works with/without lockfile)
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
       - name: Install deps
         run: pnpm install
 
