@@ -1,20 +1,10 @@
+'use client';
 import React from "react";
 
 /**
- * SignOutButton
- * Works with either Firebase auth or a custom JWT/session backend.
- *
- * Usage (JWT/API example):
- *   <SignOutButton provider="jwt" onLogout={async () => {
- *     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
- *     localStorage.removeItem('access_token');
- *     sessionStorage.removeItem('access_token');
- *   }}/>
- *
- * Usage (Firebase example):
- *   import { getAuth } from 'firebase/auth';
- *   const auth = getAuth();
- *   <SignOutButton provider="firebase" firebaseAuth={auth} />
+ * Client-only SignOutButton
+ * - Firebase import happens dynamically inside onClick
+ * - Safe for Next.js App Router without pulling Node-only undici
  */
 type Props =
   | { provider: "firebase"; firebaseAuth: any; className?: string }
