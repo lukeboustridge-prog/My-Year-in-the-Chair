@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "**" ]
   pull_request:
 
 jobs:
@@ -10,43 +10,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Install pnpm first so it's on PATH
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          run_install: false
-          standalone: true
+          version: 9.12.0
 
-      # Then setup Node
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "20"
+          cache: "pnpm"
 
-      - name: Verify pnpm
-        run: pnpm -v
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
 
-      # Optional cache for pnpm store (works with or without a lockfile)
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
-
-      - name: Install deps
-        run: pnpm install
-
-      - name: Generate Prisma client
-        run: pnpm prisma generate
-
-      # ⛔ No prisma db:push in CI — avoids needing DATABASE_URL
-      - name: Build
-        env:
-          NEXT_TELEMETRY_DISABLED: "1"
-          JWT_SECRET: "ci-only-secret"
+      - name: Build project
         run: pnpm build
