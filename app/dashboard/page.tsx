@@ -7,7 +7,7 @@ function displayName(user: any) {
   const parts: string[] = [];
   if (user?.prefix) parts.push(user.prefix);
   if (user?.name) parts.push(user.name);
-  const pn = [...(user?.postNominals ?? []), ...(user?.grandPostNominals ?? [])];
+  const pn = user?.postNominals ?? [];
   if (pn.length) parts[parts.length-1] = parts[parts.length-1] + " " + pn.join(", ");
   return parts.join(" ");
 }
@@ -49,7 +49,7 @@ export default async function DashboardPage() {
         <div>
           <h1 className="hero-title">Welcome{user ? `, ${displayName(user)}` : ""}</h1>
           <div className="muted">
-            {user?.grandRank ? <span className="pill">Grand Rank: {user.grandRank}</span> : null}
+            {user?.rank ? <span className="pill">{user.isPastGrand && user.rank ? `Past ${user.rank}` : user.rank}</span> : null}
             {user?.lodgeName ? (
               <span style={{marginLeft:".5rem"}}>
                 Lodge: {user.lodgeName}{user.lodgeNumber ? ` (${user.lodgeNumber})` : ""}{user.region ? ` • ${user.region}` : ""}

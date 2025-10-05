@@ -1,14 +1,7 @@
-/**
- * Rank options start at Master Mason up to Grand Master.
- * Ticking "Past Grand Rank" will prefix relevant Grand ranks with "Past" in UI
- * but we store a boolean separately (isPastGrand) to keep data tidy.
- * You can expand this list from the BoC; these are common examples.
- */
 export const RANK_OPTIONS = [
   "Master Mason",
   "Installed Master",
   "Past Master",
-  // Grand ranks (non-past)
   "Grand Steward",
   "Grand Standard Bearer",
   "Assistant Grand Director of Ceremonies",
@@ -23,17 +16,10 @@ export const RANK_OPTIONS = [
 
 export type Rank = typeof RANK_OPTIONS[number];
 
-/**
- * For each rank, the default prefix and post-nominals.
- * For past grand rank ticked, we add the 'Past' form where appropriate
- * and post-nominal stays the same unless your jurisdiction uses a P- variant. Adjust here.
- */
 export const RANK_META: Record<string, { prefix: string; postNominals: string[]; grand?: boolean }> = {
   "Master Mason": { prefix: "Bro.", postNominals: [] },
   "Installed Master": { prefix: "WBro.", postNominals: [] },
   "Past Master": { prefix: "WBro.", postNominals: ["P.M."] },
-
-  // Grand (examples; expand from BoC as needed)
   "Grand Steward": { prefix: "WBro.", postNominals: ["GStB"], grand: true },
   "Grand Standard Bearer": { prefix: "WBro.", postNominals: ["GSwdB"], grand: true },
   "Assistant Grand Director of Ceremonies": { prefix: "WBro.", postNominals: ["GDC"], grand: true },
@@ -46,17 +32,10 @@ export const RANK_META: Record<string, { prefix: string; postNominals: string[];
   "Grand Master": { prefix: "MWBro.", postNominals: ["G.M."], grand: true },
 };
 
-/**
- * Given a selected rank and whether it is a Past Grand rank, return the prefix & post-nominals.
- * If isPastGrand is true and the rank is grand, we keep the same post-nominals by default,
- * but you can change to use a Past variant if your BoC specifies different letters (e.g. "PGStB").
- */
 export function deriveTitle(rank: string, isPastGrand: boolean) {
   const meta = RANK_META[rank];
   if (!meta) return { prefix: "Bro.", postNominals: [] };
   if (isPastGrand && meta.grand) {
-    // Example: keep same post-nominals but add "Past" conceptually.
-    // If your BoC uses P- variants (e.g., PGD, PJGD), map them here:
     const pastMap: Record<string, string> = {
       "GStB": "PGStB",
       "GSwdB": "PGSwdB",
@@ -69,8 +48,23 @@ export function deriveTitle(rank: string, isPastGrand: boolean) {
       "G.M.": "P.G.M.",
     };
     const post = meta.postNominals.map(x => pastMap[x] ?? x);
-    // Prefix usually stays the same for Past Grand ranks; adjust if needed:
     return { prefix: meta.prefix, postNominals: post };
   }
   return { prefix: meta.prefix, postNominals: meta.postNominals };
 }
+
+/* Regions kept for profile select if needed later */
+export const REGIONS = [
+  "Northern","Central","Southern","Overseas"
+];
+
+/* --- Build fix: re-add WORK_TYPE_OPTIONS for visits page --- */
+export const WORK_TYPE_OPTIONS = [
+  { value: "INITIATION", label: "Initiation" },
+  { value: "PASSING", label: "Passing" },
+  { value: "RAISING", label: "Raising" },
+  { value: "INSTALLATION", label: "Installation" },
+  { value: "PRESENTATION", label: "Presentation" },
+  { value: "LECTURE", label: "Lecture" },
+  { value: "OTHER", label: "Other" },
+];
