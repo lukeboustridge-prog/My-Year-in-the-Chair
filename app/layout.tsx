@@ -1,33 +1,38 @@
 import "./globals.css";
 import Link from "next/link";
+import SignOutButton from "../components/SignOutButton";
 
 export const metadata = {
   title: "My Year in the Chair",
-  description: "Track visits, lodge workings, and your progress as Master.",
+  description: "Freemasons Master companion",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  async function logout() {
+    try {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    } catch (e) {}
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("access_token");
+      sessionStorage.removeItem("access_token");
+      window.location.assign("/login");
+    }
+  }
+
   return (
     <html lang="en">
-      <body>
-        <nav className="nav">
-          <div className="nav-inner container">
-            <div className="brand">
-              <img src="/logo.svg" alt="Logo" />
-              <span>My Year in the Chair</span>
-            </div>
-            <div className="menu">
-              <Link href="/dashboard">Dashboard</Link>
-              <Link href="/visits">Visits</Link>
-              <Link href="/my-work">My Lodge Workings</Link>
-              <Link href="/leaderboard">Leaderboard</Link>
-              <Link href="/resources">Resources</Link>
-              <Link href="/profile">Profile</Link>
-              <Link href="/auth">Sign in</Link>
-            </div>
+      <body className="min-h-screen bg-white text-gray-900">
+        <header className="w-full border-b">
+          <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
+            <Link href="/" className="font-semibold">My Year in the Chair</Link>
+            <nav className="flex items-center gap-4">
+              <Link href="/reports" className="underline">Reports</Link>
+              {/* Use JWT logout by default; swap to provider="firebase" if you use Firebase */}
+              <SignOutButton provider="jwt" onLogout={logout} />
+            </nav>
           </div>
-        </nav>
-        <main className="main container">{children}</main>
+        </header>
+        <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
       </body>
     </html>
   );
