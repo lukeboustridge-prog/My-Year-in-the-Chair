@@ -1,11 +1,9 @@
-# GitHub Actions CI (pnpm, no lockfile)
+# Type packages fix
 
-This workflow installs Node and pnpm, then builds the project without requiring a `pnpm-lock.yaml`.
+Next.js TypeScript build needs `@types/react` and `@types/node`. This `package.json` adds them.
 
-To enable caching later, commit a lockfile and update:
-```yaml
-with:
-  node-version: 20
-  cache: pnpm
-  cache-dependency-path: pnpm-lock.yaml
+After replacing your package.json:
+```bash
+pnpm install
+pnpm build
 ```
