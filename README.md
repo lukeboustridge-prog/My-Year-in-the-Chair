@@ -1,7 +1,7 @@
 
 # Postgres + Dynamic Pages Fix
 
-This patch updates your Prisma datasource to PostgreSQL for Vercel/Neon deployment
+.This patch updates your Prisma datasource to PostgreSQL for Vercel/Neon deployment
 and adds `export const dynamic = "force-dynamic";` stubs to DB-backed pages.
 
 ### How to apply
