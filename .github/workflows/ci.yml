@@ -17,25 +17,26 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          # don't set cache-dependency-path when you don't have a lockfile yet
           cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
 
-      # Robust pnpm install: try Corepack first, fallback to npm global install
+      # Ensure pnpm is on PATH (Corepack first, npm fallback)
       - name: Ensure pnpm@9 is available
+        shell: bash
         run: |
-          set -eux
+          set -euxo pipefail
           if command -v corepack >/dev/null 2>&1; then
             corepack enable || true
             corepack prepare pnpm@9 --activate || true
           fi
           if ! command -v pnpm >/dev/null 2>&1; then
-            echo "pnpm not found via Corepack; installing with npm..."
             npm i -g pnpm@9
           fi
           pnpm -v
 
+      # No lockfile yet => don't use --frozen-lockfile
       - name: Install deps
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: Generate Prisma client
         run: pnpm prisma generate
