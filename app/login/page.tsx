@@ -47,7 +47,6 @@ export default function LoginPage() {
         const msg = await res.text();
         throw new Error(msg || 'Login failed');
       }
-      // Optional token support
       try {
         const data = await res.json().catch(() => null);
         if (data?.token) {
@@ -116,10 +115,6 @@ export default function LoginPage() {
           </div>
         </form>
       </div>
-
-      <p className="text-sm text-gray-600">
-        Tip: Use the same credentials you registered with. If you’ve forgotten them, contact your administrator.
-      </p>
     </div>
   );
 }

@@ -1,22 +1,7 @@
 'use client';
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import React from "react";
+import { usePathname } from "next/navigation";
 import SignOutButton from "./SignOutButton";
-
-function useIsAuthed() {
-  const [authed, setAuthed] = React.useState(false);
-  React.useEffect(() => {
-    try {
-      const hasLS = typeof window !== 'undefined' && (localStorage.getItem('access_token') || sessionStorage.getItem('access_token'));
-      const hasCookie = typeof document !== 'undefined' && /(?:^|; )(?:access_token|token|session)=/.test(document.cookie);
-      setAuthed(!!(hasLS || hasCookie));
-    } catch {
-      setAuthed(false);
-    }
-  }, []);
-  return authed;
-}
 
 function NavLink({ href, label }: { href: string; label: string }) {
   const pathname = usePathname();
@@ -32,13 +17,8 @@ function NavLink({ href, label }: { href: string; label: string }) {
 }
 
 export default function AppHeader() {
-  const authed = useIsAuthed();
-  const router = useRouter();
-
-  const onLoggedOut = () => {
-    router.push('/login');
-    router.refresh();
-  };
+  const pathname = usePathname();
+  const showSignOut = pathname !== '/login';
 
   return (
     <header className="w-full border-b bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 sticky top-0 z-40">
@@ -50,11 +30,8 @@ export default function AppHeader() {
           <NavLink href="/my-work" label="My Lodge Workings" />
           <NavLink href="/leaderboard" label="Leaderboard" />
           <NavLink href="/reports" label="Reports" />
-          {!authed ? (
-            <NavLink href="/login" label="Sign in" />
-          ) : (
-            <SignOutButton onLoggedOut={onLoggedOut} />
-          )}
+          <NavLink href="/login" label="Sign in" />
+          {showSignOut && <SignOutButton />}
         </nav>
       </div>
     </header>
