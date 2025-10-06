@@ -30,6 +30,7 @@ export type LeaderboardRow = {
   points?: number;
   month?: string;
   year?: number;
+  rank?: number; // <-- added to satisfy UI usage
 };
 
 // Generic JSON fetcher
@@ -101,12 +102,12 @@ export async function createVisit(input: any) {
 }
 
 // -------------------- Leaderboard (accepts optional period) --------------------
-export async function getLeaderboard(period?: string): Promise<LeaderboardRow[]> {
+export async function getLeaderboard(period?: string) {
   try {
     const qs = period ? `?period=${encodeURIComponent(period)}` : '';
-    return await j(`/api/leaderboard${qs}`, { cache: 'no-store' });
+    return await j<LeaderboardRow[]>(`/api/leaderboard${qs}`, { cache: 'no-store' });
   } catch {
-    return [];
+    return [] as LeaderboardRow[];
   }
 }
 
