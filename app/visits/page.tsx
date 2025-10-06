@@ -1,19 +1,8 @@
 'use client';
 import React from "react";
 import Modal from "../../components/Modal";
-import { toISODate, toDisplayDate } from "../../lib/date";
-
-type Degree = 'Initiation' | 'Passing' | 'Raising' | 'Installation' | 'Other';
-
-type Visit = {
-  id?: string;
-  dateISO: string; // normalized YYYY-MM-DD
-  lodgeName: string;
-  lodgeNumber?: string;
-  eventType: Degree;
-  grandLodgeVisit: boolean;
-  notes?: string;
-};
+import { toDisplayDate } from "../../lib/date";
+import { getVisits, createVisit, updateVisit, deleteVisit, Visit, Degree } from "../../lib/api";
 
 const emptyVisit: Visit = { dateISO: '', lodgeName: '', lodgeNumber: '', eventType: 'Initiation', grandLodgeVisit: false, notes: '' };
 
@@ -27,19 +16,8 @@ export default function VisitsPage() {
   React.useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/visits', { credentials: 'include' });
-        if (!res.ok) throw new Error('Failed to load visits');
-        const data = await res.json();
-        const norm = (Array.isArray(data) ? data : []).map((r:any) => ({
-          id: r.id,
-          dateISO: toISODate(r.dateISO || r.date || ''),
-          lodgeName: r.lodgeName || r.lodge || '',
-          lodgeNumber: r.lodgeNumber || r.lodge_no || r.number || '',
-          eventType: r.eventType || r.degree || 'Other',
-          grandLodgeVisit: Boolean(r.grandLodgeVisit),
-          notes: r.notes || ''
-        }));
-        setRecords(norm);
+        const data = await getVisits();
+        setRecords(data);
       } catch (e:any) {
         setRecords([]);
         setError(e?.message || 'Failed to load');
@@ -53,39 +31,15 @@ export default function VisitsPage() {
 
   async function saveVisit(e: React.FormEvent) {
     e.preventDefault();
-    if (!editing) return;
+    if (!editing || !editing.dateISO) return;
     setBusy(true);
     try {
       const isNew = !editing.id;
-      const iso = toISODate(editing.dateISO);
-      // Send aliased keys to match various backends
-      const payload: any = {
-        id: editing.id,
-        dateISO: iso,
-        date: iso,
-        lodgeName: editing.lodgeName,
-        lodge: editing.lodgeName,
-        lodgeNumber: editing.lodgeNumber || '',
-        degree: editing.eventType,
-        eventType: editing.eventType,
-        grandLodgeVisit: !!editing.grandLodgeVisit,
-        notes: editing.notes || ''
-      };
-      const res = await fetch(isNew ? '/api/visits' : `/api/visits/${editing.id}`, {
-        method: isNew ? 'POST' : 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt || 'Save failed');
-      }
-      const saved = await res.json().catch(() => payload);
+      const saved = isNew ? await createVisit(editing) : await updateVisit(String(editing.id), editing);
       setRecords(prev => {
         const next = prev ? [...prev] : [];
-        if (isNew) return [saved as Visit, ...next];
-        return next.map(r => (r.id === editing.id ? (saved as Visit) : r));
+        if (isNew) return [saved, ...next];
+        return next.map(r => (r.id === saved.id ? saved : r));
       });
       closeModal();
     } catch (e:any) {
@@ -95,18 +49,13 @@ export default function VisitsPage() {
     }
   }
 
-  async function deleteVisit(id?: string) {
+  async function onDelete(id?: string) {
     if (!id) return;
     if (!confirm('Delete this visit?')) return;
     const prev = records || [];
     setRecords(prev.filter(r => r.id !== id));
-    try {
-      const res = await fetch(`/api/visits/${id}`, { method: 'DELETE', credentials: 'include' });
-      if (!res.ok) throw new Error(await res.text());
-    } catch {
-      setRecords(prev);
-      alert('Delete failed');
-    }
+    try { await deleteVisit(String(id)); }
+    catch { setRecords(prev); alert('Delete failed'); }
   }
 
   return (
@@ -151,7 +100,7 @@ export default function VisitsPage() {
                       <td className="py-2 pr-3">
                         <div className="flex gap-2">
                           <button className="navlink" onClick={() => openEdit(r)}>Edit</button>
-                          <button className="navlink" onClick={() => deleteVisit(r.id)}>Delete</button>
+                          <button className="navlink" onClick={() => onDelete(r.id)}>Delete</button>
                         </div>
                       </td>
                     </tr>
@@ -187,7 +136,7 @@ export default function VisitsPage() {
             </label>
             <label className="label">
               <span>Work of the evening (Degree)</span>
-              <select className="input mt-1" value={editing?.eventType || 'Initiation'} onChange={e=>setEditing(v=>({...(v as Visit), eventType: e.target.value as Visit['eventType']}))}>
+              <select className="input mt-1" value={editing?.eventType || 'Initiation'} onChange={e=>setEditing(v=>({...(v as Visit), eventType: e.target.value as Degree}))}>
                 <option>Initiation</option>
                 <option>Passing</option>
                 <option>Raising</option>
