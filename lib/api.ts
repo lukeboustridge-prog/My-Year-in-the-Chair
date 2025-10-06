@@ -21,6 +21,21 @@ export type Visit = {
   notes?: string;
 };
 
+// ---- Types expected by /app/my-work/page.tsx ----
+export type Degree = 'EA' | 'FC' | 'MM' | 'Installation' | 'Other' | string;
+
+export type Working = {
+  id?: string;
+  dateISO: string;             // ISO date string
+  degree: Degree;
+  candidateName?: string;
+  lodgeName?: string;
+  lodgeNumber?: string;
+  grandLodgeVisit?: boolean;
+  emergencyMeeting?: boolean;
+  notes?: string;
+};
+
 // Leaderboard row shape expected by /app/leaderboard/page.tsx
 export type LeaderboardRow = {
   userId: string;
@@ -30,7 +45,7 @@ export type LeaderboardRow = {
   points?: number;
   month?: string;
   year?: number;
-  rank?: number; // <-- added to satisfy UI usage
+  rank?: number;
 };
 
 // Generic JSON fetcher
@@ -62,10 +77,20 @@ export async function deleteLodgeWorking(id: string): Promise<{ ok: true }> {
 
 // Legacy names used by /app/my-work/page.tsx
 export const getWorkings = listLodgeWorkings;
-export async function createWorking(input: CreateLodgeWorkingInput) {
-  return createLodgeWorking(input);
+export async function createWorking(input: CreateLodgeWorkingInput | Working) {
+  // Allow Working shape; map to server input
+  const mapped: CreateLodgeWorkingInput = (input as any).title
+    ? (input as any)
+    : {
+        title: ((input as Working).degree || 'Working') + ( (input as Working).candidateName ? ' – ' + (input as Working).candidateName : '' ),
+        date: (input as Working).dateISO,
+        lodgeName: (input as Working).lodgeName,
+        lodgeNumber: (input as Working).lodgeNumber,
+        notes: (input as Working).notes,
+      };
+  return createLodgeWorking(mapped);
 }
-export async function updateWorking(_id: string, _patch: Partial<CreateLodgeWorkingInput>) {
+export async function updateWorking(_id: string, _patch: Partial<CreateLodgeWorkingInput | Working>) {
   // Not implemented in API; return noop for compatibility
   return { ok: true } as any;
 }
