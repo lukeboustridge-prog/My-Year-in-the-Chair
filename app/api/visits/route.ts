@@ -2,15 +2,15 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 
-export async function GET() {
-  const uid = getUserId();
+export async function GET(req: Request) {
+  const uid = getUserId(req);
   if (!uid) return new NextResponse("Unauthorized", { status: 401 });
   const rows = await db.visit.findMany({ where: { userId: uid }, orderBy: { date: "desc" } });
   return NextResponse.json(rows);
 }
 
 export async function POST(req: Request) {
-  const uid = getUserId();
+  const uid = getUserId(req);
   if (!uid) return new NextResponse("Unauthorized", { status: 401 });
   const body = await req.json();
   const created = await db.visit.create({
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
-  const uid = getUserId();
+  const uid = getUserId(req);
   if (!uid) return new NextResponse("Unauthorized", { status: 401 });
   const body = await req.json();
   if (!body.id) return new NextResponse("Missing id", { status: 400 });
@@ -53,7 +53,7 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const uid = getUserId();
+  const uid = getUserId(req);
   if (!uid) return new NextResponse("Unauthorized", { status: 401 });
   const body = await req.json();
   if (!body.id) return new NextResponse("Missing id", { status: 400 });

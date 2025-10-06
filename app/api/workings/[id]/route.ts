@@ -1,6 +1,7 @@
 // app/api/workings/[id]/route.ts
 import { NextResponse } from 'next/server';
 import { getPrisma, memStore } from '@/lib/db';
+import { getUserId } from '@/lib/auth';
 
 type Params = { params: { id: string } };
 
@@ -10,10 +11,17 @@ export async function DELETE(_req: Request, { params }: Params) {
 
   const prismaAny = getPrisma() as any;
   if (prismaAny) {
+    const userId = getUserId(_req);
+    if (!userId) return new NextResponse('Unauthorized', { status: 401 });
     try {
-      await prismaAny.lodgeWork.delete({ where: { id } });
+      const existing = await prismaAny.myWork.findUnique({ where: { id } });
+      if (!existing || existing.userId !== userId) {
+        return new NextResponse('Not found', { status: 404 });
+      }
+      await prismaAny.myWork.delete({ where: { id } });
       return new NextResponse(null, { status: 204 });
-    } catch {
+    } catch (err) {
+      console.error('delete_working_error', err);
       return new NextResponse('Not found', { status: 404 });
     }
   }
