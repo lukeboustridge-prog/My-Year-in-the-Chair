@@ -166,9 +166,9 @@ export async function getVisits(limit?: number): Promise<Visit[]> {
   return typeof limit === 'number' ? mapped.slice(0, Math.max(0, limit)) : mapped;
 }
 
-export async function createVisit(input: any) {
+export async function createVisit(input: Visit): Promise<Visit> {
   // Accept UI Visit and map to a reasonable server payload. If /api/visits fails, fallback to /api/workings.
-  const v: Visit = (input && input.dateISO !== undefined) ? input as Visit : toVisit(input as VisitRow);
+  const v = input;
   const body: any = {
     date: v.dateISO,
     lodgeName: v.lodgeName,
@@ -178,14 +178,15 @@ export async function createVisit(input: any) {
     notes: v.notes,
   };
   try {
-    return await j('/api/visits', {
+    const row = await j<VisitRow>('/api/visits', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
+    return toVisit(row);
   } catch {
     // Fallback to a Working create so local/dev still records something
-    return createLodgeWorking({
+    const lw = await createLodgeWorking({
       title: (v.eventType || 'Visit') + (v.lodgeName ? ' – ' + v.lodgeName : ''),
       date: v.dateISO,
       lodgeName: v.lodgeName,
@@ -193,19 +194,21 @@ export async function createVisit(input: any) {
       notes: v.notes,
       createdBy: undefined,
     });
+    return toVisit({ id: lw.id, date: lw.date, lodgeName: lw.lodgeName, lodgeNumber: lw.lodgeNumber, notes: lw.notes, eventType: 'Working' });
   }
 }
 
-export async function updateVisit(id: string, patch: Partial<Visit>) {
+export async function updateVisit(id: string, patch: Partial<Visit>): Promise<Visit> {
   const body: any = { ...patch };
   if ((patch as any).dateISO && !(patch as any).date) {
     body.date = (patch as any).dateISO;
   }
-  return j(`/api/visits/${id}`, {
+  const row = await j<VisitRow>(`/api/visits/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
+  return toVisit(row);
 }
 export async function deleteVisit(id: string) {
   await j(`/api/visits/${id}`, { method: 'DELETE' });
