@@ -43,7 +43,7 @@ export default async function VisitsPage() {
               <option value="">Select a lodge</option>
               {lodges.map((lodge) => (
                 <option key={lodge.id} value={lodge.id}>
-                  {lodge.name} No. {lodge.number}
+                  {lodge.name} No. {lodge.lodgeNumber}
                 </option>
               ))}
             </select>
@@ -84,7 +84,11 @@ export default async function VisitsPage() {
               {visits.map((visit) => (
                 <tr key={visit.id}>
                   <td>{formatDate(visit.date)}</td>
-                  <td>{visit.lodge ? `${visit.lodge.name} No. ${visit.lodge.number}` : "—"}</td>
+                  <td>
+                    {visit.lodge
+                      ? `${visit.lodge.name} No. ${visit.lodge.lodgeNumber}`
+                      : "—"}
+                  </td>
                   <td>{visit.notes || "—"}</td>
                   <td>
                     <form action={deleteVisit.bind(null, visit.id)}>

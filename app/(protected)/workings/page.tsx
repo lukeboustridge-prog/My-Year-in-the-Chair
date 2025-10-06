@@ -53,7 +53,7 @@ export default async function WorkingsPage() {
               <option value="">Select a lodge</option>
               {lodges.map((lodge) => (
                 <option key={lodge.id} value={lodge.id}>
-                  {lodge.name} No. {lodge.number}
+                  {lodge.name} No. {lodge.lodgeNumber}
                 </option>
               ))}
             </select>
@@ -98,7 +98,7 @@ export default async function WorkingsPage() {
                   <td>{working.working}</td>
                   <td>
                     {working.lodge
-                      ? `${working.lodge.name} No. ${working.lodge.number}`
+                      ? `${working.lodge.name} No. ${working.lodge.lodgeNumber}`
                       : "—"}
                   </td>
                   <td>{working.notes || "—"}</td>

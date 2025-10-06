@@ -110,7 +110,11 @@ export default async function DashboardPage() {
               {recentVisits.map((visit) => (
                 <tr key={visit.id}>
                   <td>{formatDate(visit.date)}</td>
-                  <td>{visit.lodge ? `${visit.lodge.name} No. ${visit.lodge.number}` : "—"}</td>
+                  <td>
+                    {visit.lodge
+                      ? `${visit.lodge.name} No. ${visit.lodge.lodgeNumber}`
+                      : "—"}
+                  </td>
                   <td>{visit.notes || "—"}</td>
                 </tr>
               ))}
@@ -139,7 +143,7 @@ export default async function DashboardPage() {
                   <td>{working.working}</td>
                   <td>
                     {working.lodge
-                      ? `${working.lodge.name} No. ${working.lodge.number}`
+                      ? `${working.lodge.name} No. ${working.lodge.lodgeNumber}`
                       : "—"}
                   </td>
                 </tr>

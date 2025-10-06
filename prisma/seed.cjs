@@ -23,9 +23,9 @@ async function main() {
   });
 
   const lodge = await prisma.lodge.upsert({
-    where: { name_number: { name: "Lodge Matariki", number: "402" } },
+    where: { name_lodgeNumber: { name: "Lodge Matariki", lodgeNumber: "402" } },
     update: {},
-    create: { name: "Lodge Matariki", number: "402", location: "Auckland" }
+    create: { name: "Lodge Matariki", lodgeNumber: "402", location: "Auckland" }
   });
 
   await prisma.membership.create({
