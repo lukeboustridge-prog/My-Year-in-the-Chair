@@ -1,24 +1,20 @@
 import './globals.css';
+import type { Metadata } from 'next';
 import React from 'react';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'My Year in the Chair',
-  description: 'Freemasons NZ – minimal reset build'
+  description: 'Fresh Next.js starter for the project reset.'
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
-      <body>
-        <main style={{ maxWidth: 860, margin: '0 auto', padding: 16 }}>
-          <nav style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-            <a href="/">Home</a>
-            <a href="/visits">Visits</a>
-            <a href="/workings">Workings</a>
-          </nav>
-          {children}
-        </main>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
