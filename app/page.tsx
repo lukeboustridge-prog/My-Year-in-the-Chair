@@ -3,9 +3,25 @@ import React from "react";
 import Link from "next/link";
 import { toDisplayDate } from "../lib/date";
 
-type Profile = { prefix?: string; fullName?: string; postNominals?: string };
+type Profile = {
+  prefix?: string;            // e.g., W. Bro.
+  fullName?: string;          // preferred
+  name?: string;              // alt
+  firstName?: string;         // alt
+  lastName?: string;          // alt
+  postNominals?: string;      // e.g., P.M.
+};
+
 type Visit = { id?: string; dateISO?: string; lodgeName?: string; eventType?: string; grandLodgeVisit?: boolean };
 type Working = { id?: string; dateISO?: string; degree?: string; section?: string; grandLodgeVisit?: boolean };
+
+function joinName(p: Profile | null): string {
+  if (!p) return 'Brother';
+  const given = p.fullName || p.name || [p.firstName, p.lastName].filter(Boolean).join(' ');
+  const parts = [p.prefix, given, p.postNominals].filter((x) => !!(x && String(x).trim()));
+  const result = parts.join(' ').replace(/\s+/g, ' ').trim();
+  return result || 'Brother';
+}
 
 export default function HomePage() {
   const [profile, setProfile] = React.useState<Profile | null>(null);
@@ -32,7 +48,7 @@ export default function HomePage() {
     })();
   }, []);
 
-  const nameLine = [profile?.prefix, profile?.fullName, profile?.postNominals].filter(Boolean).join(' ') || 'Brother';
+  const nameLine = joinName(profile);
 
   return (
     <div className="space-y-6">
@@ -41,7 +57,6 @@ export default function HomePage() {
           <h1 className="h1">Dashboard</h1>
           <p className="subtle mt-1">Welcome, {nameLine}.</p>
         </div>
-        {/* Removed Add Visit/Add Working per request; actions live on their pages */}
         <div className="flex flex-wrap gap-2">
           <Link href="/reports" className="btn-soft">Export Report</Link>
         </div>
@@ -58,7 +73,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Stats row (removed Offices Held) */}
+      {/* Stats row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="card"><div className="card-body">
           <div className="subtle mb-1">Total Visits</div>
