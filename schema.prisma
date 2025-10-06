@@ -18,45 +18,45 @@ enum WorkType {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  name          String?
-  passwordHash  String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  prefix        String?
-  postNominals  String[]
-  rank          String?
-  isPastGrand   Boolean    @default(false)
-  lodgeName     String?
-  lodgeNumber   String?
-  region        String?
+  prefix       String?
+  postNominals String[]
+  rank         String?
+  isPastGrand  Boolean  @default(false)
+  lodgeName    String?
+  lodgeNumber  String?
+  region       String?
 
-  termStart     DateTime?
-  termEnd       DateTime?
+  termStart DateTime?
+  termEnd   DateTime?
 
-  points        Int      @default(0)
-  visits        Visit[]
-  works         LodgeWork[]
-  myWorks       MyWork[]
-  awards        Award[]
-  role          String   @default("USER")
+  points  Int         @default(0)
+  visits  Visit[]
+  works   LodgeWork[]
+  myWorks MyWork[]
+  awards  Award[]
+  role    String      @default("USER")
 
   // Legacy columns (ignored for backward compatibility to avoid data loss)
-  grandRank           String?   @ignore
-  grandPostNominals   String[]  @ignore
+  grandRank         String?  @ignore
+  grandPostNominals String[] @ignore
 }
 
 model Visit {
-  id            String   @id @default(cuid())
-  user          User     @relation(fields: [userId], references: [id])
-  userId        String
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
 
-  date          DateTime
-  lodgeName     String?
-  lodgeNumber   String?
-  region        String?
+  date        DateTime
+  lodgeName   String?
+  lodgeNumber String?
+  region      String?
 
   workOfEvening WorkType @default(OTHER)
   candidateName String?
@@ -67,9 +67,9 @@ model Visit {
 }
 
 model LodgeWork {
-  id            String   @id @default(cuid())
-  user          User     @relation(fields: [userId], references: [id])
-  userId        String
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
 
   month         Int
   year          Int
@@ -80,15 +80,17 @@ model LodgeWork {
 }
 
 model MyWork {
-  id            String   @id @default(cuid())
-  user          User     @relation(fields: [userId], references: [id])
-  userId        String
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
 
   date          DateTime
   work          WorkType @default(OTHER)
   candidateName String?
   comments      String?
   createdAt     DateTime @default(now())
+
+  @@map("workings")
 }
 
 model Resource {
