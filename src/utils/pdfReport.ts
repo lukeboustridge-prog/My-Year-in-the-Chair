@@ -2,6 +2,10 @@
 // Dynamic-import version to avoid SSR bundling errors in Next.js
 // Updated typing to satisfy strict TypeScript (noImplicitAny)
 
+type JsPdfInstance = InstanceType<typeof import("jspdf").jsPDF>;
+type AutoTable = typeof import("jspdf-autotable").default;
+type AutoTableOptions = import("jspdf-autotable").UserOptions;
+
 export type Visit = {
   dateISO: string;
   lodgeName: string;
@@ -33,10 +37,19 @@ export type ReportOptions = {
   includeVisits?: boolean;
 };
 
+const dateFormatter = new Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
+
 function formatDate(iso?: string) {
   if (!iso) return "";
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  if (Number.isNaN(d.getTime())) {
+    return "";
+  }
+  return dateFormatter.format(d);
 }
 
 export async function generateMyYearPdf(
@@ -44,12 +57,12 @@ export async function generateMyYearPdf(
   visits: Visit[],
   offices: Office[],
   opts: ReportOptions = {}
-) {
+): Promise<JsPdfInstance> {
   if (typeof window === "undefined") {
     throw new Error("PDF generation must run in the browser.");
   }
-  const { jsPDF } = await import("jspdf");
-  const autoTable = (await import("jspdf-autotable")).default as any;
+  const [{ jsPDF }, autoTableModule] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
+  const autoTable: AutoTable = autoTableModule.default;
 
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const title = opts.title || "My Year in the Chair – Report";
@@ -75,41 +88,53 @@ export async function generateMyYearPdf(
 
   // Visits table
   if (opts.includeVisits !== false && visits.length) {
-    autoTable(doc, {
+    const visitHeadRow = ["Date", "Lodge", "Event", "Role"];
+    if (opts.includeNotes) {
+      visitHeadRow.push("Notes");
+    }
+
+    const visitTableOptions = {
       startY: pageYStart + 20,
-      head: [["Date", "Lodge", "Event", "Role"].concat(opts.includeNotes ? ["Notes"] : [])],
-      body: visits.map(v =>
-        [formatDate(v.dateISO), v.lodgeName, v.eventType, v.role || ""].concat(
-          opts.includeNotes ? [v.notes || ""] : []
-        )
-      ),
+      head: [visitHeadRow],
+      body: visits.map(v => {
+        const row = [formatDate(v.dateISO), v.lodgeName, v.eventType, v.role || ""];
+        if (opts.includeNotes) {
+          row.push(v.notes || "");
+        }
+        return row;
+      }),
       styles: { fontSize: 9, cellPadding: 6, overflow: "linebreak" },
       headStyles: { fillColor: [15, 76, 129] },
-      theme: "striped",
+      theme: "striped" as const,
       didDrawPage: () => {
         const str = `Page ${doc.getCurrentPageInfo().pageNumber}`;
         doc.setFontSize(9);
         doc.text(str, doc.internal.pageSize.getWidth() - 60, doc.internal.pageSize.getHeight() - 20);
-      }
-    } as any);
+      },
+    } satisfies AutoTableOptions;
+
+    autoTable(doc, visitTableOptions);
   }
 
   // Offices table
   if (opts.includeOffices !== false && offices.length) {
-    autoTable(doc, {
-      startY: (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 20 : pageYStart + 20,
+    const lastTable = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable;
+    const officeTableOptions = {
+      startY: lastTable ? lastTable.finalY + 20 : pageYStart + 20,
       head: [["Lodge", "Office", "Start", "End", "Type"]],
       body: offices.map(o => [
         o.lodgeName,
         o.office,
         formatDate(o.startDateISO),
         o.endDateISO ? formatDate(o.endDateISO) : "Current",
-        o.isGrandLodge ? "Grand Lodge" : "Craft Lodge"
+        o.isGrandLodge ? "Grand Lodge" : "Craft Lodge",
       ]),
       styles: { fontSize: 9, cellPadding: 6, overflow: "linebreak" },
       headStyles: { fillColor: [15, 76, 129] },
-      theme: "striped",
-    } as any);
+      theme: "striped" as const,
+    } satisfies AutoTableOptions;
+
+    autoTable(doc, officeTableOptions);
   }
 
   return doc;
