@@ -8,7 +8,6 @@ export default function LoginPage() {
   const [password, setPassword] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [signingOut, setSigningOut] = React.useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -26,7 +25,7 @@ export default function LoginPage() {
         const msg = await res.text();
         throw new Error(msg || 'Login failed');
       }
-      // Store token if API returns one; cookie-only flows still work
+      // Optional token support
       try {
         const data = await res.json().catch(() => null);
         if (data?.token) {
@@ -43,36 +42,15 @@ export default function LoginPage() {
     }
   };
 
-  async function onSignOut() {
-    if (signingOut) return;
-    setSigningOut(true);
-    try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
-    } finally {
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("access_token");
-        sessionStorage.removeItem("access_token");
-      }
-      setSigningOut(false);
-    }
-  }
-
   return (
     <div className="mx-auto max-w-3xl p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Sign in</h1>
-        <button
-          onClick={onSignOut}
-          disabled={signingOut}
-          className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium border bg-white hover:bg-gray-50 shadow-sm disabled:opacity-50"
-          title="Sign out of your current session"
-        >
-          {signingOut ? 'Signing out…' : 'Sign out'}
-        </button>
+        <span className="text-sm text-gray-500">Welcome back</span>
       </div>
 
       <div className="bg-white border rounded-2xl shadow-sm">
-        <form onSubmit={onSubmit} className="p-6 space-y-4">
+        <form onSubmit={onSubmit} className="p-6 space-y-5">
           {error && (
             <div className="rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">
               {error}
@@ -118,7 +96,7 @@ export default function LoginPage() {
       </div>
 
       <p className="text-sm text-gray-600">
-        Tip: If you’ve been signed out, use the same credentials you registered with on this device.
+        Tip: Use the same credentials you registered with. If you’ve forgotten them, contact your administrator.
       </p>
     </div>
   );
