@@ -1,26 +1,21 @@
-# Nuclear Reset Starter (Visits + Workings only)
+# My Year in the Chair — Fresh Start
 
-This is a clean, working base. No auth, no PDFs, no extras. Just the two things you need.
+This repository has been reset to a clean Next.js 14 starter so you can rebuild the project from scratch.
 
-## 1) Set your Neon URL
-Copy `.env.example` to `.env` and paste your connection string:
-```
-DATABASE_URL="postgresql://...neon.../my_year_in_the_chair?sslmode=require&channel_binding=require"
-```
+## Getting Started
 
-## 2) Install, push schema, run
-```
-pnpm install
-pnpm prisma:push
-pnpm dev
-```
-Open `/visits` and `/workings` to create records.
+1. Install dependencies:
+   ```bash
+   pnpm install
+   ```
+2. Run the development server:
+   ```bash
+   pnpm dev
+   ```
+3. Build for production when you're ready:
+   ```bash
+   pnpm build
+   pnpm start
+   ```
 
-## 3) CI setup (GitHub)
-- Add a repository secret named `DATABASE_URL` with your Neon string.
-- The included workflow `.github/workflows/ci.yml` passes it to the build.
-
-## Notes
-- Prisma client singleton in `lib/db.ts`
-- API routes in `app/api/visits/route.ts` and `app/api/workings/route.ts`
-- Simple UI in `app/visits/page.tsx` and `app/workings/page.tsx`
+Feel free to customize the starter content in `app/page.tsx` and add any additional tooling you need.
