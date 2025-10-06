@@ -2,9 +2,18 @@
 // Dynamic-import version to avoid SSR bundling errors in Next.js
 // Updated typing to satisfy strict TypeScript (noImplicitAny)
 
-type JsPdfInstance = InstanceType<typeof import("jspdf").jsPDF>;
+type JsPdfConstructor = typeof import("jspdf").jsPDF;
+type JsPdfInstance = InstanceType<JsPdfConstructor>;
 type AutoTable = typeof import("jspdf-autotable").default;
 type AutoTableOptions = import("jspdf-autotable").UserOptions;
+
+type AutoTableHookContext = {
+  finalY: number;
+};
+
+type JsPdfWithAutoTable = JsPdfInstance & {
+  lastAutoTable?: AutoTableHookContext;
+};
 
 export type Visit = {
   dateISO: string;
@@ -43,6 +52,11 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, {
   day: "numeric",
 });
 
+const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
 function formatDate(iso?: string) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -50,6 +64,23 @@ function formatDate(iso?: string) {
     return "";
   }
   return dateFormatter.format(d);
+}
+
+function formatDateTime(date: Date) {
+  return dateTimeFormatter.format(date);
+}
+
+let pdfLibs: Promise<{ jsPDF: JsPdfConstructor; autoTable: AutoTable }> | undefined;
+
+async function loadPdfLibs() {
+  if (!pdfLibs) {
+    pdfLibs = Promise.all([import("jspdf"), import("jspdf-autotable")]).then(([jsPdfModule, autoTableModule]) => ({
+      jsPDF: jsPdfModule.jsPDF,
+      autoTable: autoTableModule.default,
+    }));
+  }
+
+  return pdfLibs;
 }
 
 export async function generateMyYearPdf(
@@ -61,10 +92,9 @@ export async function generateMyYearPdf(
   if (typeof window === "undefined") {
     throw new Error("PDF generation must run in the browser.");
   }
-  const [{ jsPDF }, autoTableModule] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
-  const autoTable: AutoTable = autoTableModule.default;
+  const { jsPDF, autoTable } = await loadPdfLibs();
 
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const doc = new jsPDF({ unit: "pt", format: "a4" }) as JsPdfWithAutoTable;
   const title = opts.title || "My Year in the Chair – Report";
 
   // Header
@@ -75,13 +105,23 @@ export async function generateMyYearPdf(
   doc.setFont("helvetica", "normal");
   const nameLine = [profile.prefix, profile.fullName, profile.postNominals].filter(Boolean).join(" ");
   doc.text(nameLine, 40, 60);
-  const generated = new Date().toLocaleString();
+  const generated = formatDateTime(new Date());
   doc.text(`Generated: ${generated}`, 40, 76);
+
+  const from = formatDate(opts.dateFrom);
+  const to = formatDate(opts.dateTo);
+  const hasBoth = from && to;
+  const dateRange = hasBoth ? `${from} – ${to}` : from || to;
+  const didRenderPeriod = Boolean(dateRange);
+
+  if (dateRange) {
+    doc.text(`Reporting period: ${dateRange}`, 40, 92);
+  }
 
   // Summary
   const totalVisits = visits.length;
   const currentOffices = offices.filter(o => !o.endDateISO);
-  const pageYStart = 100;
+  const pageYStart = didRenderPeriod ? 112 : 100;
   doc.setFontSize(11);
   doc.text(`Total visits: ${totalVisits}`, 40, pageYStart);
   doc.text(`Current offices: ${currentOffices.length}`, 200, pageYStart);
@@ -118,7 +158,7 @@ export async function generateMyYearPdf(
 
   // Offices table
   if (opts.includeOffices !== false && offices.length) {
-    const lastTable = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable;
+    const lastTable = doc.lastAutoTable;
     const officeTableOptions = {
       startY: lastTable ? lastTable.finalY + 20 : pageYStart + 20,
       head: [["Lodge", "Office", "Start", "End", "Type"]],
