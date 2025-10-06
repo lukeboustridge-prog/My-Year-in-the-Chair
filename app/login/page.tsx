@@ -1,10 +1,20 @@
 'use client';
+export const dynamic = 'force-dynamic';
 import React from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+
+function getRedirectFromLocation(): string {
+  if (typeof window === 'undefined') return '/';
+  try {
+    const sp = new URLSearchParams(window.location.search);
+    return sp.get('redirect') || '/';
+  } catch {
+    return '/';
+  }
+}
 
 export default function LoginPage() {
   const router = useRouter();
-  const sp = useSearchParams();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [busy, setBusy] = React.useState(false);
@@ -16,11 +26,10 @@ export default function LoginPage() {
       const hasLS = typeof window !== 'undefined' && (localStorage.getItem('access_token') || sessionStorage.getItem('access_token'));
       const hasCookie = typeof document !== 'undefined' && /(?:^|; )(?:access_token|token|session)=/.test(document.cookie);
       if (hasLS || hasCookie) {
-        const redirectTo = (sp?.get?.('redirect')) || '/';
-        router.replace(redirectTo);
+        router.replace(getRedirectFromLocation());
       }
     } catch {}
-  }, [router, sp]);
+  }, [router]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -46,8 +55,7 @@ export default function LoginPage() {
           sessionStorage.setItem('access_token', data.token);
         }
       } catch {}
-      const redirectTo = (sp?.get?.('redirect')) || '/';
-      router.push(redirectTo);
+      router.push(getRedirectFromLocation());
       router.refresh();
     } catch (err: any) {
       setError(err?.message || 'Login failed');
