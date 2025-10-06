@@ -3,10 +3,9 @@ import { NextResponse } from 'next/server';
 import { getPrisma, memStore } from '@/lib/db';
 
 export async function GET() {
-  const prisma = getPrisma();
-  if (prisma) {
-    const rows = await prisma.lodgeWork.findMany();
-    // Sort safely in JS by whichever timestamp exists (date -> createdAt -> updatedAt)
+  const prismaAny = getPrisma() as any;
+  if (prismaAny) {
+    const rows = await prismaAny.lodgeWork.findMany();
     const sorted = [...rows].sort((a: any, b: any) => {
       const bKey = (b?.date ?? b?.createdAt ?? b?.updatedAt ?? '').toString();
       const aKey = (a?.date ?? a?.createdAt ?? a?.updatedAt ?? '').toString();
@@ -25,18 +24,17 @@ export async function POST(req: Request) {
     return new NextResponse('Title and date are required', { status: 400 });
   }
 
-  const prisma = getPrisma();
-  if (prisma) {
-    const row = await prisma.lodgeWork.create({
-      data: {
-        title,
-        date: new Date(date),
-        lodgeName: lodgeName || null,
-        lodgeNumber: lodgeNumber || null,
-        notes: notes || null,
-        createdBy: createdBy || null,
-      },
-    });
+  const prismaAny = getPrisma() as any;
+  if (prismaAny) {
+    const data: any = {
+      title,
+      date: new Date(date),
+      lodgeName: lodgeName || null,
+      lodgeNumber: lodgeNumber || null,
+      notes: notes || null,
+      createdBy: createdBy || null,
+    };
+    const row = await prismaAny.lodgeWork.create({ data });
     return NextResponse.json(row, { status: 201 });
   }
 

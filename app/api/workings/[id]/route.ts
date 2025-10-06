@@ -8,10 +8,10 @@ export async function DELETE(_req: Request, { params }: Params) {
   const { id } = params;
   if (!id) return new NextResponse('Missing id', { status: 400 });
 
-  const prisma = getPrisma();
-  if (prisma) {
+  const prismaAny = getPrisma() as any;
+  if (prismaAny) {
     try {
-      await prisma.lodgeWork.delete({ where: { id } });
+      await prismaAny.lodgeWork.delete({ where: { id } });
       return new NextResponse(null, { status: 204 });
     } catch {
       return new NextResponse('Not found', { status: 404 });
