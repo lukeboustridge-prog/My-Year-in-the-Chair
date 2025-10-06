@@ -1,92 +1,183 @@
-"use client";
-import { useEffect, useState } from "react";
+// app/workings/page.tsx
+'use client';
 
-const WORKS = ["INITIATION","PASSING","RAISING","INSTALLATION","PRESENTATION","LECTURE","OTHER"] as const;
+import { useEffect, useState, useTransition } from 'react';
+import {
+  listLodgeWorkings,
+  createLodgeWorking,
+  deleteLodgeWorking,
+  type LodgeWorking,
+} from '@/lib/api';
 
-type Item = {
-  id: string;
-  month: number;
-  year: number;
-  work: typeof WORKS[number];
-  candidateName?: string | null;
-  notes?: string | null;
-};
+export default function LodgeWorkingsPage() {
+  const [items, setItems] = useState<LodgeWorking[]>([]);
+  const [title, setTitle] = useState('');
+  const [date, setDate] = useState<string>('');
+  const [lodgeName, setLodgeName] = useState('');
+  const [lodgeNumber, setLodgeNumber] = useState('');
+  const [notes, setNotes] = useState('');
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
-export default function WorkingsPage() {
-  const [items, setItems] = useState<Item[]>([]);
-  const [month, setMonth] = useState<number>(new Date().getMonth()+1);
-  const [year, setYear] = useState<number>(new Date().getFullYear());
-  const [work, setWork] = useState<typeof WORKS[number]>("OTHER");
-  const [candidateName, setCandidate] = useState("");
-  const [notes, setNotes] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  async function load() {
-    const res = await fetch("/api/workings");
-    if (res.ok) setItems(await res.json());
-  }
-  useEffect(() => { load(); }, []);
-
-  async function add(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    const res = await fetch("/api/workings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ month, year, work, candidateName: candidateName || undefined, notes: notes || undefined })
-    });
-    setLoading(false);
-    if (res.ok) {
-      setCandidate(""); setNotes("");
-      await load();
-    } else {
-      alert(await res.text());
+  async function refresh() {
+    setError(null);
+    try {
+      const data = await listLodgeWorkings();
+      setItems(data);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load');
     }
   }
 
-  return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">My Lodge Workings</h1>
+  useEffect(() => {
+    refresh();
+  }, []);
 
-      <form onSubmit={add} className="card grid gap-3 max-w-xl">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label>Month</label>
-            <input type="number" min={1} max={12} value={month} onChange={e=>setMonth(parseInt(e.target.value||"1",10))} />
-          </div>
-          <div>
-            <label>Year</label>
-            <input type="number" min={2000} max={3000} value={year} onChange={e=>setYear(parseInt(e.target.value||"2024",10))} />
-          </div>
+  async function onCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!title || !date) {
+      setError('Please enter a title and date');
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await createLodgeWorking({
+          title,
+          date: new Date(date).toISOString(),
+          lodgeName: lodgeName || undefined,
+          lodgeNumber: lodgeNumber || undefined,
+          notes: notes || undefined,
+        });
+        setTitle('');
+        setDate('');
+        setLodgeName('');
+        setLodgeNumber('');
+        setNotes('');
+        await refresh();
+      } catch (e: any) {
+        setError(e?.message || 'Failed to create');
+      }
+    });
+  }
+
+  async function onDelete(id: string) {
+    setError(null);
+    startTransition(async () => {
+      try {
+        await deleteLodgeWorking(id);
+        await refresh();
+      } catch (e: any) {
+        setError(e?.message || 'Failed to delete');
+      }
+    });
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-6 space-y-8">
+      <h1 className="text-2xl font-semibold">Lodge Workings</h1>
+
+      <form onSubmit={onCreate} className="grid grid-cols-1 gap-3 rounded-2xl p-4 shadow">
+        {error && <p className="text-red-600 text-sm">{error}</p>}
+        <div className="grid md:grid-cols-2 gap-3">
+          <label className="block">
+            <span className="text-sm">Title</span>
+            <input
+              className="mt-1 w-full rounded-xl border px-3 py-2"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g., Lodge Working – 2nd Degree"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm">Date</span>
+            <input
+              type="date"
+              className="mt-1 w-full rounded-xl border px-3 py-2"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </label>
         </div>
-        <label>Work of the evening</label>
-        <select value={work} onChange={e=>setWork(e.target.value as any)}>
-          {WORKS.map(w => <option key={w} value={w}>{w}</option>)}
-        </select>
-        <label>Candidate name</label>
-        <input value={candidateName} onChange={e=>setCandidate(e.target.value)} placeholder="If applicable" />
-        <label>Notes</label>
-        <textarea rows={3} value={notes} onChange={e=>setNotes(e.target.value)} />
-        <button className="btn btn-primary" disabled={loading}>{loading ? "Saving..." : "Add plan"}</button>
+        <div className="grid md:grid-cols-2 gap-3">
+          <label className="block">
+            <span className="text-sm">Lodge Name</span>
+            <input
+              className="mt-1 w-full rounded-xl border px-3 py-2"
+              value={lodgeName}
+              onChange={(e) => setLodgeName(e.target.value)}
+              placeholder="e.g., Lodge Matariki"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm">Lodge Number</span>
+            <input
+              className="mt-1 w-full rounded-xl border px-3 py-2"
+              value={lodgeNumber}
+              onChange={(e) => setLodgeNumber(e.target.value)}
+              placeholder="e.g., No. 462"
+            />
+          </label>
+        </div>
+        <label className="block">
+          <span className="text-sm">Notes</span>
+          <textarea
+            className="mt-1 w-full rounded-xl border px-3 py-2"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Optional"
+          />
+        </label>
+        <div className="flex items-center gap-3">
+          <button
+            type="submit"
+            className="rounded-xl bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
+            disabled={isPending}
+          >
+            {isPending ? 'Saving...' : 'Add Working'}
+          </button>
+        </div>
       </form>
 
-      <div className="card overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="text-left text-sm text-gray-500">
-              <th className="py-2">Month</th><th>Work</th><th>Candidate</th><th>Notes</th>
+      <div className="rounded-2xl border">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="p-3 text-left">Title</th>
+              <th className="p-3 text-left">Date</th>
+              <th className="p-3 text-left">Lodge</th>
+              <th className="p-3"></th>
             </tr>
           </thead>
           <tbody>
-            {items.map(i => (
-              <tr key={i.id} className="border-t border-gray-200 dark:border-gray-800">
-                <td className="py-2">{i.month}/{i.year}</td>
-                <td>{i.work}</td>
-                <td>{i.candidateName ?? "—"}</td>
-                <td>{i.notes ?? ""}</td>
+            {items.length === 0 && (
+              <tr>
+                <td colSpan={4} className="p-4 text-gray-500">
+                  No Lodge Workings yet
+                </td>
+              </tr>
+            )}
+            {items.map((w) => (
+              <tr key={w.id} className="border-t">
+                <td className="p-3">{w.title}</td>
+                <td className="p-3">
+                  {new Date(w.date).toLocaleDateString()}
+                </td>
+                <td className="p-3">
+                  {[w.lodgeName, w.lodgeNumber].filter(Boolean).join(' ')}
+                </td>
+                <td className="p-3 text-right">
+                  <button
+                    onClick={() => onDelete(w.id)}
+                    className="rounded-lg border px-3 py-1 hover:bg-gray-50"
+                    disabled={isPending}
+                    aria-label={`Delete ${w.title}`}
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
             ))}
-            {items.length === 0 && <tr><td colSpan={4} className="py-4 text-sm text-gray-500">No plans yet.</td></tr>}
           </tbody>
         </table>
       </div>
