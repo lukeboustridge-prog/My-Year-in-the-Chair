@@ -16,7 +16,8 @@ export default function LoginPage() {
       const hasLS = typeof window !== 'undefined' && (localStorage.getItem('access_token') || sessionStorage.getItem('access_token'));
       const hasCookie = typeof document !== 'undefined' && /(?:^|; )(?:access_token|token|session)=/.test(document.cookie);
       if (hasLS || hasCookie) {
-        router.replace(sp.get('redirect') || '/');
+        const redirectTo = (sp?.get?.('redirect')) || '/';
+        router.replace(redirectTo);
       }
     } catch {}
   }, [router, sp]);
@@ -45,7 +46,8 @@ export default function LoginPage() {
           sessionStorage.setItem('access_token', data.token);
         }
       } catch {}
-      router.push(sp.get('redirect') || '/');
+      const redirectTo = (sp?.get?.('redirect')) || '/';
+      router.push(redirectTo);
       router.refresh();
     } catch (err: any) {
       setError(err?.message || 'Login failed');
@@ -106,6 +108,10 @@ export default function LoginPage() {
           </div>
         </form>
       </div>
+
+      <p className="text-sm text-gray-600">
+        Tip: Use the same credentials you registered with. If you’ve forgotten them, contact your administrator.
+      </p>
     </div>
   );
 }
