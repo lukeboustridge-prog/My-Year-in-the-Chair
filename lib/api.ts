@@ -1,5 +1,4 @@
-// lib/api.ts — FULL adapter with ALL exports used by your pages
-
+// lib/api.ts — FULL adapter with Candidate Name support for My Workings
 export type Degree = '' | 'Initiation' | 'Passing' | 'Raising' | 'Installation' | 'Other';
 
 export type Visit = {
@@ -12,11 +11,14 @@ export type Visit = {
   notes?: string;
 };
 
+// Back-compat: keep `section` optional so other pages (e.g. Dashboard) don't break.
+// New: `candidateName` preferred on create/update and in UI.
 export type Working = {
   id?: string;
   dateISO: string;
   degree: Degree;
-  section: string;
+  section?: string;          // optional (legacy)
+  candidateName: string;     // NEW required in UI
   grandLodgeVisit: boolean;
   emergencyMeeting?: boolean;
   notes?: string;
@@ -101,10 +103,7 @@ export async function createVisit(payload: Visit): Promise<Visit> {
     grandLodgeVisit: !!payload.grandLodgeVisit
   };
   const res = await fetch('/api/visits', withCreds({ method: 'POST', body: JSON.stringify(body) }));
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(txt || 'Save failed');
-  }
+  if (!res.ok) { const txt = await res.text(); throw new Error(txt || 'Save failed'); }
   const saved = (await parseJsonSafe<any>(res)) || {};
   return { id: saved.id ?? saved._id, ...payload };
 }
@@ -126,10 +125,7 @@ export async function updateVisit(id: string, payload: Visit): Promise<Visit> {
   };
   let res = await fetch(`/api/visits/${id}`, withCreds({ method: 'PUT', body: JSON.stringify(body) }));
   if (!res.ok) res = await fetch('/api/visits', withCreds({ method: 'POST', body: JSON.stringify(body) }));
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(txt || 'Update failed');
-  }
+  if (!res.ok) { const txt = await res.text(); throw new Error(txt || 'Update failed'); }
   const saved = (await parseJsonSafe<any>(res)) || {};
   return { id: saved.id ?? id, ...payload };
 }
@@ -140,7 +136,7 @@ export async function deleteVisit(id: string): Promise<void> {
   if (!res.ok) { const txt = await res.text(); throw new Error(txt || 'Delete failed'); }
 }
 
-/* ---------------- WORKINGS ---------------- */
+/* ---------------- WORKINGS (Candidate Name) ---------------- */
 export async function getWorkings(limit?: number): Promise<Working[]> {
   const url = limit ? `/api/my-work?limit=${limit}` : '/api/my-work';
   const res = await fetch(url, withCreds());
@@ -151,18 +147,20 @@ export async function getWorkings(limit?: number): Promise<Working[]> {
     id: r.id ?? r._id,
     dateISO: toISO(r.dateISO ?? r.date ?? ''),
     degree: (r.degree ?? r.eventType ?? r.work ?? 'Other') as Degree,
-    section: r.section ?? r.part ?? r.role ?? '',
+    section: r.section ?? r.part ?? r.role ?? '', // legacy
+    candidateName: r.candidateName ?? r.candidate ?? r.name ?? r.candidate_full_name ?? '',
     grandLodgeVisit: Boolean(r.grandLodgeVisit),
     emergencyMeeting: Boolean(r.emergencyMeeting || r.emergency),
     notes: r.notes ?? ''
   }));
 }
 
-// Build a compatibility body the API is likely to accept
+// Build a compatibility body for candidate name
 function workingBodyCompat(w: Working) {
   const notes = (w.notes ?? '').toString();
   const glv = !!w.grandLodgeVisit;
   const emerg = !!w.emergencyMeeting;
+  const candidate = (w.candidateName ?? '').toString();
 
   const b: any = {
     dateISO: w.dateISO,
@@ -171,9 +169,15 @@ function workingBodyCompat(w: Working) {
     eventType: w.degree,
     work: w.degree,
     workOfEvening: w.degree,
-    section: w.section,
-    part: w.section,
-    role: w.section,
+    // Candidate name aliases
+    candidateName: candidate,
+    candidate: candidate,
+    name: candidate,
+    candidate_full_name: candidate,
+    // Keep legacy section keys for compatibility (send empty if none)
+    section: w.section ?? '',
+    part: w.section ?? '',
+    role: w.section ?? '',
     grandLodgeVisit: glv,
     emergencyMeeting: emerg,
     emergency: emerg,
@@ -185,7 +189,8 @@ function workingBodyCompat(w: Working) {
 export async function createWorking(payload: Working): Promise<Working> {
   if (!payload.dateISO) throw new Error('Date is required');
   if (!payload.degree) throw new Error('Please select Work of the evening');
-  if (!payload.section) throw new Error('Please enter the Part / Section you performed');
+  if (!payload.candidateName) throw new Error('Please enter the Candidate Name');
+
   const body = workingBodyCompat(payload);
   const res = await fetch('/api/my-work', withCreds({ method: 'POST', body: JSON.stringify(body) }));
   if (!res.ok) { const txt = await res.text(); throw new Error(txt || 'Save failed'); }
@@ -196,7 +201,8 @@ export async function createWorking(payload: Working): Promise<Working> {
 export async function updateWorking(id: string, payload: Working): Promise<Working> {
   if (!payload.dateISO) throw new Error('Date is required');
   if (!payload.degree) throw new Error('Please select Work of the evening');
-  if (!payload.section) throw new Error('Please enter the Part / Section you performed');
+  if (!payload.candidateName) throw new Error('Please enter the Candidate Name');
+
   const body = { id, ...workingBodyCompat(payload) };
   let res = await fetch(`/api/my-work/${id}`, withCreds({ method: 'PUT', body: JSON.stringify(body) }));
   if (!res.ok) res = await fetch('/api/my-work', withCreds({ method: 'POST', body: JSON.stringify(body) }));

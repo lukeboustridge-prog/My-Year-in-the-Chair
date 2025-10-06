@@ -1,11 +1,11 @@
-// app/my-work/page.tsx — surface server error text
+// app/my-work/page.tsx — UI uses Candidate Name instead of Part/Section
 'use client';
 import React from "react";
 import Modal from "../../components/Modal";
 import { getWorkings, createWorking, updateWorking, deleteWorking, type Working, type Degree } from "../../lib/api";
 import { toDisplayDate } from "../../lib/date";
 
-const emptyWorking: Working = { dateISO: '', degree: '', section: '', grandLodgeVisit: false, emergencyMeeting: false, notes: '' };
+const emptyWorking: Working = { dateISO: '', degree: '', candidateName: '', grandLodgeVisit: false, emergencyMeeting: false, notes: '' };
 
 export default function MyWorkPage() {
   const [records, setRecords] = React.useState<Working[] | null>(null);
@@ -32,8 +32,8 @@ export default function MyWorkPage() {
 
   async function saveWorking(e: React.FormEvent) {
     e.preventDefault();
-    if (!editing || !editing.dateISO || !editing.degree || !editing.section) {
-      alert('Please enter date, select Work of the evening, and enter the section');
+    if (!editing || !editing.dateISO || !editing.degree || !editing.candidateName) {
+      alert('Please enter date, select Work of the evening, and enter the Candidate Name');
       return;
     }
     setBusy(true);
@@ -47,7 +47,7 @@ export default function MyWorkPage() {
       });
       closeModal();
     } catch (e:any) {
-      alert(e?.message || 'Save failed'); // shows server's "Invalid input" text
+      alert(e?.message || 'Save failed');
     } finally {
       setBusy(false);
     }
@@ -67,7 +67,7 @@ export default function MyWorkPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="h1">My Lodge Workings</h1>
-          <p className="subtle">View and maintain your lodge working records.</p>
+          <p className="subtle">Record your workings. Candidate Name is now required.</p>
         </div>
         <button className="btn-primary" onClick={openNew}>Add Working</button>
       </div>
@@ -85,7 +85,7 @@ export default function MyWorkPage() {
                   <tr className="text-left text-slate-500">
                     <th className="py-2 pr-3">Date</th>
                     <th className="py-2 pr-3">Degree</th>
-                    <th className="py-2 pr-3">Section</th>
+                    <th className="py-2 pr-3">Candidate</th>
                     <th className="py-2 pr-3">GL Visit</th>
                     <th className="py-2 pr-3">Emergency</th>
                     <th className="py-2 pr-3">Notes</th>
@@ -94,10 +94,10 @@ export default function MyWorkPage() {
                 </thead>
                 <tbody>
                   {records.map((r) => (
-                    <tr key={r.id || r.dateISO + r.section} className="border-t">
+                    <tr key={r.id || r.dateISO + (r.candidateName || '')} className="border-t">
                       <td className="py-2 pr-3">{toDisplayDate(r.dateISO)}</td>
                       <td className="py-2 pr-3">{r.degree || '—'}</td>
-                      <td className="py-2 pr-3">{r.section || '—'}</td>
+                      <td className="py-2 pr-3">{r.candidateName || '—'}</td>
                       <td className="py-2 pr-3">{r.grandLodgeVisit ? 'Yes' : 'No'}</td>
                       <td className="py-2 pr-3">{r.emergencyMeeting ? 'Yes' : 'No'}</td>
                       <td className="py-2 pr-3">{r.notes || '—'}</td>
@@ -142,8 +142,8 @@ export default function MyWorkPage() {
               </select>
             </label>
             <label className="label">
-              <span>Part / Section</span>
-              <input className="input mt-1" type="text" value={editing?.section || ''} onChange={e=>setEditing(v=>({...(v as Working), section: e.target.value}))} placeholder="e.g., Tracing Board, Charge" required />
+              <span>Candidate Name</span>
+              <input className="input mt-1" type="text" value={editing?.candidateName || ''} onChange={e=>setEditing(v=>({...(v as Working), candidateName: e.target.value}))} placeholder="e.g., John Smith" required />
             </label>
             <div className="flex flex-col gap-3 mt-2">
               <label className="flex items-center gap-2">
