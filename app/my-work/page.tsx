@@ -155,15 +155,12 @@ export default function MyWorkPage() {
         <form className="space-y-4" onSubmit={saveWorking}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="label">
-              <span>Date (dd/mm/yyyy)</span>
+              <span>Date</span>
               <input
                 className="input mt-1"
-                placeholder="dd/mm/yyyy"
-                value={editing?.dateISO ? toDisplayDate(editing.dateISO) : ''}
-                onChange={e=>{
-                  const v = e.target.value;
-                  setEditing(prev => ({...(prev as Working), dateISO: v }));
-                }}
+                type="date"
+                value={editing?.dateISO || ''}
+                onChange={e=>setEditing(prev => ({...(prev as Working), dateISO: e.target.value }))}
                 required
               />
             </label>

@@ -9,12 +9,13 @@ type Visit = {
   id?: string;
   dateISO: string; // normalized YYYY-MM-DD
   lodgeName: string;
+  lodgeNumber?: string;
   eventType: Degree;
   grandLodgeVisit: boolean;
   notes?: string;
 };
 
-const emptyVisit: Visit = { dateISO: '', lodgeName: '', eventType: 'Initiation', grandLodgeVisit: false, notes: '' };
+const emptyVisit: Visit = { dateISO: '', lodgeName: '', lodgeNumber: '', eventType: 'Initiation', grandLodgeVisit: false, notes: '' };
 
 export default function VisitsPage() {
   const [records, setRecords] = React.useState<Visit[] | null>(null);
@@ -33,6 +34,7 @@ export default function VisitsPage() {
           id: r.id,
           dateISO: toISODate(r.dateISO || r.date || ''),
           lodgeName: r.lodgeName || r.lodge || '',
+          lodgeNumber: r.lodgeNumber || r.lodge_no || r.number || '',
           eventType: r.eventType || r.degree || 'Other',
           grandLodgeVisit: Boolean(r.grandLodgeVisit),
           notes: r.notes || ''
@@ -55,10 +57,16 @@ export default function VisitsPage() {
     setBusy(true);
     try {
       const isNew = !editing.id;
-      const payload = {
+      const iso = toISODate(editing.dateISO);
+      // Send aliased keys to match various backends
+      const payload: any = {
         id: editing.id,
-        dateISO: toISODate(editing.dateISO),
+        dateISO: iso,
+        date: iso,
         lodgeName: editing.lodgeName,
+        lodge: editing.lodgeName,
+        lodgeNumber: editing.lodgeNumber || '',
+        degree: editing.eventType,
         eventType: editing.eventType,
         grandLodgeVisit: !!editing.grandLodgeVisit,
         notes: editing.notes || ''
@@ -69,7 +77,10 @@ export default function VisitsPage() {
         credentials: 'include',
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || 'Save failed');
+      }
       const saved = await res.json().catch(() => payload);
       setRecords(prev => {
         const next = prev ? [...prev] : [];
@@ -121,6 +132,7 @@ export default function VisitsPage() {
                   <tr className="text-left text-slate-500">
                     <th className="py-2 pr-3">Date</th>
                     <th className="py-2 pr-3">Lodge</th>
+                    <th className="py-2 pr-3">Number</th>
                     <th className="py-2 pr-3">Work</th>
                     <th className="py-2 pr-3">GL Visit</th>
                     <th className="py-2 pr-3">Notes</th>
@@ -132,6 +144,7 @@ export default function VisitsPage() {
                     <tr key={r.id || r.dateISO + r.lodgeName} className="border-t">
                       <td className="py-2 pr-3">{toDisplayDate(r.dateISO)}</td>
                       <td className="py-2 pr-3">{r.lodgeName || '—'}</td>
+                      <td className="py-2 pr-3">{r.lodgeNumber || '—'}</td>
                       <td className="py-2 pr-3">{r.eventType || '—'}</td>
                       <td className="py-2 pr-3">{r.grandLodgeVisit ? 'Yes' : 'No'}</td>
                       <td className="py-2 pr-3">{r.notes || '—'}</td>
@@ -167,6 +180,10 @@ export default function VisitsPage() {
             <label className="label">
               <span>Lodge</span>
               <input className="input mt-1" type="text" value={editing?.lodgeName || ''} onChange={e=>setEditing(v=>({...(v as Visit), lodgeName: e.target.value}))} required />
+            </label>
+            <label className="label">
+              <span>Lodge Number</span>
+              <input className="input mt-1" type="text" value={editing?.lodgeNumber || ''} onChange={e=>setEditing(v=>({...(v as Visit), lodgeNumber: e.target.value}))} />
             </label>
             <label className="label">
               <span>Work of the evening (Degree)</span>
