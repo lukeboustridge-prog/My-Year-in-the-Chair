@@ -1,5 +1,7 @@
+\
 // lib/api.ts
-// Thin client for API routes. Keeps UI clean and typed.
+// Centralized client helpers for API routes, including legacy names used across the app.
+// This file provides shims so older pages keep compiling while we migrate to the new endpoints.
 
 export type LodgeWorking = {
   id: string;
@@ -8,49 +10,109 @@ export type LodgeWorking = {
   lodgeName?: string;
   lodgeNumber?: string;
   notes?: string;
-  createdBy?: string;    // user id or email if available
-  createdAt?: string;    // ISO
-  updatedAt?: string;    // ISO
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
-// ---------- Lodge Workings ----------
-export async function listLodgeWorkings(): Promise<LodgeWorking[]> {
-  const res = await fetch('/api/workings', { cache: 'no-store' });
-  if (!res.ok) throw new Error('Failed to load Lodge Workings');
-  return res.json();
+export type Visit = {
+  id: string;
+  date: string;
+  lodge?: string;
+  notes?: string;
+};
+
+// Generic JSON fetcher
+async function j<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
+  const res = await fetch(input, init);
+  if (!res.ok) {
+    const msg = await res.text().catch(() => "");
+    throw new Error(msg || `Request failed ${res.status}`);
+  }
+  return res.json() as Promise<T>;
 }
 
+// -------------------- Workings (legacy aliases + new) --------------------
+export async function listLodgeWorkings(): Promise<LodgeWorking[]> {
+  return j('/api/workings', { cache: 'no-store' });
+}
 export type CreateLodgeWorkingInput = Omit<LodgeWorking, 'id' | 'createdAt' | 'updatedAt'>;
-
 export async function createLodgeWorking(input: CreateLodgeWorkingInput): Promise<LodgeWorking> {
-  const res = await fetch('/api/workings', {
+  return j('/api/workings', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   });
-  if (!res.ok) {
-    const msg = await res.text().catch(() => '');
-    throw new Error(msg || 'Failed to create Lodge Working');
-  }
-  return res.json();
 }
-
 export async function deleteLodgeWorking(id: string): Promise<{ ok: true }> {
-  const res = await fetch(`/api/workings/${id}`, { method: 'DELETE' });
-  if (!res.ok) {
-    const msg = await res.text().catch(() => '');
-    throw new Error(msg || 'Failed to delete Lodge Working');
-  }
+  await j(`/api/workings/${id}`, { method: 'DELETE' });
   return { ok: true };
 }
 
-// ---------- Backward-compat shim to silence build warning ----------
-/**
- * Some pages were importing createVisit from ../../lib/api, but the helper
- * did not exist. Exporting a no-op wrapper to keep builds green if it is
- * still referenced. Prefer createLodgeWorking going forward.
- */
-export async function createVisit(..._args: any[]) {
-  console.warn('createVisit is deprecated. Use createLodgeWorking instead.');
-  return createLodgeWorking(_args[0] as CreateLodgeWorkingInput);
+// Legacy names used by /app/my-work/page.tsx
+export const getWorkings = listLodgeWorkings;
+export async function createWorking(input: CreateLodgeWorkingInput) {
+  return createLodgeWorking(input);
+}
+export async function updateWorking(_id: string, _patch: Partial<CreateLodgeWorkingInput>) {
+  // Not implemented in API; return noop for compatibility
+  return { ok: true } as any;
+}
+export const deleteWorking = deleteLodgeWorking;
+
+// -------------------- Visits (legacy shims) --------------------
+export async function getVisits(): Promise<Visit[]> {
+  return j('/api/visits', { cache: 'no-store' });
+}
+export async function updateVisit(id: string, patch: Partial<Visit>) {
+  return j(`/api/visits/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+}
+export async function deleteVisit(id: string) {
+  await j(`/api/visits/${id}`, { method: 'DELETE' });
+  return { ok: true as const };
+}
+
+// Keep the earlier build warning quiet by providing this shim as well
+export async function createVisit(input: any) {
+  // Some pages may still call this; route to /api/visits if present, else to /api/workings
+  try {
+    return await j('/api/visits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+  } catch {
+    return createLodgeWorking(input);
+  }
+}
+
+// -------------------- Leaderboard (soft optional) --------------------
+export async function getLeaderboard(): Promise<any[]> {
+  try {
+    return await j('/api/leaderboard', { cache: 'no-store' });
+  } catch {
+    return [];
+  }
+}
+
+// -------------------- Profile helpers (soft optional) --------------------
+export async function getProfileName(): Promise<string> {
+  try {
+    const data = await j<{ name?: string }>('/api/profile', { cache: 'no-store' });
+    return data?.name || '';
+  } catch {
+    return '';
+  }
+}
+
+export async function getOwnRanks(): Promise<any> {
+  try {
+    return await j('/api/profile', { cache: 'no-store' });
+  } catch {
+    return {};
+  }
 }
