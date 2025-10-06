@@ -1,18 +1,25 @@
+# My Year in the Chair — Minimal Visits & Workings (Next.js + Prisma)
 
-# Postgres + Dynamic Pages Fix
+This package contains a clean implementation to create/delete **Visits** and **Workings** using Next.js App Router and Prisma.
 
-This patch updates your Prisma datasource to PostgreSQL for Vercel/Neon deployment
-and adds `export const dynamic = "force-dynamic";` stubs to DB-backed pages.
+## Quick start
 
-### How to apply
-1. Replace `/prisma/schema.prisma` with the one in this archive.
-2. Add `export const dynamic = "force-dynamic";` to the top of:
-   - app/dashboard/page.tsx
-   - app/leaderboard/page.tsx
-   - app/visits/page.tsx
-   - app/resources/page.tsx
-3. In Vercel build settings, use:
-   ```bash
-   pnpm db:push && pnpm build
-   ```
-4. Redeploy — Prisma will now connect to your Neon PostgreSQL database.
+1. `cp .env.example .env` and set `DATABASE_URL` to your Postgres connection string.
+2. Install deps: `pnpm install` (or `npm i` / `yarn`).
+3. Push schema: `pnpm prisma:push` (or `npx prisma db push`).
+4. Run: `pnpm dev`.
+5. Open:
+   - `/visits` to create Visit records
+   - `/workings` to create Working records
+
+The build script auto-runs `prisma db push` *if* `DATABASE_URL` is set.
+
+## Notes
+
+- APIs:
+  - `POST /api/visits` with `{ lodgeName, lodgeNo, date, notes? }`
+  - `DELETE /api/visits?id=...`
+  - `POST /api/workings` with `{ lodgeName, lodgeNo, workingType, date, notes? }`
+  - `DELETE /api/workings?id=...`
+- Client helpers exported from `lib/api.ts`
+- Prisma client singleton in `lib/db.ts`

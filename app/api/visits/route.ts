@@ -1,66 +1,30 @@
-import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { getUserId } from "@/lib/auth";
-
-export async function GET() {
-  const uid = getUserId();
-  if (!uid) return new NextResponse("Unauthorized", { status: 401 });
-  const rows = await db.visit.findMany({ where: { userId: uid }, orderBy: { date: "desc" } });
-  return NextResponse.json(rows);
-}
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
 
 export async function POST(req: Request) {
-  const uid = getUserId();
-  if (!uid) return new NextResponse("Unauthorized", { status: 401 });
-  const body = await req.json();
-  const created = await db.visit.create({
-    data: {
-      userId: uid,
-      date: new Date(body.date),
-      lodgeName: body.lodgeName || null,
-      lodgeNumber: body.lodgeNumber || null,
-      region: body.region || null,
-      workOfEvening: body.workOfEvening || "OTHER",
-      candidateName: body.candidateName || null,
-      comments: body.comments || null,
-    },
-  });
-  return NextResponse.json(created, { status: 201 });
-}
-
-export async function PUT(req: Request) {
-  const uid = getUserId();
-  if (!uid) return new NextResponse("Unauthorized", { status: 401 });
-  const body = await req.json();
-  if (!body.id) return new NextResponse("Missing id", { status: 400 });
-
-  const existing = await db.visit.findUnique({ where: { id: body.id } });
-  if (!existing || existing.userId !== uid) return new NextResponse("Not found", { status: 404 });
-
-  const updated = await db.visit.update({
-    where: { id: body.id },
-    data: {
-      date: body.date ? new Date(body.date) : existing.date,
-      lodgeName: body.lodgeName ?? existing.lodgeName,
-      lodgeNumber: body.lodgeNumber ?? existing.lodgeNumber,
-      region: body.region ?? existing.region,
-      workOfEvening: body.workOfEvening ?? existing.workOfEvening,
-      candidateName: body.candidateName ?? existing.candidateName,
-      comments: body.comments ?? existing.comments,
-    },
-  });
-  return NextResponse.json(updated);
+  try {
+    const body = await req.json();
+    const { lodgeName, lodgeNo, date, notes } = body ?? {};
+    if (!lodgeName || !lodgeNo || !date) {
+      return NextResponse.json({ error: 'lodgeName, lodgeNo and date are required' }, { status: 400 });
+    }
+    const created = await prisma.visit.create({
+      data: { lodgeName, lodgeNo, date: new Date(date), notes },
+    });
+    return NextResponse.json(created, { status: 201 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message ?? 'Create failed' }, { status: 400 });
+  }
 }
 
 export async function DELETE(req: Request) {
-  const uid = getUserId();
-  if (!uid) return new NextResponse("Unauthorized", { status: 401 });
-  const body = await req.json();
-  if (!body.id) return new NextResponse("Missing id", { status: 400 });
-
-  const existing = await db.visit.findUnique({ where: { id: body.id } });
-  if (!existing || existing.userId !== uid) return new NextResponse("Not found", { status: 404 });
-
-  await db.visit.delete({ where: { id: body.id } });
-  return NextResponse.json({ ok: true });
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    await prisma.visit.delete({ where: { id } });
+    return NextResponse.json({ ok: true }, { status: 200 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message ?? 'Delete failed' }, { status: 400 });
+  }
 }

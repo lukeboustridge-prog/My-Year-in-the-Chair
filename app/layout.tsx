@@ -1,20 +1,23 @@
-import "./globals.css";
-import Header from "../components/Header";
+import './globals.css';
+import React from 'react';
 
 export const metadata = {
-  title: "My Year in the Chair",
-  description: "Freemasons Master companion",
+  title: 'My Year in the Chair',
+  description: 'Freemasons NZ – Visits & Workings tracker',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50 text-slate-900">
-        <Header />
-        <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
-        <footer className="mx-auto max-w-6xl px-4 py-8 text-xs text-slate-500">
-          © {new Date().getFullYear()} My Year in the Chair
-        </footer>
+      <body>
+        <main style={{ maxWidth: 860, margin: '0 auto', padding: 16 }}>
+          <nav style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+            <a href="/">Home</a>
+            <a href="/visits">Visits</a>
+            <a href="/workings">Workings</a>
+          </nav>
+          {children}
+        </main>
       </body>
     </html>
   );
