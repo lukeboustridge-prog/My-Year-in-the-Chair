@@ -38,7 +38,8 @@ export default function Header() {
       <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-6">
         <Link href="/" className="font-semibold text-base sm:text-lg">My Year in the Chair</Link>
         <nav className="flex items-center gap-2 sm:gap-3">
-          <NavLink href="/" label="Home" />
+          {/* Removed Home. Added explicit Dashboard */}
+          <NavLink href="/" label="Dashboard" />
           <NavLink href="/visits" label="Visits" />
           <NavLink href="/my-work" label="My Lodge Workings" />
           <NavLink href="/leaderboard" label="Leaderboard" />
