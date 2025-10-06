@@ -11,7 +11,7 @@ export async function DELETE(_req: Request, { params }: Params) {
   const prisma = getPrisma();
   if (prisma) {
     try {
-      await prisma.lodgeWorking.delete({ where: { id } });
+      await prisma.lodgeWork.delete({ where: { id } });
       return new NextResponse(null, { status: 204 });
     } catch {
       return new NextResponse('Not found', { status: 404 });

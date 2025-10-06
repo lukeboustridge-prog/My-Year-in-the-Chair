@@ -5,7 +5,7 @@ import { getPrisma, memStore } from '@/lib/db';
 export async function GET() {
   const prisma = getPrisma();
   if (prisma) {
-    const rows = await prisma.lodgeWorking.findMany({
+    const rows = await prisma.lodgeWork.findMany({
       orderBy: { date: 'desc' },
     });
     return NextResponse.json(rows);
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
 
   const prisma = getPrisma();
   if (prisma) {
-    const row = await prisma.lodgeWorking.create({
+    const row = await prisma.lodgeWork.create({
       data: {
         title,
         date: new Date(date),
