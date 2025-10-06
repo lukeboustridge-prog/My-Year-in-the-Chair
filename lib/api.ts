@@ -98,9 +98,10 @@ export async function deleteLodgeWorking(id: string): Promise<{ ok: true }> {
 }
 
 // Legacy names used by /app/my-work/page.tsx
-export async function getWorkings(): Promise<Working[]> {
+export async function getWorkings(limit?: number): Promise<Working[]> {
   const rows = await listLodgeWorkings();
-  return rows.map(toWorking);
+  const mapped = rows.map(toWorking);
+  return typeof limit === 'number' ? mapped.slice(0, Math.max(0, limit)) : mapped;
 }
 export async function createWorking(input: CreateLodgeWorkingInput | Working) {
   // Allow Working shape; map to server input
@@ -122,8 +123,10 @@ export async function updateWorking(_id: string, _patch: Partial<CreateLodgeWork
 export const deleteWorking = deleteLodgeWorking;
 
 // -------------------- Visits (legacy shims) --------------------
-export async function getVisits(): Promise<Visit[]> {
-  return j('/api/visits', { cache: 'no-store' });
+export async function getVisits(limit?: number): Promise<Visit[]> {
+  const qs = typeof limit === 'number' ? `?limit=${limit}` : '';
+  const rows = await j<Visit[]>(`/api/visits${qs}`, { cache: 'no-store' }).catch(() => [] as Visit[]);
+  return typeof limit === 'number' ? rows.slice(0, Math.max(0, limit)) : rows;
 }
 export async function updateVisit(id: string, patch: Partial<Visit>) {
   return j(`/api/visits/${id}`, {
