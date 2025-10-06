@@ -21,6 +21,17 @@ export type Visit = {
   notes?: string;
 };
 
+// Leaderboard row shape expected by /app/leaderboard/page.tsx
+export type LeaderboardRow = {
+  userId: string;
+  name: string;
+  visits: number;
+  workings: number;
+  points?: number;
+  month?: string;
+  year?: number;
+};
+
 // Generic JSON fetcher
 async function j<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const res = await fetch(input, init);
@@ -90,7 +101,7 @@ export async function createVisit(input: any) {
 }
 
 // -------------------- Leaderboard (soft optional) --------------------
-export async function getLeaderboard(): Promise<any[]> {
+export async function getLeaderboard(): Promise<LeaderboardRow[]> {
   try {
     return await j('/api/leaderboard', { cache: 'no-store' });
   } catch {
