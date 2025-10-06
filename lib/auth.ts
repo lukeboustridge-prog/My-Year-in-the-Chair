@@ -7,9 +7,12 @@ export type User = {
   name?: string;
 };
 
+type SessionPayload = { userId?: string; id?: string; email: string };
+
 // Sign a simple opaque session string (NOT secure for production)
-export function signSession(payload: { id: string; email: string }): string {
-  const blob = Buffer.from(JSON.stringify(payload)).toString('base64url');
+export function signSession(payload: SessionPayload): string {
+  const id = payload.userId || payload.id || 'dev-user';
+  const blob = Buffer.from(JSON.stringify({ id, email: payload.email })).toString('base64url');
   return `dev.${blob}`;
 }
 
