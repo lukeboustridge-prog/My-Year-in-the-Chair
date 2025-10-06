@@ -1,4 +1,4 @@
-// app/my-work/page.tsx — client component with default export
+// app/my-work/page.tsx — surface server error text
 'use client';
 import React from "react";
 import Modal from "../../components/Modal";
@@ -19,7 +19,7 @@ export default function MyWorkPage() {
       try {
         const data = await getWorkings();
         setRecords(data);
-      } catch (e: any) {
+      } catch (e:any) {
         setRecords([]);
         setError(e?.message || 'Failed to load');
       }
@@ -46,8 +46,8 @@ export default function MyWorkPage() {
         return next.map(r => (r.id === saved.id ? saved : r));
       });
       closeModal();
-    } catch (e: any) {
-      alert(e?.message || 'Save failed');
+    } catch (e:any) {
+      alert(e?.message || 'Save failed'); // shows server's "Invalid input" text
     } finally {
       setBusy(false);
     }
