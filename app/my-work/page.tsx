@@ -1,4 +1,4 @@
-// app/my-work/page.tsx — UI uses Candidate Name instead of Part/Section
+// app/my-work/page.tsx — UI requires Candidate Name; no Part/Section input
 'use client';
 import React from "react";
 import Modal from "../../components/Modal";
@@ -67,7 +67,7 @@ export default function MyWorkPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="h1">My Lodge Workings</h1>
-          <p className="subtle">Record your workings. Candidate Name is now required.</p>
+          <p className="subtle">Record your workings. Candidate Name is required.</p>
         </div>
         <button className="btn-primary" onClick={openNew}>Add Working</button>
       </div>
