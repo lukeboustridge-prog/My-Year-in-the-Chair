@@ -5,10 +5,14 @@ import { getPrisma, memStore } from '@/lib/db';
 export async function GET() {
   const prisma = getPrisma();
   if (prisma) {
-    const rows = await prisma.lodgeWork.findMany({
-      orderBy: { date: 'desc' },
+    const rows = await prisma.lodgeWork.findMany();
+    // Sort safely in JS by whichever timestamp exists (date -> createdAt -> updatedAt)
+    const sorted = [...rows].sort((a: any, b: any) => {
+      const bKey = (b?.date ?? b?.createdAt ?? b?.updatedAt ?? '').toString();
+      const aKey = (a?.date ?? a?.createdAt ?? a?.updatedAt ?? '').toString();
+      return bKey.localeCompare(aKey);
     });
-    return NextResponse.json(rows);
+    return NextResponse.json(sorted);
   }
   // fallback
   return NextResponse.json(memStore.list());
