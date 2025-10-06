@@ -18,10 +18,12 @@ export const {
         password: { label: "Password", type: "password" },
       },
       authorize: async (creds) => {
-        if (!creds?.email || !creds?.password) return null;
-        const user = await prisma.user.findUnique({ where: { email: creds.email } });
-        if (!user) return null;
-        const ok = await bcrypt.compare(creds.password, user.password);
+        const email = typeof creds?.email === "string" ? creds.email : undefined;
+        const password = typeof creds?.password === "string" ? creds.password : undefined;
+        if (!email || !password) return null;
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user || !user.password) return null;
+        const ok = await bcrypt.compare(password, user.password);
         if (!ok) return null;
         return { id: user.id, email: user.email, name: user.name ?? user.email };
       },
