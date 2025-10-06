@@ -1,10 +1,13 @@
-generator client {
-  provider = "prisma-client-js"
-}
+// schema.prisma
+// Mirror of prisma/schema.prisma to keep legacy tooling compatible.
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
 }
 
 enum WorkType {
@@ -28,7 +31,7 @@ model User {
   prefix        String?
   postNominals  String[]
   rank          String?
-  isPastGrand   Boolean    @default(false)
+  isPastGrand   Boolean  @default(false)
   lodgeName     String?
   lodgeNumber   String?
   region        String?
@@ -36,59 +39,74 @@ model User {
   termStart     DateTime?
   termEnd       DateTime?
 
-  points        Int      @default(0)
+  points        Int       @default(0)
   visits        Visit[]
   works         LodgeWork[]
   myWorks       MyWork[]
   awards        Award[]
-  role          String   @default("USER")
+  role          String    @default("USER")
 
   // Legacy columns (ignored for backward compatibility to avoid data loss)
-  grandRank           String?   @ignore
-  grandPostNominals   String[]  @ignore
+  grandRank         String?  @ignore
+  grandPostNominals String[] @ignore
 }
 
 model Visit {
-  id            String   @id @default(cuid())
-  user          User     @relation(fields: [userId], references: [id])
-  userId        String
+  id              String    @id @default(cuid())
+  user            User      @relation(fields: [userId], references: [id])
+  userId          String
 
-  date          DateTime
-  lodgeName     String?
-  lodgeNumber   String?
-  region        String?
+  date            DateTime
+  lodgeName       String?
+  lodgeNumber     String?
+  region          String?
+  location        String?
 
-  workOfEvening WorkType @default(OTHER)
-  candidateName String?
-  comments      String?
-  location      String?
-  notes         String?
-  createdAt     DateTime @default(now())
+  workOfEvening   WorkType  @default(OTHER)
+  eventType       String?
+  candidateName   String?
+  comments        String?
+  notes           String?
+  grandLodgeVisit Boolean   @default(false)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 model LodgeWork {
-  id            String   @id @default(cuid())
-  user          User     @relation(fields: [userId], references: [id])
-  userId        String
+  id               String   @id @default(cuid())
+  user             User     @relation(fields: [userId], references: [id])
+  userId           String
 
-  month         Int
-  year          Int
-  work          WorkType @default(OTHER)
-  candidateName String?
-  notes         String?
-  createdAt     DateTime @default(now())
+  title            String
+  date             DateTime
+  lodgeName        String?
+  lodgeNumber      String?
+  notes            String?
+  createdBy        String?
+  grandLodgeVisit  Boolean  @default(false)
+  emergencyMeeting Boolean  @default(false)
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model MyWork {
-  id            String   @id @default(cuid())
-  user          User     @relation(fields: [userId], references: [id])
-  userId        String
+  id               String   @id @default(cuid())
+  user             User     @relation(fields: [userId], references: [id])
+  userId           String
 
-  date          DateTime
-  work          WorkType @default(OTHER)
-  candidateName String?
-  comments      String?
-  createdAt     DateTime @default(now())
+  date             DateTime
+  work             WorkType @default(OTHER)
+  candidateName    String?
+  lodgeName        String?
+  lodgeNumber      String?
+  grandLodgeVisit  Boolean  @default(false)
+  emergencyMeeting Boolean  @default(false)
+  comments         String?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model Resource {

@@ -23,7 +23,26 @@ type VisitRow = {
   lodgeName?: string;
   lodgeNumber?: string;
   eventType?: string;
+  workOfEvening?: string;
   grandLodgeVisit?: boolean;
+  comments?: string;
+  notes?: string;
+  region?: string;
+  location?: string;
+};
+
+type MyWorkRow = {
+  id?: string;
+  date?: string;
+  dateISO?: string;
+  work?: string;
+  degree?: string;
+  candidateName?: string;
+  lodgeName?: string;
+  lodgeNumber?: string;
+  grandLodgeVisit?: boolean;
+  emergencyMeeting?: boolean;
+  comments?: string;
   notes?: string;
 };
 
@@ -54,6 +73,43 @@ export type Working = {
   emergencyMeeting?: boolean;
   notes?: string;
 };
+
+const WORK_TYPE_LABELS: Record<string, string> = {
+  INITIATION: 'Initiation',
+  PASSING: 'Passing',
+  RAISING: 'Raising',
+  INSTALLATION: 'Installation',
+  PRESENTATION: 'Presentation',
+  LECTURE: 'Lecture',
+  OTHER: 'Other',
+};
+
+const WORK_TYPE_ALIASES: Record<string, string> = {
+  INITIATION: 'INITIATION',
+  EA: 'INITIATION',
+  'ENTERED APPRENTICE': 'INITIATION',
+  PASSING: 'PASSING',
+  FC: 'PASSING',
+  RAISING: 'RAISING',
+  MM: 'RAISING',
+  INSTALLATION: 'INSTALLATION',
+  PRESENTATION: 'PRESENTATION',
+  LECTURE: 'LECTURE',
+  OTHER: 'OTHER',
+};
+
+function normalizeWorkCode(value?: string | null): string {
+  if (!value) return 'OTHER';
+  const key = value.toString().trim().toUpperCase();
+  return WORK_TYPE_ALIASES[key] ?? 'OTHER';
+}
+
+function formatWorkLabel(code?: string | null, fallback?: string | null): string {
+  if (fallback && fallback.trim()) return fallback.trim();
+  if (!code) return 'Other';
+  const key = code.toString().trim().toUpperCase();
+  return WORK_TYPE_LABELS[key] ?? (key.charAt(0) + key.slice(1).toLowerCase());
+}
 
 // Leaderboard row shape expected by /app/leaderboard/page.tsx
 export type LeaderboardRow = {
@@ -108,15 +164,17 @@ export function toVisit(v: VisitRow): Visit {
   const dateISO = (v.dateISO || v.date || '').toString();
   const lodgeName = v.lodgeName || v.lodge || '';
   const lodgeNumber = v.lodgeNumber || '';
+  const workCode = (v.workOfEvening || '').toString();
+  const notes = v.notes ?? v.comments;
   return {
     id: v.id,
     dateISO,
     date: dateISO,
     lodgeName: lodgeName || undefined,
     lodgeNumber: lodgeNumber || undefined,
-    eventType: v.eventType || undefined,
+    eventType: v.eventType || formatWorkLabel(workCode),
     grandLodgeVisit: !!v.grandLodgeVisit,
-    notes: v.notes || undefined,
+    notes: notes || undefined,
   };
 }
 
@@ -134,29 +192,84 @@ export async function deleteLodgeWorking(id: string): Promise<{ ok: true }> {
 }
 
 // Legacy names used by /app/my-work/page.tsx
+function toMyWork(row: MyWorkRow): Working {
+  const dateISO = (row.dateISO || row.date || '').toString();
+  const workCode = (row.work || row.degree || '').toString();
+  return {
+    id: row.id,
+    dateISO,
+    degree: formatWorkLabel(workCode, row.degree),
+    candidateName: row.candidateName || undefined,
+    lodgeName: row.lodgeName || undefined,
+    lodgeNumber: row.lodgeNumber || undefined,
+    grandLodgeVisit: !!row.grandLodgeVisit,
+    emergencyMeeting: !!row.emergencyMeeting,
+    notes: row.notes || row.comments || undefined,
+  };
+}
+
 export async function getWorkings(limit?: number): Promise<Working[]> {
-  const rows = await listLodgeWorkings();
-  const mapped = rows.map(toWorking);
+  const qs = typeof limit === 'number' ? `?limit=${limit}` : '';
+  const rows = await j<MyWorkRow[]>(`/api/mywork${qs}`, { cache: 'no-store' }).catch(() => [] as MyWorkRow[]);
+  const mapped = rows.map(toMyWork);
   return typeof limit === 'number' ? mapped.slice(0, Math.max(0, limit)) : mapped;
 }
-export async function createWorking(input: CreateLodgeWorkingInput | Working) {
-  // Allow Working shape; map to server input
-  const mapped: CreateLodgeWorkingInput = (input as any).title
-    ? (input as any)
-    : {
-        title: ((input as Working).degree || 'Working') + ( (input as Working).candidateName ? ' – ' + (input as Working).candidateName : '' ),
-        date: (input as Working).dateISO,
-        lodgeName: (input as Working).lodgeName,
-        lodgeNumber: (input as Working).lodgeNumber,
-        notes: (input as Working).notes,
-      };
-  return createLodgeWorking(mapped);
+
+function workingInputToPayload(input: Working) {
+  const code = normalizeWorkCode(input.degree);
+  return {
+    date: input.dateISO,
+    work: code,
+    degree: formatWorkLabel(code, input.degree),
+    candidateName: input.candidateName,
+    lodgeName: input.lodgeName,
+    lodgeNumber: input.lodgeNumber,
+    grandLodgeVisit: input.grandLodgeVisit,
+    emergencyMeeting: input.emergencyMeeting,
+    notes: input.notes,
+    comments: input.notes,
+  };
 }
-export async function updateWorking(_id: string, _patch: Partial<CreateLodgeWorkingInput | Working>) {
-  // Not implemented in API; return noop for compatibility
-  return { ok: true } as any;
+
+export async function createWorking(input: Working): Promise<Working> {
+  const payload = workingInputToPayload(input);
+  const row = await j<MyWorkRow>('/api/mywork', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return toMyWork(row);
 }
-export const deleteWorking = deleteLodgeWorking;
+
+export async function updateWorking(id: string, patch: Partial<Working>): Promise<Working> {
+  const body: any = { id };
+  if (patch.dateISO) body.date = patch.dateISO;
+  if (patch.degree) body.work = normalizeWorkCode(patch.degree);
+  if (patch.candidateName !== undefined) body.candidateName = patch.candidateName;
+  if (patch.lodgeName !== undefined) body.lodgeName = patch.lodgeName;
+  if (patch.lodgeNumber !== undefined) body.lodgeNumber = patch.lodgeNumber;
+  if (patch.grandLodgeVisit !== undefined) body.grandLodgeVisit = patch.grandLodgeVisit;
+  if (patch.emergencyMeeting !== undefined) body.emergencyMeeting = patch.emergencyMeeting;
+  if (patch.notes !== undefined) {
+    body.notes = patch.notes;
+    body.comments = patch.notes;
+  }
+  const row = await j<MyWorkRow>('/api/mywork', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return toMyWork(row);
+}
+
+export async function deleteWorking(id: string): Promise<{ ok: true }> {
+  await j('/api/mywork', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }),
+  });
+  return { ok: true };
+}
 
 // -------------------- Visits (legacy shims) --------------------
 export async function getVisits(limit?: number): Promise<Visit[]> {
@@ -167,41 +280,37 @@ export async function getVisits(limit?: number): Promise<Visit[]> {
 }
 
 export async function createVisit(input: Visit): Promise<Visit> {
-  // Accept UI Visit and map to a reasonable server payload. If /api/visits fails, fallback to /api/workings.
+  // Accept UI Visit and map to a reasonable server payload.
   const v = input;
+  const workCode = normalizeWorkCode(v.eventType);
   const body: any = {
     date: v.dateISO,
     lodgeName: v.lodgeName,
     lodgeNumber: v.lodgeNumber,
-    eventType: v.eventType,
+    eventType: v.eventType || formatWorkLabel(workCode),
+    workOfEvening: workCode,
     grandLodgeVisit: v.grandLodgeVisit,
     notes: v.notes,
   };
-  try {
-    const row = await j<VisitRow>('/api/visits', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    return toVisit(row);
-  } catch {
-    // Fallback to a Working create so local/dev still records something
-    const lw = await createLodgeWorking({
-      title: (v.eventType || 'Visit') + (v.lodgeName ? ' – ' + v.lodgeName : ''),
-      date: v.dateISO,
-      lodgeName: v.lodgeName,
-      lodgeNumber: v.lodgeNumber,
-      notes: v.notes,
-      createdBy: undefined,
-    });
-    return toVisit({ id: lw.id, date: lw.date, lodgeName: lw.lodgeName, lodgeNumber: lw.lodgeNumber, notes: lw.notes, eventType: 'Working' });
+  if (v.notes !== undefined) {
+    body.comments = v.notes;
   }
+  const row = await j<VisitRow>('/api/visits', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return toVisit(row);
 }
 
 export async function updateVisit(id: string, patch: Partial<Visit>): Promise<Visit> {
   const body: any = { ...patch };
   if ((patch as any).dateISO && !(patch as any).date) {
     body.date = (patch as any).dateISO;
+  }
+  if (patch.eventType) {
+    body.eventType = patch.eventType;
+    body.workOfEvening = normalizeWorkCode(patch.eventType);
   }
   const row = await j<VisitRow>(`/api/visits/${id}`, {
     method: 'PATCH',

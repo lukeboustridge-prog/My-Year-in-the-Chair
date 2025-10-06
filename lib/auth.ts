@@ -35,7 +35,7 @@ export function clearSessionCookie(res: any) {
 }
 
 // Minimal helper used by various API routes/pages
-export async function getUserId(req?: Request): Promise<string | null> {
+export function getUserId(req?: Request): string | null {
   try {
     // Try read the cookie from a standard Request
     const cookie = (req as any)?.headers?.get?.('cookie') || '';
