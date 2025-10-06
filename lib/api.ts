@@ -1,4 +1,3 @@
-\
 // lib/api.ts
 // Centralized client helpers for API routes, including legacy names used across the app.
 // This file provides shims so older pages keep compiling while we migrate to the new endpoints.

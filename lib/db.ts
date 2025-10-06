@@ -1,4 +1,3 @@
-\
 // lib/db.ts
 // Provides a 'db' export for legacy routes that import from '@/lib/db',
 // and helpers for newer code paths.
