@@ -16,16 +16,16 @@ export const RANK_OPTIONS = [
 ];
 
 // Metadata used to derive prefixes and post-nominals
-export const RANK_META: Record<string, { prefix: string; post?: string }> = {
-  'Entered Apprentice': { prefix: 'Bro' },
-  'Fellow Craft': { prefix: 'Bro' },
-  'Master Mason': { prefix: 'Bro' },
-  'Installed Master': { prefix: 'WBro' },
-  'Past Master': { prefix: 'WBro', post: 'PM' },
-  'Grand Steward': { prefix: 'WBro', post: 'GStw' },
-  'Grand Sword Bearer': { prefix: 'WBro', post: 'GSWB' },
-  'Past Grand Steward': { prefix: 'WBro', post: 'PGStw' },
-  'Past Grand Sword Bearer': { prefix: 'WBro', post: 'PGSWB' },
+export const RANK_META: Record<string, { prefix: string; post?: string; grand?: boolean }> = {
+  'Entered Apprentice': { prefix: 'Bro', grand: false },
+  'Fellow Craft': { prefix: 'Bro', grand: false },
+  'Master Mason': { prefix: 'Bro', grand: false },
+  'Installed Master': { prefix: 'WBro', grand: false },
+  'Past Master': { prefix: 'WBro', post: 'PM', grand: false },
+  'Grand Steward': { prefix: 'WBro', post: 'GStw', grand: true },
+  'Grand Sword Bearer': { prefix: 'WBro', post: 'GSWB', grand: true },
+  'Past Grand Steward': { prefix: 'WBro', post: 'PGStw', grand: true },
+  'Past Grand Sword Bearer': { prefix: 'WBro', post: 'PGSWB', grand: true },
 };
 
 export const DATE_FMT = 'YYYY-MM-DD';
@@ -35,10 +35,10 @@ export const FMNZ_LOGO_URL =
 
 /**
  * Overloaded deriveTitle:
- * 1) deriveTitle(rank, isPastGrand) -> { prefix, postNominals }
+ * 1) deriveTitle(rank, isPastGrand) -> { prefix, postNominals[] }
  * 2) deriveTitle(name, currentRank?, grandPost?) -> string "Prefix Name Post"
  */
-export function deriveTitle(rank: string, isPastGrand: boolean): { prefix: string; postNominals: string };
+export function deriveTitle(rank: string, isPastGrand: boolean): { prefix: string; postNominals: string[] };
 export function deriveTitle(name: string, currentRank?: string | null, grandPost?: string | null): string;
 export function deriveTitle(a: string, b?: boolean | string | null, c?: string | null): any {
   // If second arg is boolean, return parts for profile state
@@ -46,13 +46,14 @@ export function deriveTitle(a: string, b?: boolean | string | null, c?: string |
     const rank = a || 'Master Mason';
     const meta = RANK_META[rank] || RANK_META['Master Mason'];
     const prefix = meta.prefix || 'Bro';
-    // If isPastGrand, prefer any "Past Grand ..." mapping when available
-    let postNominals = meta.post || '';
+    // Build post-nominals as an array
+    let post = meta.post || '';
     if (b) {
       // Simple heuristic: preprend 'P' if not already a Past grade, e.g. GStw -> PGStw
-      if (postNominals && !/^P/.test(postNominals)) postNominals = 'P' + postNominals;
-      if (!postNominals && /Grand/i.test(rank)) postNominals = 'PG'; // very loose fallback
+      if (post && !/^P/.test(post)) post = 'P' + post;
+      if (!post && (meta.grand || /Grand/i.test(rank))) post = 'PG';
     }
+    const postNominals = post ? [post] : [];
     return { prefix, postNominals };
   }
 
