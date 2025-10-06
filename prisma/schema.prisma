@@ -1,0 +1,111 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  prefix    String?   // Bro, WBro, VWBro, RWBro, MWBro
+  grandRank String?   // current grand rank acronym
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  offices     Office[]
+  visits      Visit[]
+  workings    LodgeWorking[]
+  milestones  Milestone[]
+
+  @@index([email])
+}
+
+model Lodge {
+  id        String   @id @default(cuid())
+  name      String
+  number    String   // lodge number string
+  location  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  offices     Office[]
+  visits      Visit[]
+  workings    LodgeWorking[]
+
+  @@unique([name, number])
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  lodgeId   String
+  startDate DateTime
+  endDate   DateTime?
+
+  user  User  @relation(fields: [userId], references: [id])
+  lodge Lodge @relation(fields: [lodgeId], references: [id])
+
+  @@index([userId, lodgeId])
+}
+
+model Office {
+  id         String   @id @default(cuid())
+  userId     String
+  lodgeId    String?
+  title      String   // Inner Guard, Junior Deacon, Senior Deacon, ...
+  startDate  DateTime
+  endDate    DateTime?
+  isGrand    Boolean  @default(false)
+
+  user  User  @relation(fields: [userId], references: [id])
+  lodge Lodge? @relation(fields: [lodgeId], references: [id])
+
+  @@index([userId, lodgeId, isGrand])
+}
+
+model Visit {
+  id        String   @id @default(cuid())
+  userId    String
+  lodgeId   String?
+  date      DateTime
+  notes     String?
+
+  user  User  @relation(fields: [userId], references: [id])
+  lodge Lodge? @relation(fields: [lodgeId], references: [id])
+
+  @@index([userId, date])
+}
+
+model LodgeWorking {
+  id        String   @id @default(cuid())
+  userId    String
+  lodgeId   String?
+  date      DateTime
+  working   String   // e.g. 1st Degree, 2nd Degree, 3rd Degree, Installation, Passing, Raising
+  notes     String?
+
+  user  User  @relation(fields: [userId], references: [id])
+  lodge Lodge? @relation(fields: [lodgeId], references: [id])
+
+  @@index([userId, date])
+}
+
+model Milestone {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  date      DateTime
+  notes     String?
+
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@index([userId, date])
+}
