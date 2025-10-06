@@ -62,6 +62,28 @@ async function j<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
 export async function listLodgeWorkings(): Promise<LodgeWorking[]> {
   return j('/api/workings', { cache: 'no-store' });
 }
+
+// Map a LodgeWorking row to the Working shape used by /app/my-work/page.tsx
+export function toWorking(lw: LodgeWorking): Working {
+  // Try to derive a degree and candidate from title convention "Degree – Candidate"
+  let degree: Degree = 'Other';
+  let candidateName: string | undefined;
+  if (lw.title) {
+    const parts = lw.title.split('–').map(s => s.trim());
+    if (parts.length >= 1 && parts[0]) degree = parts[0] as Degree;
+    if (parts.length >= 2 && parts[1]) candidateName = parts[1];
+  }
+  return {
+    id: lw.id,
+    dateISO: lw.date,
+    degree,
+    candidateName,
+    lodgeName: lw.lodgeName,
+    lodgeNumber: lw.lodgeNumber,
+    notes: lw.notes,
+  };
+}
+
 export type CreateLodgeWorkingInput = Omit<LodgeWorking, 'id' | 'createdAt' | 'updatedAt'>;
 export async function createLodgeWorking(input: CreateLodgeWorkingInput): Promise<LodgeWorking> {
   return j('/api/workings', {
@@ -76,7 +98,10 @@ export async function deleteLodgeWorking(id: string): Promise<{ ok: true }> {
 }
 
 // Legacy names used by /app/my-work/page.tsx
-export const getWorkings = listLodgeWorkings;
+export async function getWorkings(): Promise<Working[]> {
+  const rows = await listLodgeWorkings();
+  return rows.map(toWorking);
+}
 export async function createWorking(input: CreateLodgeWorkingInput | Working) {
   // Allow Working shape; map to server input
   const mapped: CreateLodgeWorkingInput = (input as any).title
