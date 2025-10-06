@@ -23,7 +23,13 @@
         "name": "next"
       }
     ],
-    "noImplicitAny": false
+    "noImplicitAny": false,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "*"
+      ]
+    }
   },
   "include": [
     "next-env.d.ts",
