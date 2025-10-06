@@ -1,19 +1,20 @@
 'use client';
 import React from "react";
 import Modal from "../../components/Modal";
+import { toISODate, toDisplayDate } from "../../lib/date";
 
 type Degree = 'Initiation' | 'Passing' | 'Raising' | 'Installation' | 'Other';
 
-export type Visit = {
+type Visit = {
   id?: string;
-  date: string;
+  dateISO: string; // normalized YYYY-MM-DD
   lodgeName: string;
-  degree: Degree;
+  eventType: Degree;
   grandLodgeVisit: boolean;
   notes?: string;
 };
 
-const emptyVisit: Visit = { date: '', lodgeName: '', degree: 'Initiation', grandLodgeVisit: false, notes: '' };
+const emptyVisit: Visit = { dateISO: '', lodgeName: '', eventType: 'Initiation', grandLodgeVisit: false, notes: '' };
 
 export default function VisitsPage() {
   const [records, setRecords] = React.useState<Visit[] | null>(null);
@@ -28,27 +29,25 @@ export default function VisitsPage() {
         const res = await fetch('/api/visits', { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to load visits');
         const data = await res.json();
-        setRecords(Array.isArray(data) ? data : []);
+        const norm = (Array.isArray(data) ? data : []).map((r:any) => ({
+          id: r.id,
+          dateISO: toISODate(r.dateISO || r.date || ''),
+          lodgeName: r.lodgeName || r.lodge || '',
+          eventType: r.eventType || r.degree || 'Other',
+          grandLodgeVisit: Boolean(r.grandLodgeVisit),
+          notes: r.notes || ''
+        }));
+        setRecords(norm);
       } catch (e:any) {
-        // Graceful fallback if API not wired yet
         setRecords([]);
         setError(e?.message || 'Failed to load');
       }
     })();
   }, []);
 
-  function openNew() {
-    setEditing({ ...emptyVisit });
-    setModalOpen(true);
-  }
-  function openEdit(v: Visit) {
-    setEditing({ ...v });
-    setModalOpen(true);
-  }
-  function closeModal() {
-    setModalOpen(false);
-    setEditing(null);
-  }
+  function openNew() { setEditing({ ...emptyVisit }); setModalOpen(true); }
+  function openEdit(v: Visit) { setEditing({ ...v }); setModalOpen(true); }
+  function closeModal() { setModalOpen(false); setEditing(null); }
 
   async function saveVisit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,18 +55,26 @@ export default function VisitsPage() {
     setBusy(true);
     try {
       const isNew = !editing.id;
+      const payload = {
+        id: editing.id,
+        dateISO: toISODate(editing.dateISO),
+        lodgeName: editing.lodgeName,
+        eventType: editing.eventType,
+        grandLodgeVisit: !!editing.grandLodgeVisit,
+        notes: editing.notes || ''
+      };
       const res = await fetch(isNew ? '/api/visits' : `/api/visits/${editing.id}`, {
         method: isNew ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(editing),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
-      const saved = await res.json().catch(() => editing);
+      const saved = await res.json().catch(() => payload);
       setRecords(prev => {
-        if (!prev) return [saved];
-        if (isNew) return [saved, ...prev];
-        return prev.map(r => (r.id === editing.id ? saved : r));
+        const next = prev ? [...prev] : [];
+        if (isNew) return [saved as Visit, ...next];
+        return next.map(r => (r.id === editing.id ? (saved as Visit) : r));
       });
       closeModal();
     } catch (e:any) {
@@ -86,7 +93,6 @@ export default function VisitsPage() {
       const res = await fetch(`/api/visits/${id}`, { method: 'DELETE', credentials: 'include' });
       if (!res.ok) throw new Error(await res.text());
     } catch {
-      // revert on failure
       setRecords(prev);
       alert('Delete failed');
     }
@@ -123,10 +129,10 @@ export default function VisitsPage() {
                 </thead>
                 <tbody>
                   {records.map((r) => (
-                    <tr key={r.id || r.date + r.lodgeName} className="border-t">
-                      <td className="py-2 pr-3">{r.date || '—'}</td>
+                    <tr key={r.id || r.dateISO + r.lodgeName} className="border-t">
+                      <td className="py-2 pr-3">{toDisplayDate(r.dateISO)}</td>
                       <td className="py-2 pr-3">{r.lodgeName || '—'}</td>
-                      <td className="py-2 pr-3">{r.degree || '—'}</td>
+                      <td className="py-2 pr-3">{r.eventType || '—'}</td>
                       <td className="py-2 pr-3">{r.grandLodgeVisit ? 'Yes' : 'No'}</td>
                       <td className="py-2 pr-3">{r.notes || '—'}</td>
                       <td className="py-2 pr-3">
@@ -149,8 +155,18 @@ export default function VisitsPage() {
         <form className="space-y-4" onSubmit={saveVisit}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="label">
-              <span>Date</span>
-              <input className="input mt-1" type="date" value={editing?.date || ''} onChange={e=>setEditing(v=>({...(v as Visit), date: e.target.value}))} required />
+              <span>Date (dd/mm/yyyy)</span>
+              <input
+                className="input mt-1"
+                placeholder="dd/mm/yyyy"
+                value={editing?.dateISO ? toDisplayDate(editing.dateISO) : ''}
+                onChange={e=>{
+                  const v = e.target.value;
+                  // keep free-form dd/mm/yyyy, normalize on save
+                  setEditing(prev => ({...(prev as Visit), dateISO: v }));
+                }}
+                required
+              />
             </label>
             <label className="label">
               <span>Lodge</span>
@@ -158,7 +174,7 @@ export default function VisitsPage() {
             </label>
             <label className="label">
               <span>Work of the evening (Degree)</span>
-              <select className="input mt-1" value={editing?.degree || 'Initiation'} onChange={e=>setEditing(v=>({...(v as Visit), degree: e.target.value as Visit['degree']}))}>
+              <select className="input mt-1" value={editing?.eventType || 'Initiation'} onChange={e=>setEditing(v=>({...(v as Visit), eventType: e.target.value as Visit['eventType']}))}>
                 <option>Initiation</option>
                 <option>Passing</option>
                 <option>Raising</option>

@@ -1,19 +1,20 @@
 'use client';
 import React from "react";
 import Modal from "../../components/Modal";
+import { toISODate, toDisplayDate } from "../../lib/date";
 
 type Degree = 'Initiation' | 'Passing' | 'Raising' | 'Installation' | 'Other';
 
-export type Working = {
+type Working = {
   id?: string;
-  date: string;
+  dateISO: string; // normalized YYYY-MM-DD
   degree: Degree;
-  grandLodgeVisit: boolean;
   section: string;
+  grandLodgeVisit: boolean;
   notes?: string;
 };
 
-const emptyWorking: Working = { date: '', degree: 'Initiation', grandLodgeVisit: false, section: '', notes: '' };
+const emptyWorking: Working = { dateISO: '', degree: 'Initiation', section: '', grandLodgeVisit: false, notes: '' };
 
 export default function MyWorkPage() {
   const [records, setRecords] = React.useState<Working[] | null>(null);
@@ -28,7 +29,15 @@ export default function MyWorkPage() {
         const res = await fetch('/api/my-work', { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to load records');
         const data = await res.json();
-        setRecords(Array.isArray(data) ? data : []);
+        const norm = (Array.isArray(data) ? data : []).map((r:any) => ({
+          id: r.id,
+          dateISO: toISODate(r.dateISO || r.date || ''),
+          degree: r.degree || 'Other',
+          section: r.section || '',
+          grandLodgeVisit: Boolean(r.grandLodgeVisit),
+          notes: r.notes || ''
+        }));
+        setRecords(norm);
       } catch (e:any) {
         setRecords([]);
         setError(e?.message || 'Failed to load');
@@ -36,18 +45,9 @@ export default function MyWorkPage() {
     })();
   }, []);
 
-  function openNew() {
-    setEditing({ ...emptyWorking });
-    setModalOpen(true);
-  }
-  function openEdit(w: Working) {
-    setEditing({ ...w });
-    setModalOpen(true);
-  }
-  function closeModal() {
-    setModalOpen(false);
-    setEditing(null);
-  }
+  function openNew() { setEditing({ ...emptyWorking }); setModalOpen(true); }
+  function openEdit(w: Working) { setEditing({ ...w }); setModalOpen(true); }
+  function closeModal() { setModalOpen(false); setEditing(null); }
 
   async function saveWorking(e: React.FormEvent) {
     e.preventDefault();
@@ -55,18 +55,26 @@ export default function MyWorkPage() {
     setBusy(true);
     try {
       const isNew = !editing.id;
+      const payload = {
+        id: editing.id,
+        dateISO: toISODate(editing.dateISO),
+        degree: editing.degree,
+        section: editing.section,
+        grandLodgeVisit: !!editing.grandLodgeVisit,
+        notes: editing.notes || ''
+      };
       const res = await fetch(isNew ? '/api/my-work' : `/api/my-work/${editing.id}`, {
         method: isNew ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(editing),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
-      const saved = await res.json().catch(() => editing);
+      const saved = await res.json().catch(() => payload);
       setRecords(prev => {
-        if (!prev) return [saved];
-        if (isNew) return [saved, ...prev];
-        return prev.map(r => (r.id === editing.id ? saved : r));
+        const next = prev ? [...prev] : [];
+        if (isNew) return [saved as Working, ...next];
+        return next.map(r => (r.id === editing.id ? (saved as Working) : r));
       });
       closeModal();
     } catch (e:any) {
@@ -121,8 +129,8 @@ export default function MyWorkPage() {
                 </thead>
                 <tbody>
                   {records.map((r) => (
-                    <tr key={r.id || r.date + r.section} className="border-t">
-                      <td className="py-2 pr-3">{r.date || '—'}</td>
+                    <tr key={r.id || r.dateISO + r.section} className="border-t">
+                      <td className="py-2 pr-3">{toDisplayDate(r.dateISO)}</td>
                       <td className="py-2 pr-3">{r.degree || '—'}</td>
                       <td className="py-2 pr-3">{r.section || '—'}</td>
                       <td className="py-2 pr-3">{r.grandLodgeVisit ? 'Yes' : 'No'}</td>
@@ -147,8 +155,17 @@ export default function MyWorkPage() {
         <form className="space-y-4" onSubmit={saveWorking}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="label">
-              <span>Date</span>
-              <input className="input mt-1" type="date" value={editing?.date || ''} onChange={e=>setEditing(v=>({...(v as Working), date: e.target.value}))} required />
+              <span>Date (dd/mm/yyyy)</span>
+              <input
+                className="input mt-1"
+                placeholder="dd/mm/yyyy"
+                value={editing?.dateISO ? toDisplayDate(editing.dateISO) : ''}
+                onChange={e=>{
+                  const v = e.target.value;
+                  setEditing(prev => ({...(prev as Working), dateISO: v }));
+                }}
+                required
+              />
             </label>
             <label className="label">
               <span>Work of the evening (Degree)</span>

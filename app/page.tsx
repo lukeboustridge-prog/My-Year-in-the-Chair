@@ -1,37 +1,48 @@
 'use client';
 import React from "react";
 import Link from "next/link";
+import { toDisplayDate } from "../lib/date";
 
-type Profile = { fullName?: string };
+type Profile = { prefix?: string; fullName?: string; postNominals?: string };
+type Visit = { id?: string; dateISO?: string; lodgeName?: string; eventType?: string; grandLodgeVisit?: boolean };
+type Working = { id?: string; dateISO?: string; degree?: string; section?: string; grandLodgeVisit?: boolean };
 
 export default function HomePage() {
   const [profile, setProfile] = React.useState<Profile | null>(null);
+  const [visits, setVisits] = React.useState<Visit[]>([]);
+  const [workings, setWorkings] = React.useState<Working[]>([]);
 
   React.useEffect(() => {
     (async () => {
       try {
         const res = await fetch('/api/profile', { credentials: 'include' });
-        if (!res.ok) throw new Error('Failed to load profile');
-        const data = await res.json();
+        const data = await res.json().catch(()=> ({}));
         setProfile(data || {});
-      } catch {
-        setProfile({ fullName: undefined });
-      }
+      } catch { setProfile({}); }
+      try {
+        const res = await fetch('/api/visits?limit=5', { credentials: 'include' });
+        const data = await res.json().catch(()=> []);
+        setVisits(Array.isArray(data) ? data : []);
+      } catch { setVisits([]); }
+      try {
+        const res = await fetch('/api/my-work?limit=5', { credentials: 'include' });
+        const data = await res.json().catch(()=> []);
+        setWorkings(Array.isArray(data) ? data : []);
+      } catch { setWorkings([]); }
     })();
   }, []);
 
-  const displayName = profile?.fullName || "Brother";
+  const nameLine = [profile?.prefix, profile?.fullName, profile?.postNominals].filter(Boolean).join(' ') || 'Brother';
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <h1 className="h1">Dashboard</h1>
-          <p className="subtle mt-1">Welcome, {displayName}.</p>
+          <p className="subtle mt-1">Welcome, {nameLine}.</p>
         </div>
+        {/* Removed Add Visit/Add Working per request; actions live on their pages */}
         <div className="flex flex-wrap gap-2">
-          <Link href="/visits" className="btn-primary">Add Visit</Link>
-          <Link href="/my-work" className="btn-soft">Add Lodge Working</Link>
           <Link href="/reports" className="btn-soft">Export Report</Link>
         </div>
       </div>
@@ -41,7 +52,7 @@ export default function HomePage() {
         <div className="card-body flex items-center justify-between">
           <div>
             <div className="subtle mb-0.5">Signed in as</div>
-            <div className="text-base font-medium">{displayName}</div>
+            <div className="text-base font-medium">{nameLine}</div>
           </div>
           <Link href="/profile" className="navlink">Edit Profile</Link>
         </div>
@@ -51,7 +62,7 @@ export default function HomePage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="card"><div className="card-body">
           <div className="subtle mb-1">Total Visits</div>
-          <div className="text-2xl font-semibold">—</div>
+          <div className="text-2xl font-semibold">{visits.length || '—'}</div>
         </div></div>
         <div className="card"><div className="card-body">
           <div className="subtle mb-1">Leaderboard Rank</div>
@@ -77,12 +88,16 @@ export default function HomePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-t">
-                    <td className="py-2 pr-3">—</td>
-                    <td className="py-2 pr-3">—</td>
-                    <td className="py-2 pr-3">—</td>
-                    <td className="py-2 pr-3">—</td>
-                  </tr>
+                  {visits.length === 0 ? (
+                    <tr className="border-t"><td className="py-2 pr-3" colSpan={4}>No recent visits.</td></tr>
+                  ) : visits.map(v => (
+                    <tr key={v.id || (v.dateISO || '') + (v.lodgeName || '')} className="border-t">
+                      <td className="py-2 pr-3">{toDisplayDate(v.dateISO || '')}</td>
+                      <td className="py-2 pr-3">{v.lodgeName || '—'}</td>
+                      <td className="py-2 pr-3">{v.eventType || '—'}</td>
+                      <td className="py-2 pr-3">{v.grandLodgeVisit ? 'Yes' : 'No'}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -106,12 +121,16 @@ export default function HomePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-t">
-                    <td className="py-2 pr-3">—</td>
-                    <td className="py-2 pr-3">—</td>
-                    <td className="py-2 pr-3">—</td>
-                    <td className="py-2 pr-3">—</td>
-                  </tr>
+                  {workings.length === 0 ? (
+                    <tr className="border-t"><td className="py-2 pr-3" colSpan={4}>No recent records.</td></tr>
+                  ) : workings.map(w => (
+                    <tr key={w.id || (w.dateISO || '') + (w.section || '')} className="border-t">
+                      <td className="py-2 pr-3">{toDisplayDate(w.dateISO || '')}</td>
+                      <td className="py-2 pr-3">{w.degree || '—'}</td>
+                      <td className="py-2 pr-3">{w.section || '—'}</td>
+                      <td className="py-2 pr-3">{w.grandLodgeVisit ? 'Yes' : 'No'}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
