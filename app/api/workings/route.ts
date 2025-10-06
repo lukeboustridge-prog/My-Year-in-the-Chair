@@ -103,7 +103,7 @@ export async function POST(req: Request) {
 
   const prisma = getPrisma() as any;
   if (prisma) {
-    const userId = getUserId();
+    const userId = getUserId(req);
     if (!userId) return new NextResponse('Unauthorized', { status: 401 });
     const { work, candidateName } = parseIncomingWork(body);
     const row = await prisma.myWork.create({

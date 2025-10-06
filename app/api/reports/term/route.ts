@@ -1,18 +1,5 @@
 import { db } from "@/lib/db";
-import { cookies } from "next/headers";
-import jwt from "jsonwebtoken";
-
-function getUserId(): string | null {
-  const c = cookies().get("myyitc_session");
-  if (!c) return null;
-  try {
-    const data = jwt.verify(c.value, process.env.JWT_SECRET || "");
-    // @ts-ignore
-    return data?.userId ?? null;
-  } catch {
-    return null;
-  }
-}
+import { getUserId } from "@/lib/auth";
 
 function csvEscape(v: any) {
   const s = String(v ?? "");

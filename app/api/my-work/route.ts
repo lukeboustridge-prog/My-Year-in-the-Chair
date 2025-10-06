@@ -10,15 +10,15 @@ const schema = z.object({
   comments: z.string().optional(),
 });
 
-export async function GET() {
-  const userId = getUserId();
+export async function GET(req: Request) {
+  const userId = getUserId(req);
   if (!userId) return new NextResponse("Unauthorized", { status: 401 });
   const rows = await db.myWork.findMany({ where: { userId }, orderBy: { date: "desc" } });
   return NextResponse.json(rows);
 }
 
 export async function POST(req: Request) {
-  const userId = getUserId();
+  const userId = getUserId(req);
   if (!userId) return new NextResponse("Unauthorized", { status: 401 });
   try {
     const body = await req.json();

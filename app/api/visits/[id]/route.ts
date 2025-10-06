@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const uid = getUserId();
+  const uid = getUserId(req);
   if (!uid) return new NextResponse("Unauthorized", { status: 401 });
   const body = await req.json();
 
@@ -22,8 +22,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
-  const uid = getUserId();
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+  const uid = getUserId(req);
   if (!uid) return new NextResponse("Unauthorized", { status: 401 });
   await db.visit.delete({ where: { id: params.id } });
   return NextResponse.json({ ok: true });
