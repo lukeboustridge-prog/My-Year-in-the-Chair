@@ -1,0 +1,14 @@
+lockfileVersion: '9.12.0'
+specifiers:
+  jspdf: ^2.5.1
+  jspdf-autotable: ^3.8.2
+  zod: ^3.23.8
+  bcryptjs: ^2.4.3
+  @types/bcryptjs: ^2.4.2
+  @types/jspdf-autotable: ^3.5.0
+  @prisma/client: 5.18.0
+  prisma: 5.18.0
+  next: 14.2.4
+  react: 18.3.1
+  react-dom: 18.3.1
+  typescript: 5.4.5
