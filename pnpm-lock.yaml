@@ -1,0 +1,60 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+  .:
+    dependencies:
+      '@prisma/client':
+        specifier: 5.18.0
+        version: 5.18.0
+      bcryptjs:
+        specifier: ^2.4.3
+        version: 2.4.3
+      next:
+        specifier: 14.2.4
+        version: 14.2.4
+      next-auth:
+        specifier: ^5.0.0-beta.20
+        version: 5.0.0-beta.20
+      react:
+        specifier: 18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: 18.3.1
+        version: 18.3.1
+      zod:
+        specifier: ^3.23.8
+        version: 3.23.8
+    devDependencies:
+      '@types/bcryptjs':
+        specifier: ^2.4.6
+        version: 2.4.6
+      '@types/node':
+        specifier: ^20.11.30
+        version: 20.16.10
+      '@types/react':
+        specifier: ^18.2.66
+        version: 18.3.3
+      '@types/react-dom':
+        specifier: ^18.2.22
+        version: 18.3.0
+      eslint:
+        specifier: ^9.0.0
+        version: 9.9.0
+      eslint-config-next:
+        specifier: 14.2.4
+        version: 14.2.4
+      husky:
+        specifier: ^9.1.6
+        version: 9.1.7
+      prisma:
+        specifier: 5.18.0
+        version: 5.18.0
+      typescript:
+        specifier: 5.6.2
+        version: 5.6.2
+
+packages: {}
