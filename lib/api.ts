@@ -100,10 +100,11 @@ export async function createVisit(input: any) {
   }
 }
 
-// -------------------- Leaderboard (soft optional) --------------------
-export async function getLeaderboard(): Promise<LeaderboardRow[]> {
+// -------------------- Leaderboard (accepts optional period) --------------------
+export async function getLeaderboard(period?: string): Promise<LeaderboardRow[]> {
   try {
-    return await j('/api/leaderboard', { cache: 'no-store' });
+    const qs = period ? `?period=${encodeURIComponent(period)}` : '';
+    return await j(`/api/leaderboard${qs}`, { cache: 'no-store' });
   } catch {
     return [];
   }
