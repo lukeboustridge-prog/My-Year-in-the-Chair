@@ -1,8 +1,0 @@
-* { box-sizing: border-box; }
-body { font-family: ui-sans-serif, system-ui, Segoe UI, Roboto, Helvetica, Arial; }
-label { display:block; margin: 8px 0 4px; }
-input, textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; }
-button { padding: 8px 12px; border: 1px solid #999; border-radius: 8px; background: #f2f2f2; cursor: pointer; }
-form { margin-bottom: 16px; }
-.success { color: #0a7e07; }
-.error { color: #b00020; }
