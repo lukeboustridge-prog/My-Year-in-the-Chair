@@ -2,12 +2,17 @@ name: CI
 
 on:
   push:
-    branches: [ "**" ]
+    branches: ["**"]
   pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Expose Neon to the whole job (ensure you created the secret)
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # Optional: speed up Prisma generators in CI
+      PRISMA_SKIP_POSTINSTALL_GENERATE: true
 
     steps:
       - name: Checkout repository
@@ -22,7 +27,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          # ❌ no cache here to avoid lockfile requirement
+          cache: "pnpm"
+
+      # (Optional) If you prefer .env files in CI, uncomment this block
+      # - name: Create .env from secrets
+      #   run: |
+      #     printf 'DATABASE_URL="%s"\n' "${{ secrets.DATABASE_URL }}" > .env
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
