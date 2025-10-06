@@ -3,21 +3,21 @@ import { useState } from 'react';
 import { createVisit } from '@/lib/api';
 
 export default function VisitsPage() {
-  const [form, setForm] = useState({ lodgeName: '', lodgeNo: '', date: '', notes: '' });
-  const [msg, setMsg] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [form, setForm] = useState({ lodgeName:'', lodgeNo:'', date:'', notes:'' });
+  const [msg, setMsg] = useState<string|null>(null);
+  const [err, setErr] = useState<string|null>(null);
 
-  const onSubmit = async (e: React.FormEvent) => {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null); setMsg(null);
     try {
       const res = await createVisit(form);
       setMsg(`Created visit ${res.id}`);
-      setForm({ lodgeName: '', lodgeNo: '', date: '', notes: '' });
+      setForm({ lodgeName:'', lodgeNo:'', date:'', notes:'' });
     } catch (e:any) {
       setErr(e?.message || 'Failed');
     }
-  };
+  }
 
   return (
     <section>
@@ -26,18 +26,15 @@ export default function VisitsPage() {
       {err && <p className="error">{err}</p>}
       <form onSubmit={onSubmit}>
         <label>Lodge Name</label>
-        <input value={form.lodgeName} onChange={e=>setForm({...form, lodgeName: e.target.value})} />
+        <input value={form.lodgeName} onChange={e=>setForm({...form, lodgeName:e.target.value})} />
         <label>Lodge Number</label>
-        <input value={form.lodgeNo} onChange={e=>setForm({...form, lodgeNo: e.target.value})} />
+        <input value={form.lodgeNo} onChange={e=>setForm({...form, lodgeNo:e.target.value})} />
         <label>Date</label>
-        <input type="date" value={form.date} onChange={e=>setForm({...form, date: e.target.value})} />
+        <input type="date" value={form.date} onChange={e=>setForm({...form, date:e.target.value})} />
         <label>Notes</label>
-        <textarea value={form.notes} onChange={e=>setForm({...form, notes: e.target.value})} />
-        <div style={{marginTop:12}}>
-          <button type="submit">Add Visit</button>
-        </div>
+        <textarea value={form.notes} onChange={e=>setForm({...form, notes:e.target.value})} />
+        <div style={{marginTop:12}}><button type="submit">Add Visit</button></div>
       </form>
-      <p>Tip: ensure <code>DATABASE_URL</code> is set, then run <code>pnpm prisma:push</code> once.</p>
     </section>
   );
 }

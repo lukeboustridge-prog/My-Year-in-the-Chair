@@ -3,21 +3,21 @@ import { useState } from 'react';
 import { createWorking } from '@/lib/api';
 
 export default function WorkingsPage() {
-  const [form, setForm] = useState({ lodgeName: '', lodgeNo: '', workingType: '', date: '', notes: '' });
-  const [msg, setMsg] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [form, setForm] = useState({ lodgeName:'', lodgeNo:'', workingType:'', date:'', notes:'' });
+  const [msg, setMsg] = useState<string|null>(null);
+  const [err, setErr] = useState<string|null>(null);
 
-  const onSubmit = async (e: React.FormEvent) => {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null); setMsg(null);
     try {
       const res = await createWorking(form);
       setMsg(`Created working ${res.id}`);
-      setForm({ lodgeName: '', lodgeNo: '', workingType: '', date: '', notes: '' });
+      setForm({ lodgeName:'', lodgeNo:'', workingType:'', date:'', notes:'' });
     } catch (e:any) {
       setErr(e?.message || 'Failed');
     }
-  };
+  }
 
   return (
     <section>
@@ -26,20 +26,17 @@ export default function WorkingsPage() {
       {err && <p className="error">{err}</p>}
       <form onSubmit={onSubmit}>
         <label>Lodge Name</label>
-        <input value={form.lodgeName} onChange={e=>setForm({...form, lodgeName: e.target.value})} />
+        <input value={form.lodgeName} onChange={e=>setForm({...form, lodgeName:e.target.value})} />
         <label>Lodge Number</label>
-        <input value={form.lodgeNo} onChange={e=>setForm({...form, lodgeNo: e.target.value})} />
+        <input value={form.lodgeNo} onChange={e=>setForm({...form, lodgeNo:e.target.value})} />
         <label>Working Type</label>
-        <input placeholder="1st / 2nd / 3rd / Installation" value={form.workingType} onChange={e=>setForm({...form, workingType: e.target.value})} />
+        <input placeholder="1st / 2nd / 3rd / Installation" value={form.workingType} onChange={e=>setForm({...form, workingType:e.target.value})} />
         <label>Date</label>
-        <input type="date" value={form.date} onChange={e=>setForm({...form, date: e.target.value})} />
+        <input type="date" value={form.date} onChange={e=>setForm({...form, date:e.target.value})} />
         <label>Notes</label>
-        <textarea value={form.notes} onChange={e=>setForm({...form, notes: e.target.value})} />
-        <div style={{marginTop:12}}>
-          <button type="submit">Add Working</button>
-        </div>
+        <textarea value={form.notes} onChange={e=>setForm({...form, notes:e.target.value})} />
+        <div style={{marginTop:12}}><button type="submit">Add Working</button></div>
       </form>
-      <p>Tip: ensure <code>DATABASE_URL</code> is set, then run <code>pnpm prisma:push</code> once.</p>
     </section>
   );
 }

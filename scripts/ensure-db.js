@@ -5,6 +5,10 @@ if (!process.env.DATABASE_URL) {
   process.exit(0);
 }
 
+if (process.env.CI) {
+  console.log('CI build detected — running prisma db push with provided env');
+}
+
 try {
   console.log('Running `prisma db push`...');
   execSync('npx prisma db push', { stdio: 'inherit' });

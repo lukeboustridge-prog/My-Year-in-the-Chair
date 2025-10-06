@@ -3,7 +3,7 @@ import React from 'react';
 
 export const metadata = {
   title: 'My Year in the Chair',
-  description: 'Freemasons NZ – Visits & Workings tracker',
+  description: 'Freemasons NZ – minimal reset build'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
