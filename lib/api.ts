@@ -55,7 +55,7 @@ export async function getWorkings(limit?: number) {
 
 function bodyCompat(w: Working, action?: 'create'|'update'|'delete') {
   const candidate = (w.candidateName ?? '').toString();
-  const section = (w.section ?? candidate || 'Candidate').toString(); // legacy field fallback
+  const section = ((w.section ?? candidate) || 'Candidate').toString(); // legacy field fallback
   const notes = (w.notes ?? '').toString();
   const emerg = !!w.emergencyMeeting;
   const glv = !!w.grandLodgeVisit;
