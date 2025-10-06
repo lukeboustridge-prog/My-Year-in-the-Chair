@@ -19,6 +19,7 @@ export default function LoginPage() {
   const [password, setPassword] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [signingOut, setSigningOut] = React.useState(false);
 
   React.useEffect(() => {
     try {
@@ -56,11 +57,27 @@ export default function LoginPage() {
     }
   }
 
+  async function onSignOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(()=>{});
+    } finally {
+      try {
+        localStorage.removeItem('access_token');
+        sessionStorage.removeItem('access_token');
+      } catch {}
+      setSigningOut(false);
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between">
         <h1 className="h1">Sign in</h1>
-        <span className="subtle">Welcome back</span>
+        <button className="navlink" onClick={onSignOut} disabled={signingOut}>
+          {signingOut ? 'Signing out…' : 'Sign out'}
+        </button>
       </div>
       <div className="card">
         <form className="card-body space-y-5" onSubmit={onSubmit}>

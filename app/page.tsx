@@ -2,13 +2,32 @@
 import React from "react";
 import Link from "next/link";
 
+type Profile = { fullName?: string };
+
 export default function HomePage() {
+  const [profile, setProfile] = React.useState<Profile | null>(null);
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/profile', { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load profile');
+        const data = await res.json();
+        setProfile(data || {});
+      } catch {
+        setProfile({ fullName: undefined });
+      }
+    })();
+  }, []);
+
+  const displayName = profile?.fullName || "Brother";
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <h1 className="h1">Dashboard</h1>
-          <p className="subtle mt-1">Quick snapshot of your year and actions.</p>
+          <p className="subtle mt-1">Welcome, {displayName}.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/visits" className="btn-primary">Add Visit</Link>
@@ -17,13 +36,21 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Profile quick card */}
+      <div className="card">
+        <div className="card-body flex items-center justify-between">
+          <div>
+            <div className="subtle mb-0.5">Signed in as</div>
+            <div className="text-base font-medium">{displayName}</div>
+          </div>
+          <Link href="/profile" className="navlink">Edit Profile</Link>
+        </div>
+      </div>
+
+      {/* Stats row (removed Offices Held) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="card"><div className="card-body">
           <div className="subtle mb-1">Total Visits</div>
-          <div className="text-2xl font-semibold">—</div>
-        </div></div>
-        <div className="card"><div className="card-body">
-          <div className="subtle mb-1">Offices Held</div>
           <div className="text-2xl font-semibold">—</div>
         </div></div>
         <div className="card"><div className="card-body">
