@@ -14,15 +14,34 @@ export type LodgeWorking = {
   updatedAt?: string;
 };
 
-export type Visit = {
-  id: string;
-  date: string;
+// Raw server visit shape (unknown — we coerce to UI Visit)
+type VisitRow = {
+  id?: string;
+  date?: string;        // ISO
+  dateISO?: string;     // sometimes present in older UI
   lodge?: string;
+  lodgeName?: string;
+  lodgeNumber?: string;
+  eventType?: string;
+  grandLodgeVisit?: boolean;
   notes?: string;
 };
 
-// ---- Types expected by /app/my-work/page.tsx ----
+// ---- Types expected by UI pages ----
 export type Degree = 'EA' | 'FC' | 'MM' | 'Installation' | 'Other' | string;
+
+// Visit shape expected by /app/visits/page.tsx
+export type Visit = {
+  id?: string;
+  dateISO: string;                    // canonical ISO date for UI
+  // keep a 'date' mirror to satisfy any pages using v.date
+  date?: string;
+  lodgeName?: string;
+  lodgeNumber?: string;
+  eventType?: string;
+  grandLodgeVisit?: boolean;
+  notes?: string;
+};
 
 export type Working = {
   id?: string;
@@ -84,6 +103,23 @@ export function toWorking(lw: LodgeWorking): Working {
   };
 }
 
+// Map a server VisitRow -> UI Visit
+export function toVisit(v: VisitRow): Visit {
+  const dateISO = (v.dateISO || v.date || '').toString();
+  const lodgeName = v.lodgeName || v.lodge || '';
+  const lodgeNumber = v.lodgeNumber || '';
+  return {
+    id: v.id,
+    dateISO,
+    date: dateISO,
+    lodgeName: lodgeName || undefined,
+    lodgeNumber: lodgeNumber || undefined,
+    eventType: v.eventType || undefined,
+    grandLodgeVisit: !!v.grandLodgeVisit,
+    notes: v.notes || undefined,
+  };
+}
+
 export type CreateLodgeWorkingInput = Omit<LodgeWorking, 'id' | 'createdAt' | 'updatedAt'>;
 export async function createLodgeWorking(input: CreateLodgeWorkingInput): Promise<LodgeWorking> {
   return j('/api/workings', {
@@ -125,33 +161,55 @@ export const deleteWorking = deleteLodgeWorking;
 // -------------------- Visits (legacy shims) --------------------
 export async function getVisits(limit?: number): Promise<Visit[]> {
   const qs = typeof limit === 'number' ? `?limit=${limit}` : '';
-  const rows = await j<Visit[]>(`/api/visits${qs}`, { cache: 'no-store' }).catch(() => [] as Visit[]);
-  return typeof limit === 'number' ? rows.slice(0, Math.max(0, limit)) : rows;
+  const rows = await j<VisitRow[]>(`/api/visits${qs}`, { cache: 'no-store' }).catch(() => [] as VisitRow[]);
+  const mapped = rows.map(toVisit);
+  return typeof limit === 'number' ? mapped.slice(0, Math.max(0, limit)) : mapped;
 }
+
+export async function createVisit(input: any) {
+  // Accept UI Visit and map to a reasonable server payload. If /api/visits fails, fallback to /api/workings.
+  const v: Visit = (input && input.dateISO !== undefined) ? input as Visit : toVisit(input as VisitRow);
+  const body: any = {
+    date: v.dateISO,
+    lodgeName: v.lodgeName,
+    lodgeNumber: v.lodgeNumber,
+    eventType: v.eventType,
+    grandLodgeVisit: v.grandLodgeVisit,
+    notes: v.notes,
+  };
+  try {
+    return await j('/api/visits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    // Fallback to a Working create so local/dev still records something
+    return createLodgeWorking({
+      title: (v.eventType || 'Visit') + (v.lodgeName ? ' – ' + v.lodgeName : ''),
+      date: v.dateISO,
+      lodgeName: v.lodgeName,
+      lodgeNumber: v.lodgeNumber,
+      notes: v.notes,
+      createdBy: undefined,
+    });
+  }
+}
+
 export async function updateVisit(id: string, patch: Partial<Visit>) {
+  const body: any = { ...patch };
+  if ((patch as any).dateISO && !(patch as any).date) {
+    body.date = (patch as any).dateISO;
+  }
   return j(`/api/visits/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(patch),
+    body: JSON.stringify(body),
   });
 }
 export async function deleteVisit(id: string) {
   await j(`/api/visits/${id}`, { method: 'DELETE' });
   return { ok: true as const };
-}
-
-// Keep the earlier build warning quiet by providing this shim as well
-export async function createVisit(input: any) {
-  // Some pages may still call this; route to /api/visits if present, else to /api/workings
-  try {
-    return await j('/api/visits', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-  } catch {
-    return createLodgeWorking(input);
-  }
 }
 
 // -------------------- Leaderboard (accepts optional period) --------------------
