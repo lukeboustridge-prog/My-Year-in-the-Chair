@@ -1,13 +1,22 @@
 'use client';
 import React from "react";
 import Link from "next/link";
+import Modal from "../components/Modal";
+import { deriveTitle, RANK_META, RANK_OPTIONS } from "../lib/constants";
 import { toDisplayDate } from "../lib/date";
 
+const REGION_OPTIONS = Array.from({ length: 9 }, (_, idx) => `Region ${idx + 1}`);
+
 type Profile = {
-  prefix?: string;
-  fullName?: string;
-  name?: string;
-  postNominals?: string;
+  prefix?: string | null;
+  fullName?: string | null;
+  name?: string | null;
+  postNominals?: string[] | string | null;
+  rank?: string | null;
+  isPastGrand?: boolean | null;
+  lodgeName?: string | null;
+  lodgeNumber?: string | null;
+  region?: string | null;
 };
 type Visit = {
   id?: string;
@@ -30,6 +39,43 @@ type Working = {
   tracingBoard3?: boolean | null;
   notes?: string | null;
 };
+
+type ProfileFormState = {
+  name: string;
+  rank: string;
+  isPastGrand: boolean;
+  prefix: string;
+  postNominals: string[];
+  lodgeName: string;
+  lodgeNumber: string;
+  region: string;
+};
+
+function normalisePostNominals(value: Profile["postNominals"]): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function normaliseProfile(raw: any): Profile {
+  if (!raw || typeof raw !== "object") {
+    return {};
+  }
+  return {
+    ...raw,
+    postNominals: normalisePostNominals(raw.postNominals),
+  };
+}
 
 const WORK_LABELS: Record<string, string> = {
   INITIATION: "Initiation",
@@ -59,6 +105,10 @@ function formatWorkLabel(value?: string | null) {
 
 export default function HomePage() {
   const [profile, setProfile] = React.useState<Profile | null>(null);
+  const [profileModalOpen, setProfileModalOpen] = React.useState(false);
+  const [profileForm, setProfileForm] = React.useState<ProfileFormState | null>(null);
+  const [profileSaving, setProfileSaving] = React.useState(false);
+  const [profileError, setProfileError] = React.useState<string | null>(null);
   const [visits, setVisits] = React.useState<Visit[]>([]);
   const [workings, setWorkings] = React.useState<Working[]>([]);
   const [leaderboard, setLeaderboard] = React.useState<{
@@ -68,13 +118,38 @@ export default function HomePage() {
     yearVisits: number;
   } | null>(null);
 
+  const grandRankOptions = React.useMemo(
+    () => RANK_OPTIONS.filter((rank) => RANK_META[rank]?.grand),
+    [],
+  );
+
+  React.useEffect(() => {
+    if (!profileForm) return;
+    const derived = deriveTitle(profileForm.rank, profileForm.isPastGrand);
+    const nextPostNominals = derived.postNominals;
+    if (
+      derived.prefix !== profileForm.prefix ||
+      nextPostNominals.join("|") !== profileForm.postNominals.join("|")
+    ) {
+      setProfileForm((prev) =>
+        prev
+          ? {
+              ...prev,
+              prefix: derived.prefix,
+              postNominals: nextPostNominals,
+            }
+          : prev,
+      );
+    }
+  }, [profileForm?.rank, profileForm?.isPastGrand]);
+
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const res = await fetch('/api/profile', { credentials: 'include' });
-        const data = await res.json().catch(() => ({}));
-        if (!cancelled) setProfile(data || {});
+        const data = res.ok ? await res.json().catch(() => ({})) : {};
+        if (!cancelled) setProfile(normaliseProfile(data));
       } catch {
         if (!cancelled) setProfile({});
       }
@@ -106,10 +181,130 @@ export default function HomePage() {
     };
   }, []);
 
+  const openProfileModal = React.useCallback(() => {
+    const base: Profile = profile ?? {};
+    const initialRank =
+      typeof base.rank === 'string' && base.rank.trim()
+        ? base.rank
+        : 'Master Mason';
+    const initialPastGrand = Boolean(base.isPastGrand);
+    const derived = deriveTitle(initialRank, initialPastGrand);
+    const storedPostNominals = normalisePostNominals(base.postNominals);
+    setProfileForm({
+      name:
+        typeof base.fullName === 'string' && base.fullName.trim().length > 0
+          ? base.fullName
+          : typeof base.name === 'string'
+          ? base.name
+          : '',
+      rank: initialRank,
+      isPastGrand: initialPastGrand,
+      prefix:
+        typeof base.prefix === 'string' && base.prefix.trim().length > 0
+          ? base.prefix
+          : derived.prefix,
+      postNominals:
+        storedPostNominals.length > 0 ? storedPostNominals : derived.postNominals,
+      lodgeName: typeof base.lodgeName === 'string' ? base.lodgeName : '',
+      lodgeNumber: typeof base.lodgeNumber === 'string' ? base.lodgeNumber : '',
+      region: typeof base.region === 'string' ? base.region : '',
+    });
+    setProfileError(null);
+    setProfileModalOpen(true);
+  }, [profile]);
+
+  const handlePastGrandChange = React.useCallback(
+    (checked: boolean) => {
+      setProfileForm((prev) => {
+        if (!prev) return prev;
+        const nextRank =
+          checked && !RANK_META[prev.rank]?.grand
+            ? grandRankOptions[0] ?? prev.rank
+            : prev.rank;
+        return {
+          ...prev,
+          isPastGrand: checked,
+          rank: nextRank,
+        };
+      });
+    },
+    [grandRankOptions],
+  );
+
+  const closeProfileModal = React.useCallback(() => {
+    if (profileSaving) return;
+    setProfileModalOpen(false);
+    setProfileForm(null);
+    setProfileError(null);
+  }, [profileSaving]);
+
+  const saveProfile = React.useCallback(
+    async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!profileForm) return;
+      setProfileSaving(true);
+      setProfileError(null);
+      const payload = {
+        name: profileForm.name.trim() || undefined,
+        rank: profileForm.rank,
+        isPastGrand: profileForm.isPastGrand,
+        prefix: profileForm.prefix,
+        postNominals: profileForm.postNominals,
+        lodgeName: profileForm.lodgeName.trim() || undefined,
+        lodgeNumber: profileForm.lodgeNumber.trim() || undefined,
+        region: profileForm.region || undefined,
+      };
+      try {
+        const res = await fetch('/api/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          throw new Error(await res.text());
+        }
+        const nextProfile: Profile = {
+          ...(profile ?? {}),
+          name: payload.name ?? null,
+          fullName: payload.name ?? null,
+          rank: payload.rank,
+          isPastGrand: payload.isPastGrand,
+          prefix: payload.prefix,
+          postNominals: payload.postNominals,
+          lodgeName: payload.lodgeName ?? null,
+          lodgeNumber: payload.lodgeNumber ?? null,
+          region: payload.region ?? null,
+        };
+        setProfile(nextProfile);
+        setProfileModalOpen(false);
+        setProfileForm(null);
+      } catch (err: any) {
+        setProfileError(err?.message || 'Unable to save profile');
+      } finally {
+        setProfileSaving(false);
+      }
+    },
+    [profileForm, profile],
+  );
+
+  const prefixText =
+    profile && typeof profile.prefix === 'string' ? profile.prefix.trim() : '';
+  const nameText =
+    profile && typeof (profile.fullName ?? profile.name) === 'string'
+      ? (profile.fullName ?? profile.name ?? '').trim()
+      : '';
+  const postNominalsText = profile
+    ? Array.isArray(profile.postNominals)
+      ? profile.postNominals
+          .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+          .join(', ')
+      : typeof profile.postNominals === 'string'
+      ? profile.postNominals.trim()
+      : ''
+    : '';
   const nameLine =
-    [profile?.prefix, profile?.fullName || profile?.name, profile?.postNominals]
-      .filter(Boolean)
-      .join(' ') || 'Brother';
+    [prefixText, nameText, postNominalsText].filter(Boolean).join(' ') || 'Brother';
 
   const recentVisits = visits.slice(0, 5);
   const recentWorkings = workings.slice(0, 5);
@@ -134,7 +329,9 @@ export default function HomePage() {
             <div className="subtle mb-0.5">Signed in as</div>
             <div className="text-base font-medium">{nameLine}</div>
           </div>
-          <Link href="/profile" className="navlink">Edit Profile</Link>
+          <button type="button" className="navlink" onClick={openProfileModal}>
+            Edit Profile
+          </button>
         </div>
       </div>
 
@@ -231,6 +428,139 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      <Modal
+        open={profileModalOpen}
+        title="Edit Profile"
+        onClose={closeProfileModal}
+      >
+        {profileForm && (
+          <form className="space-y-4" onSubmit={saveProfile}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label className="label">
+                <span>Name</span>
+                <input
+                  className="input mt-1"
+                  type="text"
+                  value={profileForm.name}
+                  onChange={(e) =>
+                    setProfileForm((prev) =>
+                      prev ? { ...prev, name: e.target.value } : prev,
+                    )
+                  }
+                  placeholder="e.g., John Smith"
+                  required
+                />
+              </label>
+              <div className="label">
+                <span>Past Grand Rank</span>
+                <label className="flex items-center gap-2 text-sm font-medium mt-1">
+                  <input
+                    type="checkbox"
+                    checked={profileForm.isPastGrand}
+                    onChange={(e) => handlePastGrandChange(e.target.checked)}
+                  />
+                  <span>Show only Grand ranks (as Past)</span>
+                </label>
+              </div>
+            </div>
+
+            <label className="label">
+              <span>Rank</span>
+              <select
+                className="input mt-1"
+                value={profileForm.rank}
+                onChange={(e) =>
+                  setProfileForm((prev) =>
+                    prev ? { ...prev, rank: e.target.value } : prev,
+                  )
+                }
+              >
+                {(profileForm.isPastGrand ? grandRankOptions : RANK_OPTIONS).map((rank) => (
+                  <option key={rank} value={rank}>
+                    {profileForm.isPastGrand && RANK_META[rank]?.grand
+                      ? `Past ${rank}`
+                      : rank}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label className="label">
+                <span>Lodge Name</span>
+                <input
+                  className="input mt-1"
+                  type="text"
+                  value={profileForm.lodgeName}
+                  onChange={(e) =>
+                    setProfileForm((prev) =>
+                      prev ? { ...prev, lodgeName: e.target.value } : prev,
+                    )
+                  }
+                  placeholder="e.g., Lodge Example"
+                />
+              </label>
+              <label className="label">
+                <span>Lodge Number</span>
+                <input
+                  className="input mt-1"
+                  type="text"
+                  value={profileForm.lodgeNumber}
+                  onChange={(e) =>
+                    setProfileForm((prev) =>
+                      prev ? { ...prev, lodgeNumber: e.target.value } : prev,
+                    )
+                  }
+                  placeholder="e.g., No. 123"
+                />
+              </label>
+            </div>
+
+            <label className="label">
+              <span>Region</span>
+              <select
+                className="input mt-1"
+                value={profileForm.region}
+                onChange={(e) =>
+                  setProfileForm((prev) =>
+                    prev ? { ...prev, region: e.target.value } : prev,
+                  )
+                }
+              >
+                <option value="">Select region</option>
+                {REGION_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {profileError && (
+              <p className="text-sm text-red-600">{profileError}</p>
+            )}
+
+            <div className="flex justify-end gap-3 pt-1">
+              <button
+                type="button"
+                className="btn-soft"
+                onClick={closeProfileModal}
+                disabled={profileSaving}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={profileSaving}
+              >
+                {profileSaving ? 'Saving…' : 'Save Profile'}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 }

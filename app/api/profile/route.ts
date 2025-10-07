@@ -16,6 +16,7 @@ export async function GET() {
     postNominals: u.postNominals,
     lodgeName: u.lodgeName,
     lodgeNumber: u.lodgeNumber,
+    region: u.region,
   });
 }
 
@@ -34,6 +35,7 @@ export async function PUT(req: Request) {
       postNominals: Array.isArray(body.postNominals) ? body.postNominals : [],
       lodgeName: body.lodgeName ?? null,
       lodgeNumber: body.lodgeNumber ?? null,
+      region: body.region ?? null,
     },
   });
 
