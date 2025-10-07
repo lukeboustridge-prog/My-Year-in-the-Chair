@@ -165,7 +165,7 @@ export default function VisitsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="h1">Visits</h1>
           <p className="subtle">Add, view, and edit your visiting record.</p>
@@ -177,52 +177,101 @@ export default function VisitsPage() {
 
       <div className="card">
         <div className="card-body">
+          {error && <div className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>}
           {records === null ? (
             <div className="subtle">Loading…</div>
           ) : records.length === 0 ? (
             <div className="subtle">No visits yet.</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-slate-500 text-xs uppercase tracking-wide">
-                    <th className="py-2 pr-3">Date</th>
-                    <th className="py-2 pr-3">Lodge</th>
-                    <th className="py-2 pr-3">Number</th>
-                    <th className="py-2 pr-3">Work</th>
-                    <th className="py-2 pr-3">GL Visit</th>
-                    <th className="py-2 pr-3">Candidate</th>
-                    <th className="py-2 pr-3">Notes</th>
-                    <th className="py-2 pr-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {records.map((record) => (
-                    <tr key={record.id} className="border-t">
-                      <td className="py-2 pr-3">{toDisplayDate(record.date)}</td>
-                      <td className="py-2 pr-3">{record.lodgeName || "—"}</td>
-                      <td className="py-2 pr-3">{record.lodgeNumber || "—"}</td>
-                      <td className="py-2 pr-3">{workOptions.find((opt) => opt.value === record.workOfEvening)?.label ?? record.workOfEvening}</td>
-                      <td className="py-2 pr-3">{record.grandLodgeVisit ? "Yes" : "No"}</td>
-                      <td className="py-2 pr-3">{record.candidateName || "—"}</td>
-                      <td className="py-2 pr-3 whitespace-pre-wrap">{record.notes || "—"}</td>
-                      <td className="py-2 pr-3">
-                        <div className="flex gap-2">
-                          <button className="navlink" onClick={() => openEdit(record)}>
-                            Edit
-                          </button>
-                          <button className="navlink" onClick={() => deleteVisit(record.id)}>
-                            Delete
-                          </button>
-                        </div>
-                      </td>
+            <>
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+                      <th className="py-2 pr-3">Date</th>
+                      <th className="py-2 pr-3">Lodge</th>
+                      <th className="py-2 pr-3">Number</th>
+                      <th className="py-2 pr-3">Work</th>
+                      <th className="py-2 pr-3">GL Visit</th>
+                      <th className="py-2 pr-3">Candidate</th>
+                      <th className="py-2 pr-3">Notes</th>
+                      <th className="py-2 pr-3">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {records.map((record) => (
+                      <tr key={record.id} className="border-t border-slate-100">
+                        <td className="py-2 pr-3 align-top font-medium text-slate-900">{toDisplayDate(record.date)}</td>
+                        <td className="py-2 pr-3 align-top text-slate-700">{record.lodgeName || "—"}</td>
+                        <td className="py-2 pr-3 align-top text-slate-700">{record.lodgeNumber || "—"}</td>
+                        <td className="py-2 pr-3 align-top">
+                          <span className="badge">
+                            {workOptions.find((opt) => opt.value === record.workOfEvening)?.label ?? record.workOfEvening}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-3 align-top">{record.grandLodgeVisit ? "Yes" : "No"}</td>
+                        <td className="py-2 pr-3 align-top text-slate-700">{record.candidateName || "—"}</td>
+                        <td className="py-2 pr-3 align-top whitespace-pre-wrap text-slate-700">{record.notes || "—"}</td>
+                        <td className="py-2 pr-3 align-top">
+                          <div className="flex flex-wrap gap-2">
+                            <button className="btn-soft text-xs" onClick={() => openEdit(record)}>
+                              Edit
+                            </button>
+                            <button className="btn-soft text-xs" onClick={() => deleteVisit(record.id)}>
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="grid gap-3 md:hidden">
+                {records.map((record) => (
+                  <div key={record.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">{toDisplayDate(record.date)}</div>
+                        <div className="text-sm text-slate-600">
+                          {record.lodgeName || "—"}
+                          {record.lodgeNumber ? ` · No. ${record.lodgeNumber}` : ""}
+                        </div>
+                      </div>
+                      <span className="badge">
+                        {workOptions.find((opt) => opt.value === record.workOfEvening)?.label ?? record.workOfEvening}
+                      </span>
+                    </div>
+                    <dl className="mt-3 space-y-1 text-sm text-slate-700">
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-slate-500">Grand Lodge Visit</dt>
+                        <dd>{record.grandLodgeVisit ? "Yes" : "No"}</dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-slate-500">Candidate</dt>
+                        <dd className="text-right">{record.candidateName || "—"}</dd>
+                      </div>
+                      {record.notes && (
+                        <div>
+                          <dt className="text-slate-500">Notes</dt>
+                          <dd className="mt-0.5 text-right text-slate-700">{record.notes}</dd>
+                        </div>
+                      )}
+                    </dl>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button className="btn-soft text-xs" onClick={() => openEdit(record)}>
+                        Edit
+                      </button>
+                      <button className="btn-soft text-xs" onClick={() => deleteVisit(record.id)}>
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
-          {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
         </div>
       </div>
 

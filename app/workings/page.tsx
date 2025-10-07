@@ -244,7 +244,7 @@ export default function WorkingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="h1">My Lodge Workings</h1>
           <p className="subtle">Plan and review upcoming ceremonies.</p>
@@ -256,62 +256,126 @@ export default function WorkingsPage() {
 
       <div className="card">
         <div className="card-body">
+          {error && <div className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>}
           {records === null ? (
             <div className="subtle">Loading…</div>
           ) : records.length === 0 ? (
             <div className="subtle">No lodge workings planned yet.</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-slate-500 text-xs uppercase tracking-wide">
-                    <th className="py-2 pr-3">Date</th>
-                    <th className="py-2 pr-3">Month</th>
-                    <th className="py-2 pr-3">Work</th>
-                    <th className="py-2 pr-3">Candidate</th>
-                    <th className="py-2 pr-3">Lecture</th>
-                    <th className="py-2 pr-3">GL Visit</th>
-                    <th className="py-2 pr-3">Emergency</th>
-                    <th className="py-2 pr-3">Tracing Boards</th>
-                    <th className="py-2 pr-3">Notes</th>
-                    <th className="py-2 pr-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {records.map((record) => (
-                    <tr key={record.id} className="border-t">
-                      <td className="py-2 pr-3">{record.meetingDate ? toDisplayDate(record.meetingDate) : "—"}</td>
-                      <td className="py-2 pr-3">
-                        {record.month && record.year
-                          ? `${String(record.month).padStart(2, "0")}/${record.year}`
-                          : "—"}
-                      </td>
-                      <td className="py-2 pr-3">
-                        {workOptions.find((opt) => opt.value === record.work)?.label ?? record.work}
-                      </td>
-                      <td className="py-2 pr-3">{record.candidateName || "—"}</td>
-                      <td className="py-2 pr-3">{record.lecture || "—"}</td>
-                      <td className="py-2 pr-3">{record.grandLodgeVisit ? "Yes" : "No"}</td>
-                      <td className="py-2 pr-3">{record.emergencyMeeting ? "Yes" : "No"}</td>
-                      <td className="py-2 pr-3">{formatTracingBoards(record)}</td>
-                      <td className="py-2 pr-3 whitespace-pre-wrap">{record.notes || "—"}</td>
-                      <td className="py-2 pr-3">
-                        <div className="flex gap-2">
-                          <button className="navlink" onClick={() => openEdit(record)}>
-                            Edit
-                          </button>
-                          <button className="navlink" onClick={() => deleteWorking(record.id)}>
-                            Delete
-                          </button>
-                        </div>
-                      </td>
+            <>
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+                      <th className="py-2 pr-3">Date</th>
+                      <th className="py-2 pr-3">Month</th>
+                      <th className="py-2 pr-3">Work</th>
+                      <th className="py-2 pr-3">Candidate</th>
+                      <th className="py-2 pr-3">Lecture</th>
+                      <th className="py-2 pr-3">GL Visit</th>
+                      <th className="py-2 pr-3">Emergency</th>
+                      <th className="py-2 pr-3">Tracing Boards</th>
+                      <th className="py-2 pr-3">Notes</th>
+                      <th className="py-2 pr-3">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {records.map((record) => (
+                      <tr key={record.id} className="border-t border-slate-100">
+                        <td className="py-2 pr-3 align-top font-medium text-slate-900">
+                          {record.meetingDate ? toDisplayDate(record.meetingDate) : "—"}
+                        </td>
+                        <td className="py-2 pr-3 align-top text-slate-700">
+                          {record.month && record.year
+                            ? `${String(record.month).padStart(2, "0")}/${record.year}`
+                            : "—"}
+                        </td>
+                        <td className="py-2 pr-3 align-top">
+                          <span className="badge">
+                            {workOptions.find((opt) => opt.value === record.work)?.label ?? record.work}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-3 align-top text-slate-700">{record.candidateName || "—"}</td>
+                        <td className="py-2 pr-3 align-top text-slate-700">{record.lecture || "—"}</td>
+                        <td className="py-2 pr-3 align-top">{record.grandLodgeVisit ? "Yes" : "No"}</td>
+                        <td className="py-2 pr-3 align-top">{record.emergencyMeeting ? "Yes" : "No"}</td>
+                        <td className="py-2 pr-3 align-top text-slate-700">{formatTracingBoards(record)}</td>
+                        <td className="py-2 pr-3 align-top whitespace-pre-wrap text-slate-700">{record.notes || "—"}</td>
+                        <td className="py-2 pr-3 align-top">
+                          <div className="flex flex-wrap gap-2">
+                            <button className="btn-soft text-xs" onClick={() => openEdit(record)}>
+                              Edit
+                            </button>
+                            <button className="btn-soft text-xs" onClick={() => deleteWorking(record.id)}>
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="grid gap-3 md:hidden">
+                {records.map((record) => (
+                  <div key={record.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">
+                          {record.meetingDate ? toDisplayDate(record.meetingDate) : "Date TBC"}
+                        </div>
+                        <div className="text-sm text-slate-600">
+                          {record.month && record.year
+                            ? `${String(record.month).padStart(2, "0")}/${record.year}`
+                            : "Month TBC"}
+                        </div>
+                      </div>
+                      <span className="badge">
+                        {workOptions.find((opt) => opt.value === record.work)?.label ?? record.work}
+                      </span>
+                    </div>
+                    <dl className="mt-3 space-y-1 text-sm text-slate-700">
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-slate-500">Candidate</dt>
+                        <dd className="text-right">{record.candidateName || "—"}</dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-slate-500">Lecture</dt>
+                        <dd className="text-right">{record.lecture || "—"}</dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-slate-500">Grand Lodge Visit</dt>
+                        <dd>{record.grandLodgeVisit ? "Yes" : "No"}</dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-slate-500">Emergency Meeting</dt>
+                        <dd>{record.emergencyMeeting ? "Yes" : "No"}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-slate-500">Tracing Boards</dt>
+                        <dd className="mt-0.5 text-right">{formatTracingBoards(record)}</dd>
+                      </div>
+                      {record.notes && (
+                        <div>
+                          <dt className="text-slate-500">Notes</dt>
+                          <dd className="mt-0.5 text-right text-slate-700">{record.notes}</dd>
+                        </div>
+                      )}
+                    </dl>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button className="btn-soft text-xs" onClick={() => openEdit(record)}>
+                        Edit
+                      </button>
+                      <button className="btn-soft text-xs" onClick={() => deleteWorking(record.id)}>
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
-          {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
         </div>
       </div>
 
