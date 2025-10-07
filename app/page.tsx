@@ -125,25 +125,25 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="h1">Dashboard</h1>
           <p className="subtle mt-1">Welcome, {nameLine}.</p>
         </div>
         {/* Removed Add Visit/Add Working per request; actions live on their pages */}
-        <div className="flex flex-wrap gap-2">
-          <Link href="/reports" className="btn-soft">Export Report</Link>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Link href="/reports" className="btn-soft text-center">Export Report</Link>
         </div>
       </div>
 
       {/* Profile quick card */}
       <div className="card">
-        <div className="card-body flex items-center justify-between">
-          <div>
-            <div className="subtle mb-0.5">Signed in as</div>
-            <div className="text-base font-medium">{nameLine}</div>
+        <div className="card-body flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-0.5">
+            <div className="subtle">Signed in as</div>
+            <div className="text-base font-medium break-words">{nameLine}</div>
           </div>
-          <Link href="/profile" className="navlink">Edit Profile</Link>
+          <Link href="/profile" className="navlink w-full justify-center sm:w-auto">Edit Profile</Link>
         </div>
       </div>
 
@@ -180,68 +180,128 @@ export default function HomePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="card">
-          <div className="card-body">
-            <div className="flex items-center justify-between mb-3">
+          <div className="card-body space-y-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="font-semibold">Recent Visits</h2>
-              <Link href="/visits" className="navlink">Manage</Link>
+              <Link href="/visits" className="navlink w-full justify-center sm:w-auto">Manage</Link>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-slate-500">
-                    <th className="py-2 pr-3">Date</th>
-                    <th className="py-2 pr-3">Lodge</th>
-                    <th className="py-2 pr-3">Work</th>
-                    <th className="py-2 pr-3">GL Visit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visits.length === 0 ? (
-                    <tr className="border-t"><td className="py-2 pr-3" colSpan={4}>No recent visits.</td></tr>
-                  ) : visits.map(v => (
-                    <tr key={v.id || (v.dateISO || '') + (v.lodgeName || '')} className="border-t">
-                      <td className="py-2 pr-3">{toDisplayDate(v.dateISO || '')}</td>
-                      <td className="py-2 pr-3">{v.lodgeName || '—'}</td>
-                      <td className="py-2 pr-3">{v.eventType || '—'}</td>
-                      <td className="py-2 pr-3">{v.grandLodgeVisit ? 'Yes' : 'No'}</td>
-                    </tr>
+            {visits.length === 0 ? (
+              <div className="subtle">No recent visits.</div>
+            ) : (
+              <>
+                <div className="space-y-3 sm:hidden">
+                  {visits.map((v) => (
+                    <div
+                      key={v.id || (v.dateISO || '') + (v.lodgeName || '') + (v.lodgeNumber || '')}
+                      className="rounded-xl border border-slate-200 bg-slate-50/80 p-4"
+                    >
+                      <div className="flex flex-col gap-1">
+                        <div className="text-sm font-semibold text-slate-900">
+                          {v.lodgeName || '—'}
+                          {v.lodgeNumber ? ` • No. ${v.lodgeNumber}` : ''}
+                        </div>
+                        <div className="text-xs text-slate-500">{toDisplayDate(v.dateISO || '')}</div>
+                        <div className="text-sm text-slate-600">Work: {v.eventType || '—'}</div>
+                        <div className="text-xs font-medium text-slate-500">
+                          Grand Lodge Visit: {v.grandLodgeVisit ? 'Yes' : 'No'}
+                        </div>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </div>
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-slate-500">
+                        <th className="py-2 pr-3">Date</th>
+                        <th className="py-2 pr-3">Lodge</th>
+                        <th className="py-2 pr-3">Work</th>
+                        <th className="py-2 pr-3">GL Visit</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visits.map((v) => (
+                        <tr
+                          key={v.id || (v.dateISO || '') + (v.lodgeName || '') + (v.lodgeNumber || '')}
+                          className="border-t"
+                        >
+                          <td className="py-2 pr-3">{toDisplayDate(v.dateISO || '')}</td>
+                          <td className="py-2 pr-3">
+                            <div className="flex flex-col">
+                              <span>{v.lodgeName || '—'}</span>
+                              {v.lodgeNumber && (
+                                <span className="text-xs text-slate-500">No. {v.lodgeNumber}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-2 pr-3">{v.eventType || '—'}</td>
+                          <td className="py-2 pr-3">{v.grandLodgeVisit ? 'Yes' : 'No'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
         <div className="card">
-          <div className="card-body">
-            <div className="flex items-center justify-between mb-3">
+          <div className="card-body space-y-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="font-semibold">Recent Lodge Workings</h2>
-              <Link href="/my-work" className="navlink">Manage</Link>
+              <Link href="/my-work" className="navlink w-full justify-center sm:w-auto">Manage</Link>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-slate-500">
-                    <th className="py-2 pr-3">Date</th>
-                    <th className="py-2 pr-3">Degree</th>
-                    <th className="py-2 pr-3">Candidate</th>
-                    <th className="py-2 pr-3">GL Visit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {workings.length === 0 ? (
-                    <tr className="border-t"><td className="py-2 pr-3" colSpan={4}>No recent records.</td></tr>
-                  ) : workings.map(w => (
-                    <tr key={w.id || (w.dateISO || '') + (w.candidateName || '')} className="border-t">
-                      <td className="py-2 pr-3">{toDisplayDate(w.dateISO || '')}</td>
-                      <td className="py-2 pr-3">{w.degree || '—'}</td>
-                      <td className="py-2 pr-3">{w.candidateName || '—'}</td>
-                      <td className="py-2 pr-3">{w.grandLodgeVisit ? 'Yes' : 'No'}</td>
-                    </tr>
+            {workings.length === 0 ? (
+              <div className="subtle">No recent records.</div>
+            ) : (
+              <>
+                <div className="space-y-3 sm:hidden">
+                  {workings.map((w) => (
+                    <div
+                      key={w.id || (w.dateISO || '') + (w.candidateName || '')}
+                      className="rounded-xl border border-slate-200 bg-slate-50/80 p-4"
+                    >
+                      <div className="flex flex-col gap-1">
+                        <div className="text-sm font-semibold text-slate-900">{w.degree || '—'}</div>
+                        <div className="text-xs text-slate-500">{toDisplayDate(w.dateISO || '')}</div>
+                        <div className="text-sm text-slate-600">
+                          Candidate: {w.candidateName || '—'}
+                        </div>
+                        <div className="text-xs font-medium text-slate-500">
+                          Grand Lodge Visit: {w.grandLodgeVisit ? 'Yes' : 'No'}
+                        </div>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </div>
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-slate-500">
+                        <th className="py-2 pr-3">Date</th>
+                        <th className="py-2 pr-3">Degree</th>
+                        <th className="py-2 pr-3">Candidate</th>
+                        <th className="py-2 pr-3">GL Visit</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {workings.map((w) => (
+                        <tr
+                          key={w.id || (w.dateISO || '') + (w.candidateName || '')}
+                          className="border-t"
+                        >
+                          <td className="py-2 pr-3">{toDisplayDate(w.dateISO || '')}</td>
+                          <td className="py-2 pr-3">{w.degree || '—'}</td>
+                          <td className="py-2 pr-3">{w.candidateName || '—'}</td>
+                          <td className="py-2 pr-3">{w.grandLodgeVisit ? 'Yes' : 'No'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

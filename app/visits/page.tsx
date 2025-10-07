@@ -145,56 +145,97 @@ export default function VisitsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="h1">Visits</h1>
           <p className="subtle">Add, view, and edit your visiting record.</p>
         </div>
-        <button className="btn-primary" onClick={openNew}>Add Visit</button>
+        <button className="btn-primary w-full sm:w-auto" onClick={openNew}>Add Visit</button>
       </div>
 
       <div className="card">
-        <div className="card-body">
+        <div className="card-body space-y-4">
           {records === null ? (
             <div className="subtle">Loading…</div>
           ) : records.length === 0 ? (
             <div className="subtle">No visits yet.</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-slate-500">
-                    <th className="py-2 pr-3">Date</th>
-                    <th className="py-2 pr-3">Lodge</th>
-                    <th className="py-2 pr-3">Lodge No.</th>
-                    <th className="py-2 pr-3">Work</th>
-                    <th className="py-2 pr-3">GL Visit</th>
-                    <th className="py-2 pr-3">Notes</th>
-                    <th className="py-2 pr-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {records.map((r) => (
-                    <tr key={r.id || r.dateISO + r.lodgeName + r.lodgeNumber} className="border-t">
-                      <td className="py-2 pr-3">{toDisplayDate(r.dateISO)}</td>
-                      <td className="py-2 pr-3">{r.lodgeName || '—'}</td>
-                      <td className="py-2 pr-3">{r.lodgeNumber || '—'}</td>
-                      <td className="py-2 pr-3">{r.eventType || '—'}</td>
-                      <td className="py-2 pr-3">{r.grandLodgeVisit ? 'Yes' : 'No'}</td>
-                      <td className="py-2 pr-3">{r.notes || '—'}</td>
-                      <td className="py-2 pr-3">
-                        <div className="flex gap-2">
-                          <button className="navlink" onClick={() => openEdit(r)}>Edit</button>
-                          <button className="navlink" onClick={() => deleteVisit(r.id)}>Delete</button>
+            <>
+              <div className="space-y-3 sm:hidden">
+                {records.map((r) => (
+                  <div
+                    key={r.id || r.dateISO + r.lodgeName + r.lodgeNumber}
+                    className="rounded-xl border border-slate-200 bg-slate-50/80 p-4"
+                  >
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm font-semibold text-slate-900">{r.lodgeName || '—'}</span>
+                        <span className="text-xs text-slate-500">{toDisplayDate(r.dateISO)}</span>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 text-sm text-slate-600">
+                        <div>
+                          <span className="text-xs uppercase tracking-wide text-slate-500">Lodge No.</span>
+                          <div>{r.lodgeNumber || '—'}</div>
                         </div>
-                      </td>
+                        <div>
+                          <span className="text-xs uppercase tracking-wide text-slate-500">Work</span>
+                          <div>{r.eventType || '—'}</div>
+                        </div>
+                        <div>
+                          <span className="text-xs uppercase tracking-wide text-slate-500">Grand Lodge Visit</span>
+                          <div>{r.grandLodgeVisit ? 'Yes' : 'No'}</div>
+                        </div>
+                        {r.notes ? (
+                          <div>
+                            <span className="text-xs uppercase tracking-wide text-slate-500">Notes</span>
+                            <div>{r.notes}</div>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-1 gap-2 sm:hidden">
+                      <button className="navlink w-full justify-center" onClick={() => openEdit(r)}>Edit</button>
+                      <button className="navlink w-full justify-center" onClick={() => deleteVisit(r.id)}>Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-slate-500">
+                      <th className="py-2 pr-3">Date</th>
+                      <th className="py-2 pr-3">Lodge</th>
+                      <th className="py-2 pr-3">Lodge No.</th>
+                      <th className="py-2 pr-3">Work</th>
+                      <th className="py-2 pr-3">GL Visit</th>
+                      <th className="py-2 pr-3">Notes</th>
+                      <th className="py-2 pr-3">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {records.map((r) => (
+                      <tr key={r.id || r.dateISO + r.lodgeName + r.lodgeNumber} className="border-t">
+                        <td className="py-2 pr-3">{toDisplayDate(r.dateISO)}</td>
+                        <td className="py-2 pr-3">{r.lodgeName || '—'}</td>
+                        <td className="py-2 pr-3">{r.lodgeNumber || '—'}</td>
+                        <td className="py-2 pr-3">{r.eventType || '—'}</td>
+                        <td className="py-2 pr-3">{r.grandLodgeVisit ? 'Yes' : 'No'}</td>
+                        <td className="py-2 pr-3">{r.notes || '—'}</td>
+                        <td className="py-2 pr-3">
+                          <div className="flex gap-2">
+                            <button className="navlink" onClick={() => openEdit(r)}>Edit</button>
+                            <button className="navlink" onClick={() => deleteVisit(r.id)}>Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
-          {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
+          {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
       </div>
 
@@ -233,18 +274,23 @@ export default function VisitsPage() {
                 <option>Other</option>
               </select>
             </label>
-            <label className="flex items-center gap-2 mt-6">
-              <input type="checkbox" checked={!!editing?.grandLodgeVisit} onChange={e=>setEditing(v=>({...(v as Visit), grandLodgeVisit: e.target.checked}))} />
-              <span className="text-sm font-medium">Grand Lodge Visit</span>
+            <label className="sm:col-span-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium shadow-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={!!editing?.grandLodgeVisit}
+                onChange={e=>setEditing(v=>({...(v as Visit), grandLodgeVisit: e.target.checked}))}
+              />
+              <span>Grand Lodge Visit</span>
             </label>
           </div>
           <label className="label">
             <span>Notes</span>
             <textarea className="input mt-1" rows={3} value={editing?.notes || ''} onChange={e=>setEditing(v=>({...(v as Visit), notes: e.target.value}))} />
           </label>
-          <div className="flex justify-end gap-2">
-            <button type="button" className="btn-soft" onClick={closeModal}>Cancel</button>
-            <button type="submit" className="btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button type="button" className="btn-soft w-full sm:w-auto" onClick={closeModal}>Cancel</button>
+            <button type="submit" className="btn-primary w-full sm:w-auto" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
           </div>
         </form>
       </Modal>
