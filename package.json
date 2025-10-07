@@ -8,6 +8,7 @@
     "build": "node scripts/ensure-db.js && next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "tsx --test tests/**/*.test.ts",
     "db:push": "prisma db push --accept-data-loss",
     "prisma:generate": "prisma generate",
     "postinstall": "prisma generate"
@@ -29,6 +30,7 @@
     "jspdf-autotable": "^3.8.2",
     "next": "14.2.4",
     "pdfkit": "^0.15.1",
+    "playwright-core": "^1.48.0",
     "postcss": "8.4.38",
     "react": "18.3.1",
     "react-dom": "18.3.1",
@@ -47,7 +49,8 @@
     "@types/react-dom": "18.2.7",
     "@typescript-eslint/eslint-plugin": "^7.2.0",
     "@typescript-eslint/parser": "^7.2.0",
-    "prisma": "^5.19.0"
+    "prisma": "^5.19.0",
+    "tsx": "^4.19.2"
   },
   "engines": {
     "node": ">=18.12.0"
