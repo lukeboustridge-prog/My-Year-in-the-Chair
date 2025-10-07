@@ -44,6 +44,9 @@ export async function PATCH(
         ...("candidateName" in d
           ? { candidateName: d.candidateName ?? null }
           : {}),
+        ...("grandLodgeVisit" in d
+          ? { grandLodgeVisit: d.grandLodgeVisit ?? false }
+          : {}),
         ...("lecture" in d ? { lecture: d.lecture ?? null } : {}),
         ...("tracingBoard1" in d
           ? { tracingBoard1: d.tracingBoard1 ?? false }

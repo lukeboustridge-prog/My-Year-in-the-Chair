@@ -75,6 +75,7 @@ model LodgeWork {
   meetingDate   DateTime?
   month         Int
   year          Int
+  grandLodgeVisit Boolean  @default(false)
   work          WorkType @default(OTHER)
   candidateName String?
   lecture       String?

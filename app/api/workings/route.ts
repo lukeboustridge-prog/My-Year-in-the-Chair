@@ -58,6 +58,7 @@ export async function POST(req: Request) {
         meetingDate: meetingDate ?? null,
         month,
         year,
+        grandLodgeVisit: data.grandLodgeVisit ?? false,
         work: data.work,
         candidateName: data.candidateName ?? null,
         lecture: data.lecture ?? null,

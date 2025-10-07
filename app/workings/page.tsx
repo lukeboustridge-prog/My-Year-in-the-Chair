@@ -14,6 +14,17 @@ const WORK_OPTIONS = [
   { value: "OTHER", label: "Other" },
 ] as const;
 
+type TracingBoardKey = "tracingBoard1" | "tracingBoard2" | "tracingBoard3";
+
+const TRACING_BOARD_OPTIONS: readonly {
+  key: TracingBoardKey;
+  label: string;
+}[] = [
+  { key: "tracingBoard1", label: "1st Degree Tracing Board" },
+  { key: "tracingBoard2", label: "2nd Degree Tracing Board" },
+  { key: "tracingBoard3", label: "3rd Degree Tracing Board" },
+];
+
 type WorkType = (typeof WORK_OPTIONS)[number]["value"];
 
 type LodgeWorkRecord = {
@@ -21,6 +32,7 @@ type LodgeWorkRecord = {
   meetingDate: string | null;
   month: number | null;
   year: number | null;
+  grandLodgeVisit: boolean;
   work: WorkType;
   candidateName: string | null;
   lecture: string | null;
@@ -41,6 +53,7 @@ const emptyWork: LodgeWorkForm = {
   meetingDate: DEFAULT_DATE,
   month: null,
   year: null,
+  grandLodgeVisit: false,
   work: "OTHER",
   candidateName: "",
   lecture: "",
@@ -59,6 +72,7 @@ function normaliseWork(raw: any): LodgeWorkRecord {
     meetingDate,
     month,
     year,
+    grandLodgeVisit: Boolean(raw?.grandLodgeVisit),
     work: (raw?.work as WorkType) ?? "OTHER",
     candidateName: raw?.candidateName ?? null,
     lecture: raw?.lecture ?? null,
@@ -70,11 +84,8 @@ function normaliseWork(raw: any): LodgeWorkRecord {
 }
 
 function formatTracingBoards(record: LodgeWorkRecord) {
-  const boards = [
-    record.tracingBoard1 ? "1" : null,
-    record.tracingBoard2 ? "2" : null,
-    record.tracingBoard3 ? "3" : null,
-  ].filter(Boolean);
+  const boards = TRACING_BOARD_OPTIONS.filter((option) => record[option.key])
+    .map((option) => option.label);
   return boards.length ? boards.join(", ") : "—";
 }
 
@@ -87,6 +98,12 @@ export default function WorkingsPage() {
   const [formError, setFormError] = React.useState<string | null>(null);
 
   const workOptions = React.useMemo(() => WORK_OPTIONS, []);
+  const handleTracingBoardChange = React.useCallback(
+    (key: TracingBoardKey, value: boolean) => {
+      setEditing((prev) => (prev ? { ...prev, [key]: value } : prev));
+    },
+    [],
+  );
 
   const loadWorkings = React.useCallback(async () => {
     try {
@@ -119,6 +136,7 @@ export default function WorkingsPage() {
       meetingDate: record.meetingDate ?? DEFAULT_DATE,
       month: record.month,
       year: record.year,
+      grandLodgeVisit: Boolean(record.grandLodgeVisit),
       work: record.work,
       candidateName: record.candidateName ?? "",
       lecture: record.lecture ?? "",
@@ -161,6 +179,7 @@ export default function WorkingsPage() {
       meetingDate: isoDate,
       month,
       year,
+      grandLodgeVisit: Boolean(editing.grandLodgeVisit),
       work: editing.work,
       candidateName: editing.candidateName?.trim() || undefined,
       lecture: editing.lecture?.trim() || undefined,
@@ -246,6 +265,7 @@ export default function WorkingsPage() {
                     <th className="py-2 pr-3">Work</th>
                     <th className="py-2 pr-3">Candidate</th>
                     <th className="py-2 pr-3">Lecture</th>
+                    <th className="py-2 pr-3">GL Visit</th>
                     <th className="py-2 pr-3">Tracing Boards</th>
                     <th className="py-2 pr-3">Notes</th>
                     <th className="py-2 pr-3">Actions</th>
@@ -265,6 +285,7 @@ export default function WorkingsPage() {
                       </td>
                       <td className="py-2 pr-3">{record.candidateName || "—"}</td>
                       <td className="py-2 pr-3">{record.lecture || "—"}</td>
+                      <td className="py-2 pr-3">{record.grandLodgeVisit ? "Yes" : "No"}</td>
                       <td className="py-2 pr-3">{formatTracingBoards(record)}</td>
                       <td className="py-2 pr-3 whitespace-pre-wrap">{record.notes || "—"}</td>
                       <td className="py-2 pr-3">
@@ -363,44 +384,32 @@ export default function WorkingsPage() {
                 />
               </label>
             </div>
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={Boolean(editing.grandLodgeVisit)}
+                onChange={(e) =>
+                  setEditing((prev) =>
+                    prev ? { ...prev, grandLodgeVisit: e.target.checked } : prev,
+                  )
+                }
+              />
+              <span>Grand Lodge Visit</span>
+            </div>
             <fieldset className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <legend className="label text-sm font-semibold">Tracing Boards</legend>
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <input
-                  type="checkbox"
-                  checked={Boolean(editing.tracingBoard1)}
-                  onChange={(e) =>
-                    setEditing((prev) =>
-                      prev ? { ...prev, tracingBoard1: e.target.checked } : prev,
-                    )
-                  }
-                />
-                <span>Tracing Board 1</span>
-              </label>
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <input
-                  type="checkbox"
-                  checked={Boolean(editing.tracingBoard2)}
-                  onChange={(e) =>
-                    setEditing((prev) =>
-                      prev ? { ...prev, tracingBoard2: e.target.checked } : prev,
-                    )
-                  }
-                />
-                <span>Tracing Board 2</span>
-              </label>
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <input
-                  type="checkbox"
-                  checked={Boolean(editing.tracingBoard3)}
-                  onChange={(e) =>
-                    setEditing((prev) =>
-                      prev ? { ...prev, tracingBoard3: e.target.checked } : prev,
-                    )
-                  }
-                />
-                <span>Tracing Board 3</span>
-              </label>
+              {TRACING_BOARD_OPTIONS.map((option) => (
+                <label key={option.key} className="flex items-center gap-2 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(editing[option.key])}
+                    onChange={(e) =>
+                      handleTracingBoardChange(option.key, e.target.checked)
+                    }
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
             </fieldset>
             <label className="label">
               <span>Notes</span>

@@ -41,6 +41,22 @@ const WORK_LABELS: Record<string, string> = {
   OTHER: "Other",
 };
 
+function formatWorkLabel(value?: string | null) {
+  if (!value) return "—";
+  if (value in WORK_LABELS) {
+    return WORK_LABELS[value];
+  }
+  if (value === value.toUpperCase()) {
+    return value
+      .toLowerCase()
+      .split(' ')
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
 export default function HomePage() {
   const [profile, setProfile] = React.useState<Profile | null>(null);
   const [visits, setVisits] = React.useState<Visit[]>([]);
@@ -172,7 +188,7 @@ export default function HomePage() {
                     <tr key={v.id || (v.date || v.dateISO || '') + (v.lodgeName || '')} className="border-t">
                       <td className="py-2 pr-3">{toDisplayDate(v.date || v.dateISO || '')}</td>
                       <td className="py-2 pr-3">{v.lodgeName || '—'}</td>
-                      <td className="py-2 pr-3">{v.workOfEvening || v.eventType || '—'}</td>
+                      <td className="py-2 pr-3">{formatWorkLabel(v.workOfEvening || v.eventType)}</td>
                       <td className="py-2 pr-3">{v.grandLodgeVisit ? 'Yes' : 'No'}</td>
                     </tr>
                   ))}

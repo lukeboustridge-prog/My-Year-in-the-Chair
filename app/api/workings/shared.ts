@@ -14,6 +14,7 @@ export const lodgeWorkSchema = z.object({
   meetingDate: z.string().optional(),
   month: z.number().min(1).max(12).optional(),
   year: z.number().min(2000).max(3000).optional(),
+  grandLodgeVisit: z.boolean().optional(),
   work: z.enum(WORK_TYPES),
   candidateName: z.string().optional(),
   lecture: z.string().optional(),
