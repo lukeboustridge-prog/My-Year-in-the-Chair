@@ -320,18 +320,7 @@ export default function HomePage() {
         </div>
         {/* Removed Add Visit/Add Working per request; actions live on their pages */}
         <div className="flex flex-wrap gap-2">
-          <Link href="/reports" className="btn-soft">Export Report</Link>
-        </div>
-      </div>
-
-      {/* Profile quick card */}
-      <div className="card">
-        <div className="card-body flex items-center justify-between">
-          <div>
-            <div className="subtle mb-0.5">Signed in as</div>
-            <div className="text-base font-medium">{nameLine}</div>
-          </div>
-          <button type="button" className="navlink" onClick={openProfileModal}>
+          <button type="button" className="btn-soft" onClick={openProfileModal}>
             Edit Profile
           </button>
         </div>
