@@ -1,5 +1,7 @@
-"use client";
-import { useEffect, useMemo, useState } from "react";
+'use client';
+
+import React from "react";
+import Modal from "@/components/Modal";
 import { toDisplayDate, toISODate } from "@/lib/date";
 
 const WORK_OPTIONS = [
@@ -14,26 +16,44 @@ const WORK_OPTIONS = [
 
 type WorkType = (typeof WORK_OPTIONS)[number]["value"];
 
-type Item = {
+type LodgeWorkRecord = {
   id: string;
   meetingDate: string | null;
-  month: number;
-  year: number;
+  month: number | null;
+  year: number | null;
   work: WorkType;
-  candidateName?: string | null;
-  lecture?: string | null;
-  tracingBoard1?: boolean | null;
-  tracingBoard2?: boolean | null;
-  tracingBoard3?: boolean | null;
-  notes?: string | null;
+  candidateName: string | null;
+  lecture: string | null;
+  tracingBoard1: boolean | null;
+  tracingBoard2: boolean | null;
+  tracingBoard3: boolean | null;
+  notes: string | null;
+};
+
+type LodgeWorkForm = Omit<LodgeWorkRecord, "id"> & {
+  id?: string;
 };
 
 const DEFAULT_DATE = toISODate(new Date().toISOString());
 
-function normaliseItem(raw: any): Item {
+const emptyWork: LodgeWorkForm = {
+  id: undefined,
+  meetingDate: DEFAULT_DATE,
+  month: null,
+  year: null,
+  work: "OTHER",
+  candidateName: "",
+  lecture: "",
+  tracingBoard1: false,
+  tracingBoard2: false,
+  tracingBoard3: false,
+  notes: "",
+};
+
+function normaliseWork(raw: any): LodgeWorkRecord {
   const meetingDate = raw?.meetingDate ? toISODate(raw.meetingDate) : null;
-  const month = raw?.month ?? (meetingDate ? Number(meetingDate.split("-")[1]) : 0);
-  const year = raw?.year ?? (meetingDate ? Number(meetingDate.split("-")[0]) : 0);
+  const month = raw?.month ?? (meetingDate ? Number(meetingDate.split("-")[1]) : null);
+  const year = raw?.year ?? (meetingDate ? Number(meetingDate.split("-")[0]) : null);
   return {
     id: String(raw?.id ?? `${meetingDate ?? ""}-${raw?.work ?? ""}`),
     meetingDate,
@@ -49,107 +69,111 @@ function normaliseItem(raw: any): Item {
   };
 }
 
-function formatTracingBoards(item: Item) {
+function formatTracingBoards(record: LodgeWorkRecord) {
   const boards = [
-    item.tracingBoard1 ? "1" : null,
-    item.tracingBoard2 ? "2" : null,
-    item.tracingBoard3 ? "3" : null,
+    record.tracingBoard1 ? "1" : null,
+    record.tracingBoard2 ? "2" : null,
+    record.tracingBoard3 ? "3" : null,
   ].filter(Boolean);
   return boards.length ? boards.join(", ") : "—";
 }
 
 export default function WorkingsPage() {
-  const [items, setItems] = useState<Item[]>([]);
-  const [meetingDate, setMeetingDate] = useState<string>(DEFAULT_DATE);
-  const [work, setWork] = useState<WorkType>("OTHER");
-  const [candidateName, setCandidate] = useState("");
-  const [lecture, setLecture] = useState("");
-  const [notes, setNotes] = useState("");
-  const [tracingBoard1, setTracingBoard1] = useState(false);
-  const [tracingBoard2, setTracingBoard2] = useState(false);
-  const [tracingBoard3, setTracingBoard3] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [records, setRecords] = React.useState<LodgeWorkRecord[] | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const [modalOpen, setModalOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState<LodgeWorkForm | null>(null);
+  const [busy, setBusy] = React.useState(false);
+  const [formError, setFormError] = React.useState<string | null>(null);
 
-  const workOptions = useMemo(() => WORK_OPTIONS, []);
+  const workOptions = React.useMemo(() => WORK_OPTIONS, []);
 
-  async function load() {
+  const loadWorkings = React.useCallback(async () => {
     try {
       const res = await fetch("/api/workings", { credentials: "include" });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      const normalised = Array.isArray(data) ? data.map(normaliseItem) : [];
-      setItems(normalised);
+      const list = Array.isArray(data) ? data.map(normaliseWork) : [];
+      setRecords(list);
       setError(null);
     } catch (err: any) {
-      setError(err?.message || "Unable to load lodge workings");
-      setItems([]);
+      setRecords([]);
+      setError(err?.message || "Failed to load lodge workings");
     }
-  }
-
-  useEffect(() => {
-    load();
   }, []);
 
-  function resetForm() {
-    setMeetingDate(DEFAULT_DATE);
-    setWork("OTHER");
-    setCandidate("");
-    setLecture("");
-    setNotes("");
-    setTracingBoard1(false);
-    setTracingBoard2(false);
-    setTracingBoard3(false);
-    setEditingId(null);
+  React.useEffect(() => {
+    loadWorkings();
+  }, [loadWorkings]);
+
+  function openNew() {
+    setFormError(null);
+    setEditing({ ...emptyWork, meetingDate: DEFAULT_DATE });
+    setModalOpen(true);
   }
 
-  function populateForm(item: Item) {
-    setMeetingDate(item.meetingDate ?? DEFAULT_DATE);
-    setWork(item.work);
-    setCandidate(item.candidateName ?? "");
-    setLecture(item.lecture ?? "");
-    setNotes(item.notes ?? "");
-    setTracingBoard1(Boolean(item.tracingBoard1));
-    setTracingBoard2(Boolean(item.tracingBoard2));
-    setTracingBoard3(Boolean(item.tracingBoard3));
-    setEditingId(item.id);
+  function openEdit(record: LodgeWorkRecord) {
+    setFormError(null);
+    setEditing({
+      id: record.id,
+      meetingDate: record.meetingDate ?? DEFAULT_DATE,
+      month: record.month,
+      year: record.year,
+      work: record.work,
+      candidateName: record.candidateName ?? "",
+      lecture: record.lecture ?? "",
+      tracingBoard1: Boolean(record.tracingBoard1),
+      tracingBoard2: Boolean(record.tracingBoard2),
+      tracingBoard3: Boolean(record.tracingBoard3),
+      notes: record.notes ?? "",
+    });
+    setModalOpen(true);
   }
 
-  async function save(e: React.FormEvent) {
+  function closeModal() {
+    if (busy) return;
+    setModalOpen(false);
+    setEditing(null);
+    setFormError(null);
+  }
+
+  async function saveWorking(e: React.FormEvent) {
     e.preventDefault();
-    const isoDate = toISODate(meetingDate);
+    if (!editing) return;
+
+    const isoDate = toISODate(editing.meetingDate ?? "");
     if (!isoDate) {
-      setError("Please choose a meeting date.");
+      setFormError("Please choose a meeting date.");
       return;
     }
     const [yearStr, monthStr] = isoDate.split("-");
     const month = Number(monthStr);
     const year = Number(yearStr);
     if (!month || !year) {
-      setError("Month and year could not be determined from the meeting date.");
+      setFormError("Month and year could not be determined from the meeting date.");
       return;
     }
-    setLoading(true);
-    setError(null);
+
+    setBusy(true);
+    setFormError(null);
+
+    const payload = {
+      meetingDate: isoDate,
+      month,
+      year,
+      work: editing.work,
+      candidateName: editing.candidateName?.trim() || undefined,
+      lecture: editing.lecture?.trim() || undefined,
+      tracingBoard1: Boolean(editing.tracingBoard1),
+      tracingBoard2: Boolean(editing.tracingBoard2),
+      tracingBoard3: Boolean(editing.tracingBoard3),
+      notes: editing.notes?.trim() || undefined,
+    };
+    const isNew = !editing.id;
+
     try {
-      const payload = {
-        meetingDate: isoDate,
-        month,
-        year,
-        work,
-        candidateName: candidateName.trim() || undefined,
-        lecture: lecture.trim() || undefined,
-        tracingBoard1,
-        tracingBoard2,
-        tracingBoard3,
-        notes: notes.trim() || undefined,
-      };
-      const isEditing = Boolean(editingId);
-      const url = isEditing ? `/api/workings/${editingId}` : "/api/workings";
-      const method = isEditing ? "PATCH" : "POST";
-      const res = await fetch(url, {
-        method,
+      const res = await fetch(isNew ? "/api/workings" : `/api/workings/${editing.id}`, {
+        method: isNew ? "POST" : "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(payload),
@@ -157,27 +181,29 @@ export default function WorkingsPage() {
       if (!res.ok) {
         throw new Error(await res.text());
       }
-      const created = normaliseItem(await res.json());
-      setItems((prev) => {
-        const current = prev ?? [];
-        if (editingId) {
-          return current.map((item) => (item.id === created.id ? created : item));
+      const saved = normaliseWork(await res.json());
+      setRecords((prev) => {
+        const current = prev ? [...prev] : [];
+        if (isNew) {
+          return [saved, ...current];
         }
-        return [created, ...current];
+        return current.map((item) => (item.id === saved.id ? saved : item));
       });
-      await load();
-      resetForm();
+      await loadWorkings();
+      setModalOpen(false);
+      setEditing(null);
     } catch (err: any) {
-      setError(err?.message || "Unable to save lodge working");
+      setFormError(err?.message || "Unable to save lodge working");
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   }
 
-  async function handleDelete(id: string) {
+  async function deleteWorking(id?: string) {
+    if (!id) return;
     if (!confirm("Delete this lodge working?")) return;
-    const prev = items;
-    setItems((current) => current.filter((item) => item.id !== id));
+    const previous = records ?? [];
+    setRecords(previous.filter((r) => r.id !== id));
     try {
       const res = await fetch(`/api/workings/${id}`, {
         method: "DELETE",
@@ -188,171 +214,217 @@ export default function WorkingsPage() {
       }
     } catch (err: any) {
       alert(err?.message || "Unable to delete lodge working");
-      setItems(prev);
+      setRecords(previous);
     }
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">My Lodge Workings</h1>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="h1">My Lodge Workings</h1>
+          <p className="subtle">Plan and review upcoming ceremonies.</p>
+        </div>
+        <button className="btn-primary" onClick={openNew}>
+          Add Lodge Working
+        </button>
+      </div>
 
-      <form onSubmit={save} className="card grid gap-4 max-w-2xl">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <label className="label">
-            <span>Date</span>
-            <input
-              type="date"
-              className="input mt-1"
-              value={meetingDate}
-              onChange={(e) => setMeetingDate(toISODate(e.target.value))}
-              required
-            />
-          </label>
-          <label className="label">
-            <span>Work of the evening</span>
-            <select
-              className="input mt-1"
-              value={work}
-              onChange={(e) => setWork(e.target.value as WorkType)}
-            >
-              {workOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+      <div className="card">
+        <div className="card-body">
+          {records === null ? (
+            <div className="subtle">Loading…</div>
+          ) : records.length === 0 ? (
+            <div className="subtle">No lodge workings planned yet.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-slate-500 text-xs uppercase tracking-wide">
+                    <th className="py-2 pr-3">Date</th>
+                    <th className="py-2 pr-3">Month</th>
+                    <th className="py-2 pr-3">Work</th>
+                    <th className="py-2 pr-3">Candidate</th>
+                    <th className="py-2 pr-3">Lecture</th>
+                    <th className="py-2 pr-3">Tracing Boards</th>
+                    <th className="py-2 pr-3">Notes</th>
+                    <th className="py-2 pr-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {records.map((record) => (
+                    <tr key={record.id} className="border-t">
+                      <td className="py-2 pr-3">{record.meetingDate ? toDisplayDate(record.meetingDate) : "—"}</td>
+                      <td className="py-2 pr-3">
+                        {record.month && record.year
+                          ? `${String(record.month).padStart(2, "0")}/${record.year}`
+                          : "—"}
+                      </td>
+                      <td className="py-2 pr-3">
+                        {workOptions.find((opt) => opt.value === record.work)?.label ?? record.work}
+                      </td>
+                      <td className="py-2 pr-3">{record.candidateName || "—"}</td>
+                      <td className="py-2 pr-3">{record.lecture || "—"}</td>
+                      <td className="py-2 pr-3">{formatTracingBoards(record)}</td>
+                      <td className="py-2 pr-3 whitespace-pre-wrap">{record.notes || "—"}</td>
+                      <td className="py-2 pr-3">
+                        <div className="flex gap-2">
+                          <button className="navlink" onClick={() => openEdit(record)}>
+                            Edit
+                          </button>
+                          <button className="navlink" onClick={() => deleteWorking(record.id)}>
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <label className="label">
-            <span>Candidate</span>
-            <input
-              className="input mt-1"
-              value={candidateName}
-              onChange={(e) => setCandidate(e.target.value)}
-              placeholder="If applicable"
-            />
-          </label>
-          <label className="label">
-            <span>Lecture</span>
-            <input
-              className="input mt-1"
-              value={lecture}
-              onChange={(e) => setLecture(e.target.value)}
-              placeholder="Lecture or presentation details"
-            />
-          </label>
-        </div>
-        <fieldset className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <legend className="label text-sm font-semibold">Tracing Boards</legend>
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input
-              type="checkbox"
-              checked={tracingBoard1}
-              onChange={(e) => setTracingBoard1(e.target.checked)}
-            />
-            <span>Tracing Board 1</span>
-          </label>
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input
-              type="checkbox"
-              checked={tracingBoard2}
-              onChange={(e) => setTracingBoard2(e.target.checked)}
-            />
-            <span>Tracing Board 2</span>
-          </label>
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input
-              type="checkbox"
-              checked={tracingBoard3}
-              onChange={(e) => setTracingBoard3(e.target.checked)}
-            />
-            <span>Tracing Board 3</span>
-          </label>
-        </fieldset>
-        <label className="label">
-          <span>Notes</span>
-          <textarea
-            rows={3}
-            className="input mt-1"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
-        </label>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <div className="flex justify-end">
-          <div className="flex gap-3">
-            {editingId && (
-              <button
-                type="button"
-                className="btn"
-                onClick={resetForm}
-                disabled={loading}
-              >
+      </div>
+
+      <Modal
+        open={modalOpen}
+        title={editing?.id ? "Edit Lodge Working" : "Add Lodge Working"}
+        onClose={closeModal}
+      >
+        {editing && (
+          <form className="space-y-4" onSubmit={saveWorking}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label className="label">
+                <span>Date</span>
+                <input
+                  className="input mt-1"
+                  type="date"
+                  value={editing.meetingDate ?? DEFAULT_DATE}
+                  onChange={(e) =>
+                    setEditing((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            meetingDate: toISODate(e.target.value),
+                          }
+                        : prev,
+                    )
+                  }
+                  required
+                />
+              </label>
+              <label className="label">
+                <span>Work of the evening</span>
+                <select
+                  className="input mt-1"
+                  value={editing.work}
+                  onChange={(e) =>
+                    setEditing((prev) =>
+                      prev ? { ...prev, work: e.target.value as WorkType } : prev,
+                    )
+                  }
+                >
+                  {workOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label className="label">
+                <span>Candidate</span>
+                <input
+                  className="input mt-1"
+                  type="text"
+                  value={editing.candidateName ?? ""}
+                  onChange={(e) =>
+                    setEditing((prev) =>
+                      prev ? { ...prev, candidateName: e.target.value } : prev,
+                    )
+                  }
+                  placeholder="If applicable"
+                />
+              </label>
+              <label className="label">
+                <span>Lecture</span>
+                <input
+                  className="input mt-1"
+                  type="text"
+                  value={editing.lecture ?? ""}
+                  onChange={(e) =>
+                    setEditing((prev) =>
+                      prev ? { ...prev, lecture: e.target.value } : prev,
+                    )
+                  }
+                  placeholder="Lecture or presentation details"
+                />
+              </label>
+            </div>
+            <fieldset className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <legend className="label text-sm font-semibold">Tracing Boards</legend>
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={Boolean(editing.tracingBoard1)}
+                  onChange={(e) =>
+                    setEditing((prev) =>
+                      prev ? { ...prev, tracingBoard1: e.target.checked } : prev,
+                    )
+                  }
+                />
+                <span>Tracing Board 1</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={Boolean(editing.tracingBoard2)}
+                  onChange={(e) =>
+                    setEditing((prev) =>
+                      prev ? { ...prev, tracingBoard2: e.target.checked } : prev,
+                    )
+                  }
+                />
+                <span>Tracing Board 2</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={Boolean(editing.tracingBoard3)}
+                  onChange={(e) =>
+                    setEditing((prev) =>
+                      prev ? { ...prev, tracingBoard3: e.target.checked } : prev,
+                    )
+                  }
+                />
+                <span>Tracing Board 3</span>
+              </label>
+            </fieldset>
+            <label className="label">
+              <span>Notes</span>
+              <textarea
+                className="input mt-1"
+                rows={3}
+                value={editing.notes ?? ""}
+                onChange={(e) =>
+                  setEditing((prev) => (prev ? { ...prev, notes: e.target.value } : prev))
+                }
+              />
+            </label>
+            {formError && <p className="text-sm text-red-600">{formError}</p>}
+            <div className="flex justify-end gap-2">
+              <button type="button" className="btn-soft" onClick={closeModal} disabled={busy}>
                 Cancel
               </button>
-            )}
-            <button className="btn btn-primary" disabled={loading}>
-              {loading ? "Saving…" : editingId ? "Save changes" : "Add plan"}
-            </button>
-          </div>
-        </div>
-      </form>
-
-      <div className="card overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-gray-500 uppercase tracking-wide text-xs">
-              <th className="py-2 pr-3">Date</th>
-              <th className="py-2 pr-3">Month</th>
-              <th className="py-2 pr-3">Work</th>
-              <th className="py-2 pr-3">Candidate</th>
-              <th className="py-2 pr-3">Lecture</th>
-              <th className="py-2 pr-3">Tracing Boards</th>
-              <th className="py-2 pr-3">Notes</th>
-              <th className="py-2 pr-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id} className="border-t border-gray-200 dark:border-gray-800">
-                <td className="py-2 pr-3">{item.meetingDate ? toDisplayDate(item.meetingDate) : "—"}</td>
-                <td className="py-2 pr-3">{item.month && item.year ? `${String(item.month).padStart(2, "0")}/${item.year}` : "—"}</td>
-                <td className="py-2 pr-3">{workOptions.find((opt) => opt.value === item.work)?.label ?? item.work}</td>
-                <td className="py-2 pr-3">{item.candidateName || "—"}</td>
-                <td className="py-2 pr-3">{item.lecture || "—"}</td>
-                <td className="py-2 pr-3">{formatTracingBoards(item)}</td>
-                <td className="py-2 pr-3 whitespace-pre-wrap">{item.notes ? item.notes : "—"}</td>
-                <td className="py-2 pr-3">
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="navlink"
-                      onClick={() => populateForm(item)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="navlink"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {items.length === 0 && (
-              <tr>
-                <td colSpan={8} className="py-4 text-center text-gray-500">
-                  No lodge workings planned yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              <button type="submit" className="btn-primary" disabled={busy}>
+                {busy ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 }

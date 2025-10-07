@@ -45,31 +45,58 @@ export default function HomePage() {
   const [profile, setProfile] = React.useState<Profile | null>(null);
   const [visits, setVisits] = React.useState<Visit[]>([]);
   const [workings, setWorkings] = React.useState<Working[]>([]);
+  const [leaderboard, setLeaderboard] = React.useState<{
+    monthRank: number | null;
+    monthVisits: number;
+    yearRank: number | null;
+    yearVisits: number;
+  } | null>(null);
 
   React.useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         const res = await fetch('/api/profile', { credentials: 'include' });
-        const data = await res.json().catch(()=> ({}));
-        setProfile(data || {});
-      } catch { setProfile({}); }
+        const data = await res.json().catch(() => ({}));
+        if (!cancelled) setProfile(data || {});
+      } catch {
+        if (!cancelled) setProfile({});
+      }
       try {
-        const res = await fetch('/api/visits?limit=5', { credentials: 'include' });
-        const data = await res.json().catch(()=> []);
-        setVisits(Array.isArray(data) ? data : []);
-      } catch { setVisits([]); }
+        const res = await fetch('/api/visits', { credentials: 'include' });
+        const data = await res.json().catch(() => []);
+        if (!cancelled) setVisits(Array.isArray(data) ? data : []);
+      } catch {
+        if (!cancelled) setVisits([]);
+      }
       try {
-        const res = await fetch('/api/workings?limit=5', { credentials: 'include' });
-        const data = await res.json().catch(()=> []);
-        setWorkings(Array.isArray(data) ? data : []);
-      } catch { setWorkings([]); }
+        const res = await fetch('/api/workings', { credentials: 'include' });
+        const data = await res.json().catch(() => []);
+        if (!cancelled) setWorkings(Array.isArray(data) ? data : []);
+      } catch {
+        if (!cancelled) setWorkings([]);
+      }
+      try {
+        const res = await fetch('/api/leaderboard/rank', { credentials: 'include' });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        if (!cancelled) setLeaderboard(data);
+      } catch {
+        if (!cancelled) setLeaderboard(null);
+      }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const nameLine =
     [profile?.prefix, profile?.fullName || profile?.name, profile?.postNominals]
       .filter(Boolean)
       .join(' ') || 'Brother';
+
+  const recentVisits = visits.slice(0, 5);
+  const recentWorkings = workings.slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -96,14 +123,28 @@ export default function HomePage() {
       </div>
 
       {/* Stats row (removed Offices Held) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="card"><div className="card-body">
           <div className="subtle mb-1">Total Visits</div>
           <div className="text-2xl font-semibold">{visits.length || '—'}</div>
         </div></div>
         <div className="card"><div className="card-body">
-          <div className="subtle mb-1">Leaderboard Rank</div>
-          <div className="text-2xl font-semibold">—</div>
+          <div className="subtle mb-1">Rolling 12 Months Rank</div>
+          <div className="text-2xl font-semibold">
+            {leaderboard?.yearRank ? `#${leaderboard.yearRank}` : '—'}
+          </div>
+          <div className="text-sm text-slate-500 mt-1">
+            {leaderboard?.yearVisits ? `${leaderboard.yearVisits} visits` : 'No visits recorded'}
+          </div>
+        </div></div>
+        <div className="card"><div className="card-body">
+          <div className="subtle mb-1">This Month Rank</div>
+          <div className="text-2xl font-semibold">
+            {leaderboard?.monthRank ? `#${leaderboard.monthRank}` : '—'}
+          </div>
+          <div className="text-sm text-slate-500 mt-1">
+            {leaderboard?.monthVisits ? `${leaderboard.monthVisits} visits` : 'No visits recorded'}
+          </div>
         </div></div>
       </div>
 
@@ -125,9 +166,9 @@ export default function HomePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {visits.length === 0 ? (
+                  {recentVisits.length === 0 ? (
                     <tr className="border-t"><td className="py-2 pr-3" colSpan={4}>No recent visits.</td></tr>
-                  ) : visits.map(v => (
+                  ) : recentVisits.map(v => (
                     <tr key={v.id || (v.date || v.dateISO || '') + (v.lodgeName || '')} className="border-t">
                       <td className="py-2 pr-3">{toDisplayDate(v.date || v.dateISO || '')}</td>
                       <td className="py-2 pr-3">{v.lodgeName || '—'}</td>
@@ -158,9 +199,9 @@ export default function HomePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {workings.length === 0 ? (
+                  {recentWorkings.length === 0 ? (
                     <tr className="border-t"><td className="py-2 pr-3" colSpan={4}>No recent records.</td></tr>
-                  ) : workings.map(w => (
+                  ) : recentWorkings.map(w => (
                     <tr key={w.id || (w.meetingDate || '') + (w.work || '')} className="border-t">
                       <td className="py-2 pr-3">{toDisplayDate(w.meetingDate || '')}</td>
                       <td className="py-2 pr-3">{WORK_LABELS[w.work || ''] || w.work || '—'}</td>
