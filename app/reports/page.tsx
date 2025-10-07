@@ -7,6 +7,9 @@ type Profile = {
   name?: string | null;
   fullName?: string | null;
   postNominals?: string[] | string | null;
+  lodgeName?: string | null;
+  lodgeNumber?: string | null;
+  region?: string | null;
 };
 
 type Visit = {
@@ -52,9 +55,15 @@ function normaliseProfile(raw: any): Profile {
     : typeof raw.postNominals === "string"
     ? raw.postNominals.split(",").map((part: string) => part.trim()).filter(Boolean)
     : [];
+  const lodgeName = typeof raw.lodgeName === "string" ? raw.lodgeName : null;
+  const lodgeNumber = typeof raw.lodgeNumber === "string" ? raw.lodgeNumber : null;
+  const region = typeof raw.region === "string" ? raw.region : null;
   return {
     ...raw,
     postNominals,
+    lodgeName,
+    lodgeNumber,
+    region,
   };
 }
 
