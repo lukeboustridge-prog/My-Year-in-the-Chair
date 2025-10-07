@@ -45,7 +45,24 @@ export async function POST(req: Request) {
   const { report, mapping } = await buildGsrReport({ from, to, lodgeId });
   const html = await renderGsrHtml(report);
 
-  const { chromium } = await import("playwright-core");
+  let chromium: typeof import("playwright-core").chromium | undefined;
+  const dynamicImport = new Function(
+    "specifier",
+    "return import(specifier);"
+  ) as (specifier: string) => Promise<any>;
+
+  try {
+    const playwright = await dynamicImport(/* webpackIgnore: true */ "playwright-core");
+    chromium = playwright?.chromium;
+  } catch (error) {
+    console.error("Failed to load Playwright", error);
+    return new NextResponse("Playwright is required to generate PDFs", { status: 500 });
+  }
+
+  if (!chromium) {
+    return new NextResponse("Playwright chromium export not available", { status: 500 });
+  }
+
   const browser = await chromium.launch({ args: ["--no-sandbox", "--disable-setuid-sandbox"] });
   try {
     const page = await browser.newPage();
