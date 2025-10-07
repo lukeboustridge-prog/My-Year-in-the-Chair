@@ -20,6 +20,7 @@ export async function POST(req: Request) {
       work: body.work || "OTHER",
       candidateName: body.candidateName || null,
       comments: body.comments || null,
+      grandLodgeVisit: Boolean(body.grandLodgeVisit),
     },
   });
   return NextResponse.json(created, { status: 201 });
@@ -41,6 +42,9 @@ export async function PUT(req: Request) {
       work: body.work ?? existing.work,
       candidateName: body.candidateName ?? existing.candidateName,
       comments: body.comments ?? existing.comments,
+      grandLodgeVisit: typeof body.grandLodgeVisit === "boolean"
+        ? body.grandLodgeVisit
+        : existing.grandLodgeVisit,
     },
   });
   return NextResponse.json(updated);

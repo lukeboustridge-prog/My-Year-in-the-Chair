@@ -59,6 +59,7 @@ model Visit {
   workOfEvening WorkType @default(OTHER)
   candidateName String?
   comments      String?
+  grandLodgeVisit Boolean @default(false)
 
   location      String?
   notes         String?
@@ -88,6 +89,7 @@ model MyWork {
   work          WorkType @default(OTHER)
   candidateName String?
   comments      String?
+  grandLodgeVisit Boolean @default(false)
 
   createdAt     DateTime @default(now())
 }

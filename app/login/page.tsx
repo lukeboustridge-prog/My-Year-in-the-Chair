@@ -1,6 +1,7 @@
 'use client';
 export const dynamic = 'force-dynamic';
 import React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 function getRedirect(): string {
@@ -92,7 +93,10 @@ export default function LoginPage() {
               <input className="input mt-1" type="password" value={password} onChange={e=>setPassword(e.target.value)} required autoComplete="current-password" placeholder="••••••••" />
             </label>
           </div>
-          <div className="flex justify-end">
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <Link className="btn-outline text-center" href="/auth/register">
+              Create an account
+            </Link>
             <button className="btn-primary" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
           </div>
         </form>
