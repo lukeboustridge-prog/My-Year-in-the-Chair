@@ -1,6 +1,6 @@
 Patch v2 — Next.js build fix (dynamic imports for PDF) — 2025-10-05 19:15:49
 
-WHAT CHANGED
+WHAT CHANGED?
 - Rewrote src/utils/pdfReport.ts to use **dynamic imports** so Next.js won't attempt to bundle `jspdf` and `jspdf-autotable` on the server.
 - Marked Reports page as a **client component** and updated buttons to await async export functions.
 
