@@ -3,9 +3,9 @@
 import { useFormState, useFormStatus } from "react-dom";
 import Link from "next/link";
 import { useEffect } from "react";
-import { login } from "./actions";
+import { login, type LoginState } from "./actions";
 
-const initialState = { error: "" };
+const initialState: LoginState = { error: "" };
 
 export function LoginForm() {
   const [state, formAction] = useFormState(login, initialState);

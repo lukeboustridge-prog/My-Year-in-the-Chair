@@ -3,12 +3,18 @@
 import { AuthError } from "next-auth";
 import { signIn } from "@/auth";
 
-export async function login(formData: FormData) {
-  const email = (formData.get("email") as string)?.trim();
-  const password = formData.get("password") as string;
+export type LoginState =
+  | { error: string; success?: undefined }
+  | { success: true; error?: undefined };
+
+const invalidState: LoginState = { error: "Please provide both email and password." };
+
+export async function login(_prevState: LoginState, formData: FormData): Promise<LoginState> {
+  const email = (formData.get("email") as string | null)?.trim();
+  const password = formData.get("password") as string | null;
 
   if (!email || !password) {
-    return { error: "Please provide both email and password." };
+    return invalidState;
   }
 
   try {
