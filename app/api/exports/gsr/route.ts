@@ -91,7 +91,9 @@ export async function POST(req: Request) {
       "x-gsr-mapping": mappingHeader,
     });
 
-    return new NextResponse(pdf, { status: 200, headers });
+    const pdfBytes = pdf instanceof Uint8Array ? pdf : new Uint8Array(pdf);
+
+    return new NextResponse(pdfBytes, { status: 200, headers });
   } finally {
     await browser.close();
   }
