@@ -54,10 +54,10 @@ export async function getVisitLeaderboard(range: "month" | "year") {
   let grouped: Awaited<ReturnType<typeof db.visit.groupBy>>;
   try {
     grouped = await db.visit.groupBy({
-      by: [Prisma.VisitScalarFieldEnum.userId],
+      by: ["userId"],
       where: { date: { gte: start } },
       _count: { _all: true },
-    });
+    } as Prisma.VisitGroupByArgs);
   } catch (error) {
     console.warn("Failed to load visit leaderboard", error);
     return [];
