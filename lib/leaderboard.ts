@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { db } from "./db";
 
 export type LeaderboardEntry = {
@@ -53,7 +54,7 @@ export async function getVisitLeaderboard(range: "month" | "year") {
   let grouped: Awaited<ReturnType<typeof db.visit.groupBy>>;
   try {
     grouped = await db.visit.groupBy({
-      by: ["userId"],
+      by: ["userId"] as Prisma.VisitScalarFieldEnum[],
       where: { date: { gte: start } },
       _count: { _all: true },
     });
