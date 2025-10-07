@@ -1,18 +1,27 @@
-import "./globals.css";
-import Header from "../components/Header";
+import type { Metadata } from "next";
 
-export const metadata = {
+import "./globals.css";
+import AppHeader from "../components/AppHeader";
+
+export const metadata: Metadata = {
   title: "My Year in the Chair",
   description: "Freemasons Master companion",
+  manifest: "/manifest.webmanifest",
+  themeColor: "#0f172a",
+  appleWebApp: {
+    capable: true,
+    title: "My Year in the Chair",
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className="min-h-screen bg-slate-50 text-slate-900">
-        <Header />
-        <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
-        <footer className="mx-auto max-w-6xl px-4 py-8 text-xs text-slate-500">
+        <AppHeader />
+        <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">{children}</main>
+        <footer className="mx-auto w-full max-w-5xl px-4 py-8 text-xs text-slate-500 sm:px-6">
           © {new Date().getFullYear()} My Year in the Chair
         </footer>
       </body>
