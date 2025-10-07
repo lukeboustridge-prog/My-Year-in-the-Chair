@@ -155,15 +155,14 @@ export default function VisitsPage() {
         <form className="space-y-4" onSubmit={saveVisit}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="label">
-              <span>Date (dd/mm/yyyy)</span>
+              <span>Date</span>
               <input
                 className="input mt-1"
-                placeholder="dd/mm/yyyy"
-                value={editing?.dateISO ? toDisplayDate(editing.dateISO) : ''}
+                type="date"
+                value={editing?.dateISO ? toISODate(editing.dateISO) : ''}
                 onChange={e=>{
                   const v = e.target.value;
-                  // keep free-form dd/mm/yyyy, normalize on save
-                  setEditing(prev => ({...(prev as Visit), dateISO: v }));
+                  setEditing(prev => ({ ...(prev as Visit), dateISO: toISODate(v) }));
                 }}
                 required
               />
