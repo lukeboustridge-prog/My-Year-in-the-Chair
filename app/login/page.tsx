@@ -76,14 +76,9 @@ export default function LoginPage() {
     <div className="space-y-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between">
         <h1 className="h1">Sign in</h1>
-        <div className="flex items-center gap-3">
-          <Link className="btn-outline" href="/auth/register">
-            Create account
-          </Link>
-          <button className="navlink" onClick={onSignOut} disabled={signingOut}>
-            {signingOut ? 'Signing out…' : 'Sign out'}
-          </button>
-        </div>
+        <button className="navlink" onClick={onSignOut} disabled={signingOut}>
+          {signingOut ? 'Signing out…' : 'Sign out'}
+        </button>
       </div>
       <div className="card">
         <form className="card-body space-y-5" onSubmit={onSubmit}>

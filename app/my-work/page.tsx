@@ -1,6 +1,5 @@
 'use client';
 import React from "react";
-import Modal from "../../components/Modal";
 import { toISODate, toDisplayDate } from "../../lib/date";
 
 type Degree = 'Initiation' | 'Passing' | 'Raising' | 'Installation' | 'Lecture' | 'Other';
@@ -60,8 +59,8 @@ function normalizeWorking(raw: any): Working {
 export default function MyWorkPage() {
   const [records, setRecords] = React.useState<Working[] | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [modalOpen, setModalOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Working | null>(null);
+  const [editingKey, setEditingKey] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
 
   React.useEffect(() => {
@@ -79,16 +78,31 @@ export default function MyWorkPage() {
     })();
   }, []);
 
-  function openNew() { setEditing({ ...emptyWorking }); setModalOpen(true); }
-  function openEdit(w: Working) { setEditing({ ...w }); setModalOpen(true); }
-  function closeModal() { setModalOpen(false); setEditing(null); }
+  function makeKey(w: Working, index: number) {
+    return w.id || `${w.dateISO}-${w.candidateName}-${index}`;
+  }
+
+  function startCreate() {
+    setEditing({ ...emptyWorking });
+    setEditingKey('new');
+  }
+
+  function startEdit(w: Working, key: string) {
+    setEditing({ ...w });
+    setEditingKey(key);
+  }
+
+  function cancelEdit() {
+    setEditing(null);
+    setEditingKey(null);
+  }
 
   async function saveWorking(e: React.FormEvent) {
     e.preventDefault();
     if (!editing) return;
     setBusy(true);
     try {
-      const isNew = !editing.id;
+      const isNew = editingKey === 'new' || !editing.id;
       const work = workTypeFromDegree[editing.degree] ?? 'OTHER';
       const candidateName = editing.candidateName?.trim();
       const payload: Record<string, unknown> = {
@@ -113,7 +127,7 @@ export default function MyWorkPage() {
         if (isNew) return [saved, ...next];
         return next.map(r => (r.id === editing.id ? saved : r));
       });
-      closeModal();
+      cancelEdit();
     } catch (e:any) {
       alert(e?.message || 'Save failed');
     } finally {
@@ -138,6 +152,7 @@ export default function MyWorkPage() {
       setRecords(prev);
       alert('Delete failed');
     }
+    if (editing?.id === id) cancelEdit();
   }
 
   return (
@@ -147,140 +162,204 @@ export default function MyWorkPage() {
           <h1 className="h1">My Lodge Workings</h1>
           <p className="subtle">View and maintain your lodge working records.</p>
         </div>
-        <button className="btn-primary w-full sm:w-auto" onClick={openNew}>Add Working</button>
+        <button className="btn-primary w-full sm:w-auto" onClick={startCreate}>Add Working</button>
       </div>
 
       <div className="card">
         <div className="card-body space-y-4">
           {records === null ? (
             <div className="subtle">Loading…</div>
-          ) : records.length === 0 ? (
-            <div className="subtle">No lodge working records yet.</div>
           ) : (
-            <>
-              <div className="space-y-3 sm:hidden">
-                {records.map((r) => (
-                  <div
-                    key={r.id || r.dateISO + r.candidateName}
-                    className="rounded-xl border border-slate-200 bg-slate-50/80 p-4"
-                  >
-                    <div className="flex flex-col gap-2">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-sm font-semibold text-slate-900">{r.degree || '—'}</span>
-                        <span className="text-xs text-slate-500">{toDisplayDate(r.dateISO)}</span>
-                      </div>
-                      <div className="grid grid-cols-1 gap-2 text-sm text-slate-600">
-                        <div>
-                          <span className="text-xs uppercase tracking-wide text-slate-500">Candidate</span>
-                          <div>{r.candidateName || '—'}</div>
-                        </div>
-                        <div>
-                          <span className="text-xs uppercase tracking-wide text-slate-500">Grand Lodge Visit</span>
-                          <div>{r.grandLodgeVisit ? 'Yes' : 'No'}</div>
-                        </div>
-                        {r.notes ? (
-                          <div>
-                            <span className="text-xs uppercase tracking-wide text-slate-500">Notes</span>
-                            <div>{r.notes}</div>
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="mt-4 grid grid-cols-1 gap-2 sm:hidden">
-                      <button className="navlink w-full justify-center" onClick={() => openEdit(r)}>Edit</button>
-                      <button className="navlink w-full justify-center" onClick={() => deleteWorking(r.id)}>Delete</button>
-                    </div>
+            <div className="space-y-3">
+              {editingKey === 'new' && editing ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h2 className="text-sm font-semibold text-slate-900">New lodge working</h2>
+                    <span className="text-xs text-slate-500">Complete the form below</span>
                   </div>
-                ))}
-              </div>
-              <div className="hidden sm:block overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-slate-500">
-                      <th className="py-2 pr-3">Date</th>
-                      <th className="py-2 pr-3">Degree</th>
-                      <th className="py-2 pr-3">Candidate</th>
-                      <th className="py-2 pr-3">GL Visit</th>
-                      <th className="py-2 pr-3">Notes</th>
-                      <th className="py-2 pr-3">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {records.map((r) => (
-                      <tr key={r.id || r.dateISO + r.candidateName} className="border-t">
-                        <td className="py-2 pr-3">{toDisplayDate(r.dateISO)}</td>
-                        <td className="py-2 pr-3">{r.degree || '—'}</td>
-                        <td className="py-2 pr-3">{r.candidateName || '—'}</td>
-                        <td className="py-2 pr-3">{r.grandLodgeVisit ? 'Yes' : 'No'}</td>
-                        <td className="py-2 pr-3">{r.notes || '—'}</td>
-                        <td className="py-2 pr-3">
-                          <div className="flex gap-2">
-                            <button className="navlink" onClick={() => openEdit(r)}>Edit</button>
-                            <button className="navlink" onClick={() => deleteWorking(r.id)}>Delete</button>
+                  <form className="mt-4 space-y-4" onSubmit={saveWorking}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <label className="label">
+                        <span>Date</span>
+                        <input
+                          className="input mt-1"
+                          type="date"
+                          value={editing.dateISO}
+                          onChange={e => {
+                            const v = e.target.value;
+                            setEditing(prev => ({ ...(prev as Working), dateISO: toISODate(v) }));
+                          }}
+                          required
+                        />
+                      </label>
+                      <label className="label">
+                        <span>Work of the evening (Degree)</span>
+                        <select
+                          className="input mt-1"
+                          value={editing.degree}
+                          onChange={e => setEditing(prev => ({ ...(prev as Working), degree: e.target.value as Working['degree'] }))}
+                        >
+                          <option>Initiation</option>
+                          <option>Passing</option>
+                          <option>Raising</option>
+                          <option>Installation</option>
+                          <option>Lecture</option>
+                          <option>Other</option>
+                        </select>
+                      </label>
+                      <label className="label">
+                        <span>Candidate name</span>
+                        <input
+                          className="input mt-1"
+                          type="text"
+                          value={editing.candidateName}
+                          onChange={e => setEditing(prev => ({ ...(prev as Working), candidateName: e.target.value }))}
+                          placeholder="e.g., John Smith"
+                        />
+                      </label>
+                      <label className="sm:col-span-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium shadow-sm">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4"
+                          checked={!!editing.grandLodgeVisit}
+                          onChange={e => setEditing(prev => ({ ...(prev as Working), grandLodgeVisit: e.target.checked }))}
+                        />
+                        <span>Grand Lodge Visit</span>
+                      </label>
+                    </div>
+                    <label className="label">
+                      <span>Notes</span>
+                      <textarea
+                        className="input mt-1"
+                        rows={3}
+                        value={editing.notes || ''}
+                        onChange={e => setEditing(prev => ({ ...(prev as Working), notes: e.target.value }))}
+                      />
+                    </label>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                      <button type="button" className="btn-soft w-full sm:w-auto" onClick={cancelEdit}>
+                        Cancel
+                      </button>
+                      <button type="submit" className="btn-primary w-full sm:w-auto" disabled={busy}>
+                        {busy ? 'Saving…' : 'Save'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              ) : null}
+
+              {records.length === 0 ? (
+                <div className="subtle">No lodge working records yet.</div>
+              ) : (
+                records.map((r, index) => {
+                  const key = makeKey(r, index);
+                  const isEditing = editingKey === key;
+                  return (
+                    <div key={key} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <button
+                        type="button"
+                        className="flex w-full flex-wrap items-center justify-between gap-3 text-left"
+                        onClick={() => startEdit(r, key)}
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">{r.degree || '—'}</p>
+                          <p className="text-xs text-slate-500">{toDisplayDate(r.dateISO)}</p>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">{r.candidateName || '—'}</span>
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">{r.grandLodgeVisit ? 'GL visit' : 'Standard'}</span>
+                        </div>
+                      </button>
+                      {isEditing && editing ? (
+                        <form className="mt-4 space-y-4" onSubmit={saveWorking}>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <label className="label">
+                              <span>Date</span>
+                              <input
+                                className="input mt-1"
+                                type="date"
+                                value={editing.dateISO}
+                                onChange={e => {
+                                  const v = e.target.value;
+                                  setEditing(prev => ({ ...(prev as Working), dateISO: toISODate(v) }));
+                                }}
+                                required
+                              />
+                            </label>
+                            <label className="label">
+                              <span>Work of the evening (Degree)</span>
+                              <select
+                                className="input mt-1"
+                                value={editing.degree}
+                                onChange={e => setEditing(prev => ({ ...(prev as Working), degree: e.target.value as Working['degree'] }))}
+                              >
+                                <option>Initiation</option>
+                                <option>Passing</option>
+                                <option>Raising</option>
+                                <option>Installation</option>
+                                <option>Lecture</option>
+                                <option>Other</option>
+                              </select>
+                            </label>
+                            <label className="label">
+                              <span>Candidate name</span>
+                              <input
+                                className="input mt-1"
+                                type="text"
+                                value={editing.candidateName}
+                                onChange={e => setEditing(prev => ({ ...(prev as Working), candidateName: e.target.value }))}
+                                placeholder="e.g., John Smith"
+                              />
+                            </label>
+                            <label className="sm:col-span-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium shadow-sm">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4"
+                                checked={!!editing.grandLodgeVisit}
+                                onChange={e => setEditing(prev => ({ ...(prev as Working), grandLodgeVisit: e.target.checked }))}
+                              />
+                              <span>Grand Lodge Visit</span>
+                            </label>
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
+                          <label className="label">
+                            <span>Notes</span>
+                            <textarea
+                              className="input mt-1"
+                              rows={3}
+                              value={editing.notes || ''}
+                              onChange={e => setEditing(prev => ({ ...(prev as Working), notes: e.target.value }))}
+                            />
+                          </label>
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            {editing.id ? (
+                              <button
+                                type="button"
+                                className="navlink justify-start text-red-600 hover:text-red-700 sm:order-2"
+                                onClick={() => deleteWorking(editing.id)}
+                              >
+                                Delete working
+                              </button>
+                            ) : null}
+                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:order-1 sm:ml-auto">
+                              <button type="button" className="btn-soft w-full sm:w-auto" onClick={cancelEdit}>
+                                Cancel
+                              </button>
+                              <button type="submit" className="btn-primary w-full sm:w-auto" disabled={busy}>
+                                {busy ? 'Saving…' : 'Save'}
+                              </button>
+                            </div>
+                          </div>
+                        </form>
+                      ) : null}
+                    </div>
+                  );
+                })
+              )}
+            </div>
           )}
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
       </div>
-
-      <Modal open={modalOpen} title={editing?.id ? 'Edit Working' : 'Add Working'} onClose={closeModal}>
-        <form className="space-y-4" onSubmit={saveWorking}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <label className="label">
-              <span>Date</span>
-              <input
-                className="input mt-1"
-                type="date"
-                value={editing?.dateISO || ''}
-                onChange={e=>{
-                  const v = e.target.value;
-                  setEditing(prev => ({...(prev as Working), dateISO: toISODate(v) }));
-                }}
-                required
-              />
-            </label>
-            <label className="label">
-              <span>Work of the evening (Degree)</span>
-              <select className="input mt-1" value={editing?.degree || 'Initiation'} onChange={e=>setEditing(v=>({...(v as Working), degree: e.target.value as Working['degree']}))}>
-                <option>Initiation</option>
-                <option>Passing</option>
-                <option>Raising</option>
-                <option>Installation</option>
-                <option>Lecture</option>
-                <option>Other</option>
-              </select>
-            </label>
-            <label className="label">
-              <span>Candidate name</span>
-              <input className="input mt-1" type="text" value={editing?.candidateName || ''} onChange={e=>setEditing(v=>({...(v as Working), candidateName: e.target.value}))} placeholder="e.g., John Smith" />
-            </label>
-            <label className="sm:col-span-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium shadow-sm">
-              <input
-                type="checkbox"
-                className="h-4 w-4"
-                checked={!!editing?.grandLodgeVisit}
-                onChange={e=>setEditing(v=>({...(v as Working), grandLodgeVisit: e.target.checked}))}
-              />
-              <span>Grand Lodge Visit</span>
-            </label>
-          </div>
-          <label className="label">
-            <span>Notes</span>
-            <textarea className="input mt-1" rows={3} value={editing?.notes || ''} onChange={e=>setEditing(v=>({...(v as Working), notes: e.target.value}))} />
-          </label>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button type="button" className="btn-soft w-full sm:w-auto" onClick={closeModal}>Cancel</button>
-            <button type="submit" className="btn-primary w-full sm:w-auto" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 }
