@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { chromium } from "playwright-core";
 import { getSession } from "@/lib/auth";
 import { buildGsrReport } from "@/lib/reports/gsr";
 import { renderGsrHtml } from "@/lib/reports/html/gsrTemplate";
@@ -46,6 +45,7 @@ export async function POST(req: Request) {
   const { report, mapping } = await buildGsrReport({ from, to, lodgeId });
   const html = await renderGsrHtml(report);
 
+  const { chromium } = await import("playwright-core");
   const browser = await chromium.launch({ args: ["--no-sandbox", "--disable-setuid-sandbox"] });
   try {
     const page = await browser.newPage();

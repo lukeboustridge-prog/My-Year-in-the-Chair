@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import type { GsrMapping } from "@/lib/reports/gsrMapping";
-import { resetGsrMappingAction, updateGsrMappingAction } from "./page";
+import { resetGsrMappingAction, updateGsrMappingAction } from "./actions";
 
 type FieldMeta = {
   name: string;

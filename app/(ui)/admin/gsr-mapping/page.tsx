@@ -1,24 +1,8 @@
 import MappingForm from "./MappingForm";
-import { availableEnums, availableModels, inferGsrMapping, loadGsrMapping, saveGsrMapping } from "@/lib/reports/gsrMapping";
+import { availableEnums, availableModels, loadGsrMapping } from "@/lib/reports/gsrMapping";
 import { getSession } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
-
-export async function updateGsrMappingAction(mapping: Awaited<ReturnType<typeof loadGsrMapping>>) {
-  "use server";
-  await saveGsrMapping(mapping);
-  revalidatePath("/admin/gsr-mapping");
-  return mapping;
-}
-
-export async function resetGsrMappingAction() {
-  "use server";
-  const mapping = inferGsrMapping();
-  await saveGsrMapping(mapping);
-  revalidatePath("/admin/gsr-mapping");
-  return mapping;
-}
 
 export default async function Page() {
   const session = getSession();
