@@ -1,9 +1,18 @@
+import type { Metadata } from "next";
+
 import "./globals.css";
 import Header from "../components/Header";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "My Year in the Chair",
   description: "Freemasons Master companion",
+  manifest: "/manifest.webmanifest",
+  themeColor: "#0f172a",
+  appleWebApp: {
+    capable: true,
+    title: "My Year in the Chair",
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
