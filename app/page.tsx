@@ -9,8 +9,8 @@ type Profile = {
   fullName?: string;
   postNominals?: string | string[];
 };
-type Visit = { id?: string; dateISO?: string; lodgeName?: string; eventType?: string; grandLodgeVisit?: boolean };
-type Working = { id?: string; dateISO?: string; degree?: string; section?: string; grandLodgeVisit?: boolean };
+type Visit = { id?: string; dateISO?: string; lodgeName?: string; lodgeNumber?: string; eventType?: string; grandLodgeVisit?: boolean };
+type Working = { id?: string; dateISO?: string; degree?: string; candidateName?: string; grandLodgeVisit?: boolean };
 
 type WorkType = 'INITIATION' | 'PASSING' | 'RAISING' | 'INSTALLATION' | 'PRESENTATION' | 'LECTURE' | 'OTHER';
 
@@ -20,7 +20,7 @@ const workTypeToLabel: Record<WorkType, string> = {
   RAISING: 'Raising',
   INSTALLATION: 'Installation',
   PRESENTATION: 'Other',
-  LECTURE: 'Other',
+  LECTURE: 'Lecture',
   OTHER: 'Other',
 };
 
@@ -40,6 +40,8 @@ function degreeFromWorkType(value?: string) {
       return 'Raising';
     case 'INSTALLATION':
       return 'Installation';
+    case 'LECTURE':
+      return 'Lecture';
     default:
       return 'Other';
   }
@@ -50,6 +52,7 @@ function normalizeVisit(raw: any): Visit {
     id: raw?.id,
     dateISO: toISODate(raw?.dateISO ?? raw?.date ?? ''),
     lodgeName: raw?.lodgeName ?? raw?.lodge ?? '',
+    lodgeNumber: raw?.lodgeNumber ?? raw?.lodgeNo ?? '',
     eventType: visitLabelFromWorkType(raw?.workOfEvening ?? raw?.eventType ?? raw?.degree),
     grandLodgeVisit: Boolean(raw?.grandLodgeVisit),
   };
@@ -60,7 +63,7 @@ function normalizeWorking(raw: any): Working {
     id: raw?.id,
     dateISO: toISODate(raw?.dateISO ?? raw?.date ?? ''),
     degree: degreeFromWorkType(raw?.work ?? raw?.degree),
-    section: raw?.candidateName ?? raw?.section ?? '',
+    candidateName: raw?.candidateName ?? raw?.section ?? '',
     grandLodgeVisit: Boolean(raw?.grandLodgeVisit),
   };
 }
@@ -178,7 +181,7 @@ export default function HomePage() {
                   <tr className="text-left text-slate-500">
                     <th className="py-2 pr-3">Date</th>
                     <th className="py-2 pr-3">Degree</th>
-                    <th className="py-2 pr-3">Section</th>
+                    <th className="py-2 pr-3">Candidate</th>
                     <th className="py-2 pr-3">GL Visit</th>
                   </tr>
                 </thead>
@@ -186,10 +189,10 @@ export default function HomePage() {
                   {workings.length === 0 ? (
                     <tr className="border-t"><td className="py-2 pr-3" colSpan={4}>No recent records.</td></tr>
                   ) : workings.map(w => (
-                    <tr key={w.id || (w.dateISO || '') + (w.section || '')} className="border-t">
+                    <tr key={w.id || (w.dateISO || '') + (w.candidateName || '')} className="border-t">
                       <td className="py-2 pr-3">{toDisplayDate(w.dateISO || '')}</td>
                       <td className="py-2 pr-3">{w.degree || '—'}</td>
-                      <td className="py-2 pr-3">{w.section || '—'}</td>
+                      <td className="py-2 pr-3">{w.candidateName || '—'}</td>
                       <td className="py-2 pr-3">{w.grandLodgeVisit ? 'Yes' : 'No'}</td>
                     </tr>
                   ))}

@@ -3,25 +3,26 @@ import React from "react";
 import Modal from "../../components/Modal";
 import { toISODate, toDisplayDate } from "../../lib/date";
 
-type Degree = 'Initiation' | 'Passing' | 'Raising' | 'Installation' | 'Other';
+type Degree = 'Initiation' | 'Passing' | 'Raising' | 'Installation' | 'Lecture' | 'Other';
 type WorkType = 'INITIATION' | 'PASSING' | 'RAISING' | 'INSTALLATION' | 'PRESENTATION' | 'LECTURE' | 'OTHER';
 
 type Working = {
   id?: string;
   dateISO: string; // normalized YYYY-MM-DD
   degree: Degree;
-  section: string;
+  candidateName: string;
   grandLodgeVisit: boolean;
   notes?: string;
 };
 
-const emptyWorking: Working = { dateISO: '', degree: 'Initiation', section: '', grandLodgeVisit: false, notes: '' };
+const emptyWorking: Working = { dateISO: '', degree: 'Initiation', candidateName: '', grandLodgeVisit: false, notes: '' };
 
 const workTypeFromDegree: Record<Degree, WorkType> = {
   Initiation: 'INITIATION',
   Passing: 'PASSING',
   Raising: 'RAISING',
   Installation: 'INSTALLATION',
+  Lecture: 'LECTURE',
   Other: 'OTHER',
 };
 
@@ -35,6 +36,8 @@ function degreeFromWorkType(work?: string): Degree {
       return 'Raising';
     case 'INSTALLATION':
       return 'Installation';
+    case 'LECTURE':
+      return 'Lecture';
     default:
       return 'Other';
   }
@@ -45,7 +48,7 @@ function normalizeWorking(raw: any): Working {
     id: raw?.id,
     dateISO: toISODate(raw?.dateISO ?? raw?.date ?? ''),
     degree: degreeFromWorkType(raw?.work ?? raw?.degree),
-    section: raw?.candidateName ?? raw?.section ?? '',
+    candidateName: raw?.candidateName ?? raw?.section ?? '',
     grandLodgeVisit: Boolean(raw?.grandLodgeVisit),
     notes: raw?.comments ?? raw?.notes ?? '',
   };
@@ -84,10 +87,11 @@ export default function MyWorkPage() {
     try {
       const isNew = !editing.id;
       const work = workTypeFromDegree[editing.degree] ?? 'OTHER';
+      const candidateName = editing.candidateName?.trim();
       const payload: Record<string, unknown> = {
         date: toISODate(editing.dateISO),
         work,
-        candidateName: editing.section?.trim() ? editing.section : undefined,
+        candidateName: candidateName ? candidateName : undefined,
         comments: editing.notes?.trim() ? editing.notes : undefined,
       };
       if (!isNew) payload.id = editing.id;
@@ -155,7 +159,7 @@ export default function MyWorkPage() {
                   <tr className="text-left text-slate-500">
                     <th className="py-2 pr-3">Date</th>
                     <th className="py-2 pr-3">Degree</th>
-                    <th className="py-2 pr-3">Section</th>
+                    <th className="py-2 pr-3">Candidate</th>
                     <th className="py-2 pr-3">GL Visit</th>
                     <th className="py-2 pr-3">Notes</th>
                     <th className="py-2 pr-3">Actions</th>
@@ -163,10 +167,10 @@ export default function MyWorkPage() {
                 </thead>
                 <tbody>
                   {records.map((r) => (
-                    <tr key={r.id || r.dateISO + r.section} className="border-t">
+                    <tr key={r.id || r.dateISO + r.candidateName} className="border-t">
                       <td className="py-2 pr-3">{toDisplayDate(r.dateISO)}</td>
                       <td className="py-2 pr-3">{r.degree || '—'}</td>
-                      <td className="py-2 pr-3">{r.section || '—'}</td>
+                      <td className="py-2 pr-3">{r.candidateName || '—'}</td>
                       <td className="py-2 pr-3">{r.grandLodgeVisit ? 'Yes' : 'No'}</td>
                       <td className="py-2 pr-3">{r.notes || '—'}</td>
                       <td className="py-2 pr-3">
@@ -208,12 +212,13 @@ export default function MyWorkPage() {
                 <option>Passing</option>
                 <option>Raising</option>
                 <option>Installation</option>
+                <option>Lecture</option>
                 <option>Other</option>
               </select>
             </label>
             <label className="label">
-              <span>Part / Section</span>
-              <input className="input mt-1" type="text" value={editing?.section || ''} onChange={e=>setEditing(v=>({...(v as Working), section: e.target.value}))} placeholder="e.g., Tracing Board, Charge" />
+              <span>Candidate name</span>
+              <input className="input mt-1" type="text" value={editing?.candidateName || ''} onChange={e=>setEditing(v=>({...(v as Working), candidateName: e.target.value}))} placeholder="e.g., John Smith" />
             </label>
             <label className="flex items-center gap-2 mt-6">
               <input type="checkbox" checked={!!editing?.grandLodgeVisit} onChange={e=>setEditing(v=>({...(v as Working), grandLodgeVisit: e.target.checked}))} />

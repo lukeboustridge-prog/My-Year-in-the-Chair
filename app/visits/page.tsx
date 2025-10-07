@@ -3,25 +3,27 @@ import React from "react";
 import Modal from "../../components/Modal";
 import { toISODate, toDisplayDate } from "../../lib/date";
 
-type Degree = 'Initiation' | 'Passing' | 'Raising' | 'Installation' | 'Other';
+type Degree = 'Initiation' | 'Passing' | 'Raising' | 'Installation' | 'Lecture' | 'Other';
 type WorkType = 'INITIATION' | 'PASSING' | 'RAISING' | 'INSTALLATION' | 'PRESENTATION' | 'LECTURE' | 'OTHER';
 
 type Visit = {
   id?: string;
   dateISO: string; // normalized YYYY-MM-DD
   lodgeName: string;
+  lodgeNumber: string;
   eventType: Degree;
   grandLodgeVisit: boolean;
   notes?: string;
 };
 
-const emptyVisit: Visit = { dateISO: '', lodgeName: '', eventType: 'Initiation', grandLodgeVisit: false, notes: '' };
+const emptyVisit: Visit = { dateISO: '', lodgeName: '', lodgeNumber: '', eventType: 'Initiation', grandLodgeVisit: false, notes: '' };
 
 const workTypeFromLabel: Record<Degree, WorkType> = {
   Initiation: 'INITIATION',
   Passing: 'PASSING',
   Raising: 'RAISING',
   Installation: 'INSTALLATION',
+  Lecture: 'LECTURE',
   Other: 'OTHER',
 };
 
@@ -35,6 +37,8 @@ function labelFromWorkType(work?: string): Degree {
       return 'Raising';
     case 'INSTALLATION':
       return 'Installation';
+    case 'LECTURE':
+      return 'Lecture';
     default:
       return 'Other';
   }
@@ -45,6 +49,7 @@ function normalizeVisit(raw: any): Visit {
     id: raw?.id,
     dateISO: toISODate(raw?.dateISO ?? raw?.date ?? ''),
     lodgeName: raw?.lodgeName ?? raw?.lodge ?? '',
+    lodgeNumber: raw?.lodgeNumber ?? raw?.lodgeNo ?? '',
     eventType: labelFromWorkType(raw?.workOfEvening ?? raw?.eventType ?? raw?.degree),
     grandLodgeVisit: Boolean(raw?.grandLodgeVisit),
     notes: raw?.comments ?? raw?.notes ?? '',
@@ -84,9 +89,11 @@ export default function VisitsPage() {
     try {
       const isNew = !editing.id;
       const workOfEvening = workTypeFromLabel[editing.eventType] ?? 'OTHER';
+      const lodgeNumber = editing.lodgeNumber?.trim();
       const payload: Record<string, unknown> = {
         date: toISODate(editing.dateISO),
         lodgeName: editing.lodgeName || undefined,
+        lodgeNumber: lodgeNumber ? lodgeNumber : undefined,
         workOfEvening,
         comments: editing.notes?.trim() ? editing.notes : undefined,
       };
@@ -155,6 +162,7 @@ export default function VisitsPage() {
                   <tr className="text-left text-slate-500">
                     <th className="py-2 pr-3">Date</th>
                     <th className="py-2 pr-3">Lodge</th>
+                    <th className="py-2 pr-3">Lodge No.</th>
                     <th className="py-2 pr-3">Work</th>
                     <th className="py-2 pr-3">GL Visit</th>
                     <th className="py-2 pr-3">Notes</th>
@@ -163,9 +171,10 @@ export default function VisitsPage() {
                 </thead>
                 <tbody>
                   {records.map((r) => (
-                    <tr key={r.id || r.dateISO + r.lodgeName} className="border-t">
+                    <tr key={r.id || r.dateISO + r.lodgeName + r.lodgeNumber} className="border-t">
                       <td className="py-2 pr-3">{toDisplayDate(r.dateISO)}</td>
                       <td className="py-2 pr-3">{r.lodgeName || '—'}</td>
+                      <td className="py-2 pr-3">{r.lodgeNumber || '—'}</td>
                       <td className="py-2 pr-3">{r.eventType || '—'}</td>
                       <td className="py-2 pr-3">{r.grandLodgeVisit ? 'Yes' : 'No'}</td>
                       <td className="py-2 pr-3">{r.notes || '—'}</td>
@@ -206,12 +215,17 @@ export default function VisitsPage() {
               <input className="input mt-1" type="text" value={editing?.lodgeName || ''} onChange={e=>setEditing(v=>({...(v as Visit), lodgeName: e.target.value}))} required />
             </label>
             <label className="label">
+              <span>Lodge number</span>
+              <input className="input mt-1" type="text" value={editing?.lodgeNumber || ''} onChange={e=>setEditing(v=>({...(v as Visit), lodgeNumber: e.target.value}))} placeholder="e.g., 123" />
+            </label>
+            <label className="label">
               <span>Work of the evening (Degree)</span>
               <select className="input mt-1" value={editing?.eventType || 'Initiation'} onChange={e=>setEditing(v=>({...(v as Visit), eventType: e.target.value as Visit['eventType']}))}>
                 <option>Initiation</option>
                 <option>Passing</option>
                 <option>Raising</option>
                 <option>Installation</option>
+                <option>Lecture</option>
                 <option>Other</option>
               </select>
             </label>
