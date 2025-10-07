@@ -77,7 +77,7 @@ export default function LoginPage() {
       <div className="flex items-center justify-between">
         <h1 className="h1">Sign in</h1>
         <div className="flex items-center gap-3">
-          <Link className="navlink" href="/auth/register">
+          <Link className="btn-outline" href="/auth/register">
             Create account
           </Link>
           <button className="navlink" onClick={onSignOut} disabled={signingOut}>
@@ -99,7 +99,7 @@ export default function LoginPage() {
             </label>
           </div>
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Link className="btn-soft text-center" href="/auth/register">
+            <Link className="btn-outline text-center" href="/auth/register">
               Create an account
             </Link>
             <button className="btn-primary" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
