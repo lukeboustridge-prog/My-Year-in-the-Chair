@@ -41,16 +41,26 @@ function ranking(entries: Array<{ userId: string; name: string; visits: number }
 }
 
 export async function getVisitLeaderboard(range: "month" | "year") {
+  if (!process.env.DATABASE_URL) {
+    return [];
+  }
+
   const now = new Date();
   const start = range === "month"
     ? new Date(now.getFullYear(), now.getMonth(), 1)
     : new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
 
-  const grouped = await db.visit.groupBy({
-    by: ["userId"],
-    where: { date: { gte: start } },
-    _count: { _all: true },
-  });
+  let grouped: Awaited<ReturnType<typeof db.visit.groupBy>>;
+  try {
+    grouped = await db.visit.groupBy({
+      by: ["userId"],
+      where: { date: { gte: start } },
+      _count: { _all: true },
+    });
+  } catch (error) {
+    console.warn("Failed to load visit leaderboard", error);
+    return [];
+  }
 
   if (!grouped.length) return [] as LeaderboardEntry[];
 
