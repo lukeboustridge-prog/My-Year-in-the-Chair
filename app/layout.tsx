@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import "./globals.css";
-import Header from "../components/Header";
+import AppHeader from "../components/AppHeader";
 
 export const metadata: Metadata = {
   title: "My Year in the Chair",
@@ -19,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen bg-slate-50 text-slate-900">
-        <Header />
+        <AppHeader />
         <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
         <footer className="mx-auto max-w-6xl px-4 py-8 text-xs text-slate-500">
           © {new Date().getFullYear()} My Year in the Chair

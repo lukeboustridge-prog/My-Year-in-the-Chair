@@ -1,6 +1,7 @@
 'use client';
 export const dynamic = 'force-dynamic';
 import React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 function getRedirect(): string {
@@ -73,11 +74,14 @@ export default function LoginPage() {
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <h1 className="h1">Sign in</h1>
-        <button className="navlink" onClick={onSignOut} disabled={signingOut}>
-          {signingOut ? 'Signing out…' : 'Sign out'}
-        </button>
+        <div className="flex items-center gap-3">
+          <Link href="/auth/register" className="btn-soft">Create account</Link>
+          <button className="navlink" onClick={onSignOut} disabled={signingOut}>
+            {signingOut ? 'Signing out…' : 'Sign out'}
+          </button>
+        </div>
       </div>
       <div className="card">
         <form className="card-body space-y-5" onSubmit={onSubmit}>
