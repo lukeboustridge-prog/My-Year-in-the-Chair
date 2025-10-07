@@ -32,7 +32,7 @@ declare module "next-auth" {
       GET: RouteHandler;
       POST: RouteHandler;
     };
-    auth: (request: unknown) => Promise<Session | null>;
+    auth: (request?: Request) => Promise<Session | null>;
     signIn: (...args: unknown[]) => Promise<unknown>;
     signOut: (...args: unknown[]) => Promise<unknown>;
   }
