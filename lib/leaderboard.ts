@@ -1,4 +1,3 @@
-import { Prisma } from "@prisma/client";
 import { db } from "./db";
 
 export type LeaderboardEntry = {
@@ -51,30 +50,34 @@ export async function getVisitLeaderboard(range: "month" | "year") {
     ? new Date(now.getFullYear(), now.getMonth(), 1)
     : new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
 
-  let grouped: Awaited<ReturnType<typeof db.visit.groupBy>>;
+  let visitUsers: Array<{ userId: string }>;
   try {
-    grouped = await db.visit.groupBy({
-      by: ["userId"],
+    visitUsers = await db.visit.findMany({
       where: { date: { gte: start } },
-      _count: { _all: true },
-    } as Prisma.VisitGroupByArgs);
+      select: { userId: true },
+    });
   } catch (error) {
     console.warn("Failed to load visit leaderboard", error);
     return [];
   }
 
-  if (!grouped.length) return [] as LeaderboardEntry[];
+  if (!visitUsers.length) return [] as LeaderboardEntry[];
+
+  const grouped = visitUsers.reduce<Record<string, number>>((acc, visit) => {
+    acc[visit.userId] = (acc[visit.userId] || 0) + 1;
+    return acc;
+  }, {});
 
   const users = await db.user.findMany({
-    where: { id: { in: grouped.map((g) => g.userId) } },
+    where: { id: { in: Object.keys(grouped) } },
     select: { id: true, prefix: true, name: true, postNominals: true },
   });
   const lookup = new Map(users.map((u) => [u.id, u]));
 
-  const entries = grouped.map((g) => ({
-    userId: g.userId,
-    name: formatDisplayName(lookup.get(g.userId)),
-    visits: g._count._all,
+  const entries = Object.entries(grouped).map(([userId, visits]) => ({
+    userId,
+    name: formatDisplayName(lookup.get(userId)),
+    visits,
   }));
 
   return ranking(entries);
