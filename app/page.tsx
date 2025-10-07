@@ -3,7 +3,12 @@ import React from "react";
 import Link from "next/link";
 import { toDisplayDate } from "../lib/date";
 
-type Profile = { prefix?: string; fullName?: string; postNominals?: string };
+type Profile = {
+  prefix?: string;
+  fullName?: string;
+  name?: string;
+  postNominals?: string;
+};
 type Visit = {
   id?: string;
   date?: string;
@@ -14,7 +19,27 @@ type Visit = {
   eventType?: string;
   grandLodgeVisit?: boolean;
 };
-type Working = { id?: string; dateISO?: string; degree?: string; section?: string; grandLodgeVisit?: boolean };
+type Working = {
+  id?: string;
+  meetingDate?: string | null;
+  work?: string;
+  candidateName?: string | null;
+  lecture?: string | null;
+  tracingBoard1?: boolean | null;
+  tracingBoard2?: boolean | null;
+  tracingBoard3?: boolean | null;
+  notes?: string | null;
+};
+
+const WORK_LABELS: Record<string, string> = {
+  INITIATION: "Initiation",
+  PASSING: "Passing",
+  RAISING: "Raising",
+  INSTALLATION: "Installation",
+  PRESENTATION: "Presentation",
+  LECTURE: "Lecture",
+  OTHER: "Other",
+};
 
 export default function HomePage() {
   const [profile, setProfile] = React.useState<Profile | null>(null);
@@ -34,14 +59,17 @@ export default function HomePage() {
         setVisits(Array.isArray(data) ? data : []);
       } catch { setVisits([]); }
       try {
-        const res = await fetch('/api/my-work?limit=5', { credentials: 'include' });
+        const res = await fetch('/api/workings?limit=5', { credentials: 'include' });
         const data = await res.json().catch(()=> []);
         setWorkings(Array.isArray(data) ? data : []);
       } catch { setWorkings([]); }
     })();
   }, []);
 
-  const nameLine = [profile?.prefix, profile?.fullName, profile?.postNominals].filter(Boolean).join(' ') || 'Brother';
+  const nameLine =
+    [profile?.prefix, profile?.fullName || profile?.name, profile?.postNominals]
+      .filter(Boolean)
+      .join(' ') || 'Brother';
 
   return (
     <div className="space-y-6">
@@ -124,20 +152,20 @@ export default function HomePage() {
                 <thead>
                   <tr className="text-left text-slate-500">
                     <th className="py-2 pr-3">Date</th>
-                    <th className="py-2 pr-3">Degree</th>
-                    <th className="py-2 pr-3">Section</th>
-                    <th className="py-2 pr-3">GL Visit</th>
+                    <th className="py-2 pr-3">Work</th>
+                    <th className="py-2 pr-3">Candidate</th>
+                    <th className="py-2 pr-3">Lecture</th>
                   </tr>
                 </thead>
                 <tbody>
                   {workings.length === 0 ? (
                     <tr className="border-t"><td className="py-2 pr-3" colSpan={4}>No recent records.</td></tr>
                   ) : workings.map(w => (
-                    <tr key={w.id || (w.dateISO || '') + (w.section || '')} className="border-t">
-                      <td className="py-2 pr-3">{toDisplayDate(w.dateISO || '')}</td>
-                      <td className="py-2 pr-3">{w.degree || '—'}</td>
-                      <td className="py-2 pr-3">{w.section || '—'}</td>
-                      <td className="py-2 pr-3">{w.grandLodgeVisit ? 'Yes' : 'No'}</td>
+                    <tr key={w.id || (w.meetingDate || '') + (w.work || '')} className="border-t">
+                      <td className="py-2 pr-3">{toDisplayDate(w.meetingDate || '')}</td>
+                      <td className="py-2 pr-3">{WORK_LABELS[w.work || ''] || w.work || '—'}</td>
+                      <td className="py-2 pr-3">{w.candidateName || '—'}</td>
+                      <td className="py-2 pr-3">{w.lecture || '—'}</td>
                     </tr>
                   ))}
                 </tbody>

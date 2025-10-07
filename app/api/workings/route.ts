@@ -13,7 +13,7 @@ const WORK_TYPES = [
   "OTHER",
 ] as const;
 
-const schema = z.object({
+export const lodgeWorkSchema = z.object({
   meetingDate: z.string().optional(),
   month: z.number().min(1).max(12).optional(),
   year: z.number().min(2000).max(3000).optional(),
@@ -26,16 +26,20 @@ const schema = z.object({
   notes: z.string().optional(),
 });
 
-export async function GET() {
+export async function GET(req: Request) {
   const userId = getUserId();
   if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+  const url = new URL(req.url);
+  const limit = Number(url.searchParams.get("limit")) || undefined;
   const items = await db.lodgeWork.findMany({
     where: { userId },
     orderBy: [
-      { meetingDate: "asc" },
-      { year: "asc" },
-      { month: "asc" },
+      { meetingDate: "desc" },
+      { year: "desc" },
+      { month: "desc" },
+      { createdAt: "desc" },
     ],
+    ...(limit ? { take: limit } : {}),
   });
   return NextResponse.json(items);
 }
@@ -45,7 +49,7 @@ export async function POST(req: Request) {
   if (!userId) return new NextResponse("Unauthorized", { status: 401 });
   try {
     const body = await req.json();
-    const parsed = schema.safeParse(body);
+    const parsed = lodgeWorkSchema.safeParse(body);
     if (!parsed.success) return new NextResponse("Invalid input", { status: 400 });
     const d = parsed.data;
     const meetingDate = d.meetingDate ? new Date(d.meetingDate) : undefined;

@@ -70,6 +70,7 @@ export default function WorkingsPage() {
   const [tracingBoard3, setTracingBoard3] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const workOptions = useMemo(() => WORK_OPTIONS, []);
 
@@ -100,9 +101,22 @@ export default function WorkingsPage() {
     setTracingBoard1(false);
     setTracingBoard2(false);
     setTracingBoard3(false);
+    setEditingId(null);
   }
 
-  async function add(e: React.FormEvent) {
+  function populateForm(item: Item) {
+    setMeetingDate(item.meetingDate ?? DEFAULT_DATE);
+    setWork(item.work);
+    setCandidate(item.candidateName ?? "");
+    setLecture(item.lecture ?? "");
+    setNotes(item.notes ?? "");
+    setTracingBoard1(Boolean(item.tracingBoard1));
+    setTracingBoard2(Boolean(item.tracingBoard2));
+    setTracingBoard3(Boolean(item.tracingBoard3));
+    setEditingId(item.id);
+  }
+
+  async function save(e: React.FormEvent) {
     e.preventDefault();
     const isoDate = toISODate(meetingDate);
     if (!isoDate) {
@@ -119,28 +133,39 @@ export default function WorkingsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/workings", {
-        method: "POST",
+      const payload = {
+        meetingDate: isoDate,
+        month,
+        year,
+        work,
+        candidateName: candidateName.trim() || undefined,
+        lecture: lecture.trim() || undefined,
+        tracingBoard1,
+        tracingBoard2,
+        tracingBoard3,
+        notes: notes.trim() || undefined,
+      };
+      const isEditing = Boolean(editingId);
+      const url = isEditing ? `/api/workings/${editingId}` : "/api/workings";
+      const method = isEditing ? "PATCH" : "POST";
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          meetingDate: isoDate,
-          month,
-          year,
-          work,
-          candidateName: candidateName.trim() || undefined,
-          lecture: lecture.trim() || undefined,
-          tracingBoard1,
-          tracingBoard2,
-          tracingBoard3,
-          notes: notes.trim() || undefined,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         throw new Error(await res.text());
       }
       const created = normaliseItem(await res.json());
-      setItems((prev) => [created, ...prev]);
+      setItems((prev) => {
+        const current = prev ?? [];
+        if (editingId) {
+          return current.map((item) => (item.id === created.id ? created : item));
+        }
+        return [created, ...current];
+      });
+      await load();
       resetForm();
     } catch (err: any) {
       setError(err?.message || "Unable to save lodge working");
@@ -149,11 +174,29 @@ export default function WorkingsPage() {
     }
   }
 
+  async function handleDelete(id: string) {
+    if (!confirm("Delete this lodge working?")) return;
+    const prev = items;
+    setItems((current) => current.filter((item) => item.id !== id));
+    try {
+      const res = await fetch(`/api/workings/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+    } catch (err: any) {
+      alert(err?.message || "Unable to delete lodge working");
+      setItems(prev);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">My Lodge Workings</h1>
 
-      <form onSubmit={add} className="card grid gap-4 max-w-2xl">
+      <form onSubmit={save} className="card grid gap-4 max-w-2xl">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label className="label">
             <span>Date</span>
@@ -238,9 +281,21 @@ export default function WorkingsPage() {
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex justify-end">
-          <button className="btn btn-primary" disabled={loading}>
-            {loading ? "Saving…" : "Add plan"}
-          </button>
+          <div className="flex gap-3">
+            {editingId && (
+              <button
+                type="button"
+                className="btn"
+                onClick={resetForm}
+                disabled={loading}
+              >
+                Cancel
+              </button>
+            )}
+            <button className="btn btn-primary" disabled={loading}>
+              {loading ? "Saving…" : editingId ? "Save changes" : "Add plan"}
+            </button>
+          </div>
         </div>
       </form>
 
@@ -255,6 +310,7 @@ export default function WorkingsPage() {
               <th className="py-2 pr-3">Lecture</th>
               <th className="py-2 pr-3">Tracing Boards</th>
               <th className="py-2 pr-3">Notes</th>
+              <th className="py-2 pr-3">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -267,11 +323,29 @@ export default function WorkingsPage() {
                 <td className="py-2 pr-3">{item.lecture || "—"}</td>
                 <td className="py-2 pr-3">{formatTracingBoards(item)}</td>
                 <td className="py-2 pr-3 whitespace-pre-wrap">{item.notes ? item.notes : "—"}</td>
+                <td className="py-2 pr-3">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="navlink"
+                      onClick={() => populateForm(item)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="navlink"
+                      onClick={() => handleDelete(item.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
             {items.length === 0 && (
               <tr>
-                <td colSpan={7} className="py-4 text-center text-gray-500">
+                <td colSpan={8} className="py-4 text-center text-gray-500">
                   No lodge workings planned yet.
                 </td>
               </tr>
