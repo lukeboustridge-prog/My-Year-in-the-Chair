@@ -93,12 +93,9 @@ export async function POST(req: Request) {
     });
 
     const pdfBuffer = Buffer.isBuffer(pdf) ? pdf : Buffer.from(pdf);
-    const pdfArrayBuffer = pdfBuffer.buffer.slice(
-      pdfBuffer.byteOffset,
-      pdfBuffer.byteOffset + pdfBuffer.byteLength
-    );
+    const pdfBlob = new Blob([pdfBuffer], { type: "application/pdf" });
 
-    return new NextResponse(pdfArrayBuffer, { status: 200, headers });
+    return new NextResponse(pdfBlob, { status: 200, headers });
   } finally {
     await browser.close();
   }
