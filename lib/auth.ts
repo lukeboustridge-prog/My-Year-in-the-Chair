@@ -1,5 +1,5 @@
 
-import { NextAuthConfig } from "next-auth";
+import NextAuth, { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -27,3 +27,5 @@ export const authConfig: NextAuthConfig = {
   ],
   pages: { signIn: "/login" }
 };
+
+export const { auth, handlers } = NextAuth(authConfig);
