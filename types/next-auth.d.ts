@@ -25,10 +25,12 @@ declare module "next-auth" {
     };
   }
 
+  type RouteHandler = (request: Request) => Response | Promise<Response>;
+
   interface AuthHelpers {
     handlers: {
-      GET: (request: unknown) => unknown;
-      POST: (request: unknown) => unknown;
+      GET: RouteHandler;
+      POST: RouteHandler;
     };
     auth: (request: unknown) => Promise<Session | null>;
     signIn: (...args: unknown[]) => Promise<unknown>;
