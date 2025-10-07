@@ -152,7 +152,7 @@ export default function ReportsPage() {
   });
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [busy, setBusy] = React.useState<"visits" | "full" | "gsr" | null>(null);
+  const [busy, setBusy] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -197,24 +197,19 @@ export default function ReportsPage() {
     };
   }, []);
 
-  const visitsDisabled = loading || !!error || visits.length === 0;
   const gsrDisabled = loading || !!error || workings.length === 0 || !profile;
 
-  async function exportPdf(kind: "visits" | "full" | "gsr") {
+  async function exportGsrPdf() {
     if (!profile) return;
-    setBusy(kind);
+    setBusy(true);
     try {
       const filteredVisits = filterByRange(visits, from, to, (visit) => visit.date);
       const filteredWorkings = filterByRange(workings, from, to, (work) => work.meetingDate);
-      if (kind !== "gsr" && filteredVisits.length === 0) {
-        alert("No visits found in the selected range.");
-        return;
-      }
-      if (kind === "gsr" && filteredWorkings.length === 0) {
+      if (filteredWorkings.length === 0) {
         alert("No lodge workings found in the selected range.");
         return;
       }
-      const { downloadVisitsPdf, downloadFullPdf, downloadGsrReport } = await import("@/lib/pdfReport");
+      const { downloadGsrReport } = await import("@/lib/pdfReport");
       const baseName = getBaseName(profile) || "Member";
       const pdfProfile = {
         prefix: profile.prefix ?? undefined,
@@ -229,46 +224,33 @@ export default function ReportsPage() {
         eventType: WORK_LABELS[visit.workOfEvening ?? ""] || visit.workOfEvening || "Visit",
         notes: visit.notes,
       }));
-      if (kind === "visits") {
-        await downloadVisitsPdf(pdfProfile, pdfVisits, {
+      await downloadGsrReport(
+        {
+          ...pdfProfile,
+          lodgeName: profile.lodgeName ?? undefined,
+          lodgeNumber: profile.lodgeNumber ?? undefined,
+          region: profile.region ?? undefined,
+        },
+        filteredWorkings.map((item) => ({
+          dateISO: item.meetingDate,
+          work: item.work,
+          candidateName: item.candidateName,
+          lecture: item.lecture,
+          notes: item.notes,
+          grandLodgeVisit: item.grandLodgeVisit,
+          emergencyMeeting: item.emergencyMeeting,
+        })),
+        pdfVisits,
+        {
           dateFrom: from || undefined,
           dateTo: to || undefined,
-          includeNotes: true,
-        });
-      } else if (kind === "full") {
-        await downloadFullPdf(pdfProfile, pdfVisits, [], {
-          dateFrom: from || undefined,
-          dateTo: to || undefined,
-          includeNotes: true,
-        });
-      } else {
-        await downloadGsrReport(
-          {
-            ...pdfProfile,
-            lodgeName: profile.lodgeName ?? undefined,
-            lodgeNumber: profile.lodgeNumber ?? undefined,
-            region: profile.region ?? undefined,
-          },
-          filteredWorkings.map((item) => ({
-            dateISO: item.meetingDate,
-            work: item.work,
-            candidateName: item.candidateName,
-            lecture: item.lecture,
-            notes: item.notes,
-            grandLodgeVisit: item.grandLodgeVisit,
-            emergencyMeeting: item.emergencyMeeting,
-          })),
-          {
-            dateFrom: from || undefined,
-            dateTo: to || undefined,
-          },
-        );
-      }
+        },
+      );
     } catch (err: any) {
       console.error("REPORTS_EXPORT", err);
       alert(err?.message || "Unable to generate PDF");
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
 
@@ -288,8 +270,8 @@ export default function ReportsPage() {
               Prepare a PDF summary for {nameLine}. Filter by date range if needed and include visit notes automatically.
             </p>
             {loading && <p className="subtle">Loading your data…</p>}
-            {!loading && visits.length === 0 && !error && (
-              <p className="subtle">No visits recorded yet. Add a visit to enable exports.</p>
+            {!loading && workings.length === 0 && !error && (
+              <p className="subtle">No lodge workings recorded yet. Add a record to enable exports.</p>
             )}
             {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
@@ -312,34 +294,15 @@ export default function ReportsPage() {
               <button
                 type="button"
                 className="btn-soft"
-                onClick={() => exportPdf("visits")}
-                disabled={visitsDisabled || busy === "full" || busy === "visits" || busy === "gsr"}
+                onClick={exportGsrPdf}
+                disabled={gsrDisabled || busy}
               >
-                {busy === "visits" ? "Generating…" : "Export Visits"}
+                {busy ? "Generating…" : "Export GSR Report"}
               </button>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => exportPdf("full")}
-                disabled={visitsDisabled || busy === "full" || busy === "visits" || busy === "gsr"}
-              >
-                {busy === "full" ? "Generating…" : "Export Full"}
-              </button>
+              {gsrDisabled && !loading && !error && (
+                <span className="subtle text-xs">Add lodge workings to enable the Grand Superintendent report.</span>
+              )}
             </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="btn-soft"
-              onClick={() => exportPdf("gsr")}
-              disabled={gsrDisabled || busy === "gsr" || busy === "full" || busy === "visits"}
-            >
-              {busy === "gsr" ? "Generating…" : "Export GSR Report"}
-            </button>
-            {gsrDisabled && !loading && !error && (
-              <span className="subtle text-xs">Add lodge workings to enable the Grand Superintendent report.</span>
-            )}
           </div>
 
           <p className="subtle text-sm">

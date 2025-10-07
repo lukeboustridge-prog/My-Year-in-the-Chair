@@ -242,6 +242,7 @@ export async function downloadFullPdf(profile: Profile, visits: Visit[], offices
 export async function downloadGsrReport(
   profile: GrandSuperintendentProfile,
   workings: LodgeWork[],
+  visits: Visit[],
   opts: GsrOptions = {},
 ) {
   if (typeof window === "undefined") {
@@ -256,6 +257,13 @@ export async function downloadGsrReport(
   const cursor = { y: margin };
   const pageWidth = doc.internal.pageSize.getWidth();
   const workingList = [...workings].sort((a, b) => {
+    const aDate = a.dateISO || "";
+    const bDate = b.dateISO || "";
+    if (aDate === bDate) return 0;
+    return aDate < bDate ? -1 : 1;
+  });
+
+  const visitList = [...visits].sort((a, b) => {
     const aDate = a.dateISO || "";
     const bDate = b.dateISO || "";
     if (aDate === bDate) return 0;
@@ -496,6 +504,11 @@ export async function downloadGsrReport(
   doc.setFontSize(16);
   doc.text("Summary Tables", margin, cursor.y);
   cursor.y += 22;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text("Candidate Summary", margin, cursor.y);
+  cursor.y += 16;
+
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
 
@@ -534,6 +547,41 @@ export async function downloadGsrReport(
   cursor.y = ((doc as any).lastAutoTable?.finalY ?? cursor.y) + 24;
 
   ensureSpace(doc, cursor, margin, 60);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text("Visits Summary", margin, cursor.y);
+  cursor.y += 16;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+
+  const visitRows = visitList.map((visit) => [
+    formatLongDate(visit.dateISO) || "—",
+    visit.lodgeName || "—",
+    visit.eventType || "Visit",
+    visit.notes ? visit.notes : "—",
+  ]);
+
+  autoTable(doc, {
+    startY: cursor.y,
+    margin: { left: margin, right: margin },
+    theme: "grid",
+    styles: { fontSize: 10, cellPadding: 6, textColor: 0, lineColor: [0, 0, 0] },
+    headStyles: { fillColor: [240, 240, 240], textColor: 0, lineColor: [0, 0, 0] },
+    head: [["Date", "Lodge", "Event", "Notes"]],
+    body: visitRows.length > 0 ? visitRows : [["—", "—", "—", "—"]],
+  } as any);
+  cursor.y = ((doc as any).lastAutoTable?.finalY ?? cursor.y) + 24;
+
+  ensureSpace(doc, cursor, margin, 60);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text("Lodge Workings Summary", margin, cursor.y);
+  cursor.y += 16;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+
   autoTable(doc, {
     startY: cursor.y,
     margin: { left: margin, right: margin },
