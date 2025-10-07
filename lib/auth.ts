@@ -18,7 +18,7 @@ export const authConfig: NextAuthConfig = {
       authorize: async (creds) => {
         if (!creds?.email || !creds?.password) return null;
         const user = await prisma.user.findUnique({ where: { email: creds.email }});
-        if (!user) return null;
+        if (!user || !user.password) return null;
         const ok = await bcrypt.compare(creds.password, user.password);
         if (!ok) return null;
         return { id: user.id, email: user.email, name: user.name || user.email };
