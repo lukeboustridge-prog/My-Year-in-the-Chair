@@ -34,6 +34,8 @@ type Working = {
   work?: string;
   candidateName?: string | null;
   lecture?: string | null;
+  grandLodgeVisit?: boolean | null;
+  emergencyMeeting?: boolean | null;
   tracingBoard1?: boolean | null;
   tracingBoard2?: boolean | null;
   tracingBoard3?: boolean | null;

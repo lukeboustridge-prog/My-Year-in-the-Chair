@@ -76,6 +76,7 @@ model LodgeWork {
   month         Int
   year          Int
   grandLodgeVisit Boolean  @default(false)
+  emergencyMeeting Boolean @default(false)
   work          WorkType @default(OTHER)
   candidateName String?
   lecture       String?

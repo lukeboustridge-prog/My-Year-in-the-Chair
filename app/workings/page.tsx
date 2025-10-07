@@ -33,6 +33,7 @@ type LodgeWorkRecord = {
   month: number | null;
   year: number | null;
   grandLodgeVisit: boolean;
+  emergencyMeeting: boolean;
   work: WorkType;
   candidateName: string | null;
   lecture: string | null;
@@ -54,6 +55,7 @@ const emptyWork: LodgeWorkForm = {
   month: null,
   year: null,
   grandLodgeVisit: false,
+  emergencyMeeting: false,
   work: "OTHER",
   candidateName: "",
   lecture: "",
@@ -73,6 +75,7 @@ function normaliseWork(raw: any): LodgeWorkRecord {
     month,
     year,
     grandLodgeVisit: Boolean(raw?.grandLodgeVisit),
+    emergencyMeeting: Boolean(raw?.emergencyMeeting),
     work: (raw?.work as WorkType) ?? "OTHER",
     candidateName: raw?.candidateName ?? null,
     lecture: raw?.lecture ?? null,
@@ -137,6 +140,7 @@ export default function WorkingsPage() {
       month: record.month,
       year: record.year,
       grandLodgeVisit: Boolean(record.grandLodgeVisit),
+      emergencyMeeting: Boolean(record.emergencyMeeting),
       work: record.work,
       candidateName: record.candidateName ?? "",
       lecture: record.lecture ?? "",
@@ -180,6 +184,7 @@ export default function WorkingsPage() {
       month,
       year,
       grandLodgeVisit: Boolean(editing.grandLodgeVisit),
+      emergencyMeeting: Boolean(editing.emergencyMeeting),
       work: editing.work,
       candidateName: editing.candidateName?.trim() || undefined,
       lecture: editing.lecture?.trim() || undefined,
@@ -266,6 +271,7 @@ export default function WorkingsPage() {
                     <th className="py-2 pr-3">Candidate</th>
                     <th className="py-2 pr-3">Lecture</th>
                     <th className="py-2 pr-3">GL Visit</th>
+                    <th className="py-2 pr-3">Emergency</th>
                     <th className="py-2 pr-3">Tracing Boards</th>
                     <th className="py-2 pr-3">Notes</th>
                     <th className="py-2 pr-3">Actions</th>
@@ -286,6 +292,7 @@ export default function WorkingsPage() {
                       <td className="py-2 pr-3">{record.candidateName || "—"}</td>
                       <td className="py-2 pr-3">{record.lecture || "—"}</td>
                       <td className="py-2 pr-3">{record.grandLodgeVisit ? "Yes" : "No"}</td>
+                      <td className="py-2 pr-3">{record.emergencyMeeting ? "Yes" : "No"}</td>
                       <td className="py-2 pr-3">{formatTracingBoards(record)}</td>
                       <td className="py-2 pr-3 whitespace-pre-wrap">{record.notes || "—"}</td>
                       <td className="py-2 pr-3">
@@ -384,17 +391,31 @@ export default function WorkingsPage() {
                 />
               </label>
             </div>
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <input
-                type="checkbox"
-                checked={Boolean(editing.grandLodgeVisit)}
-                onChange={(e) =>
-                  setEditing((prev) =>
-                    prev ? { ...prev, grandLodgeVisit: e.target.checked } : prev,
-                  )
-                }
-              />
-              <span>Grand Lodge Visit</span>
+            <div className="flex flex-wrap items-center gap-6">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={Boolean(editing.grandLodgeVisit)}
+                  onChange={(e) =>
+                    setEditing((prev) =>
+                      prev ? { ...prev, grandLodgeVisit: e.target.checked } : prev,
+                    )
+                  }
+                />
+                <span>Grand Lodge Visit</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={Boolean(editing.emergencyMeeting)}
+                  onChange={(e) =>
+                    setEditing((prev) =>
+                      prev ? { ...prev, emergencyMeeting: e.target.checked } : prev,
+                    )
+                  }
+                />
+                <span>Emergency Meeting</span>
+              </label>
             </div>
             <fieldset className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <legend className="label text-sm font-semibold">Tracing Boards</legend>

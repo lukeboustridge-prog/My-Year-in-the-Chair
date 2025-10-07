@@ -59,6 +59,7 @@ export async function POST(req: Request) {
         month,
         year,
         grandLodgeVisit: data.grandLodgeVisit ?? false,
+        emergencyMeeting: data.emergencyMeeting ?? false,
         work: data.work,
         candidateName: data.candidateName ?? null,
         lecture: data.lecture ?? null,
