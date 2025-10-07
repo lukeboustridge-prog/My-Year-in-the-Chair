@@ -12,6 +12,10 @@ type Profile = {
 type Visit = { id?: string; dateISO?: string; lodgeName?: string; lodgeNumber?: string; eventType?: string; grandLodgeVisit?: boolean };
 type Working = { id?: string; dateISO?: string; degree?: string; candidateName?: string; grandLodgeVisit?: boolean };
 
+type LeaderboardEntry = { rank: number; visits: number; name?: string; userId?: string };
+type LeaderboardBucket = { leaders?: LeaderboardEntry[]; user?: (LeaderboardEntry | null) } | null;
+type LeaderboardState = { rollingYear?: LeaderboardBucket; rollingMonth?: LeaderboardBucket } | null;
+
 type WorkType = 'INITIATION' | 'PASSING' | 'RAISING' | 'INSTALLATION' | 'PRESENTATION' | 'LECTURE' | 'OTHER';
 
 const workTypeToLabel: Record<WorkType, string> = {
@@ -48,23 +52,29 @@ function degreeFromWorkType(value?: string) {
 }
 
 function normalizeVisit(raw: any): Visit {
+  const grandLodgeValue = raw?.grandLodgeVisit ?? raw?.isGrandLodgeVisit ?? raw?.grand_lodge_visit;
   return {
     id: raw?.id,
     dateISO: toISODate(raw?.dateISO ?? raw?.date ?? ''),
     lodgeName: raw?.lodgeName ?? raw?.lodge ?? '',
     lodgeNumber: raw?.lodgeNumber ?? raw?.lodgeNo ?? '',
     eventType: visitLabelFromWorkType(raw?.workOfEvening ?? raw?.eventType ?? raw?.degree),
-    grandLodgeVisit: Boolean(raw?.grandLodgeVisit),
+    grandLodgeVisit: typeof grandLodgeValue === 'string'
+      ? grandLodgeValue === 'true'
+      : Boolean(grandLodgeValue),
   };
 }
 
 function normalizeWorking(raw: any): Working {
+  const grandLodgeValue = raw?.grandLodgeVisit ?? raw?.isGrandLodgeVisit ?? raw?.grand_lodge_visit;
   return {
     id: raw?.id,
     dateISO: toISODate(raw?.dateISO ?? raw?.date ?? ''),
     degree: degreeFromWorkType(raw?.work ?? raw?.degree),
     candidateName: raw?.candidateName ?? raw?.section ?? '',
-    grandLodgeVisit: Boolean(raw?.grandLodgeVisit),
+    grandLodgeVisit: typeof grandLodgeValue === 'string'
+      ? grandLodgeValue === 'true'
+      : Boolean(grandLodgeValue),
   };
 }
 
@@ -72,6 +82,7 @@ export default function HomePage() {
   const [profile, setProfile] = React.useState<Profile | null>(null);
   const [visits, setVisits] = React.useState<Visit[]>([]);
   const [workings, setWorkings] = React.useState<Working[]>([]);
+  const [leaderboard, setLeaderboard] = React.useState<LeaderboardState>(null);
 
   React.useEffect(() => {
     (async () => {
@@ -90,6 +101,14 @@ export default function HomePage() {
         const data = await res.json().catch(()=> []);
         setWorkings(Array.isArray(data) ? data.map(normalizeWorking) : []);
       } catch { setWorkings([]); }
+      try {
+        const res = await fetch('/api/leaderboard', { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load leaderboard');
+        const data = await res.json().catch(() => null);
+        setLeaderboard(data || {});
+      } catch {
+        setLeaderboard({});
+      }
     })();
   }, []);
 
@@ -98,6 +117,11 @@ export default function HomePage() {
     ? profile?.postNominals.join(', ')
     : profile?.postNominals;
   const nameLine = [profile?.prefix, displayName, postNominals].filter(Boolean).join(' ') || 'Brother';
+
+  const rollingYearRank = leaderboard?.rollingYear?.user?.rank;
+  const rollingYearVisits = leaderboard?.rollingYear?.user?.visits;
+  const rollingMonthRank = leaderboard?.rollingMonth?.user?.rank;
+  const rollingMonthVisits = leaderboard?.rollingMonth?.user?.visits;
 
   return (
     <div className="space-y-6">
@@ -131,7 +155,26 @@ export default function HomePage() {
         </div></div>
         <div className="card"><div className="card-body">
           <div className="subtle mb-1">Leaderboard Rank</div>
-          <div className="text-2xl font-semibold">—</div>
+          <div className="space-y-2">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-semibold">
+                {typeof rollingYearRank === 'number' ? `#${rollingYearRank}` : '—'}
+              </span>
+              <span className="text-sm text-slate-500">
+                Rolling 12 months
+                {typeof rollingYearVisits === 'number' ? ` • ${rollingYearVisits} visits` : ''}
+              </span>
+            </div>
+            <div className="flex items-baseline gap-2 text-slate-600">
+              <span className="text-xl font-semibold">
+                {typeof rollingMonthRank === 'number' ? `#${rollingMonthRank}` : '—'}
+              </span>
+              <span className="text-sm">
+                This month
+                {typeof rollingMonthVisits === 'number' ? ` • ${rollingMonthVisits} visits` : ''}
+              </span>
+            </div>
+          </div>
         </div></div>
       </div>
 

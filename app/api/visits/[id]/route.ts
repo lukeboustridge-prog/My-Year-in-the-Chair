@@ -17,6 +17,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       workOfEvening: body.workOfEvening ?? null,
       candidateName: body.candidateName ?? null,
       comments: body.comments ?? null,
+      grandLodgeVisit: typeof body.grandLodgeVisit === "boolean" ? body.grandLodgeVisit : undefined,
     },
   });
   return NextResponse.json({ ok: true });

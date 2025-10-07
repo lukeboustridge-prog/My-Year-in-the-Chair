@@ -45,13 +45,16 @@ function labelFromWorkType(work?: string): Degree {
 }
 
 function normalizeVisit(raw: any): Visit {
+  const grandLodgeValue = raw?.grandLodgeVisit ?? raw?.isGrandLodgeVisit ?? raw?.grand_lodge_visit;
   return {
     id: raw?.id,
     dateISO: toISODate(raw?.dateISO ?? raw?.date ?? ''),
     lodgeName: raw?.lodgeName ?? raw?.lodge ?? '',
     lodgeNumber: raw?.lodgeNumber ?? raw?.lodgeNo ?? '',
     eventType: labelFromWorkType(raw?.workOfEvening ?? raw?.eventType ?? raw?.degree),
-    grandLodgeVisit: Boolean(raw?.grandLodgeVisit),
+    grandLodgeVisit: typeof grandLodgeValue === 'string'
+      ? grandLodgeValue === 'true'
+      : Boolean(grandLodgeValue),
     notes: raw?.comments ?? raw?.notes ?? '',
   };
 }
@@ -96,6 +99,7 @@ export default function VisitsPage() {
         lodgeNumber: lodgeNumber ? lodgeNumber : undefined,
         workOfEvening,
         comments: editing.notes?.trim() ? editing.notes : undefined,
+        grandLodgeVisit: Boolean(editing.grandLodgeVisit),
       };
       if (!isNew) payload.id = editing.id;
       const res = await fetch('/api/visits', {

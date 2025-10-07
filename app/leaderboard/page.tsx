@@ -1,4 +1,28 @@
-export default function LeaderboardPage() {
+import { getVisitLeaderboard } from "@/lib/leaderboard";
+
+export default async function LeaderboardPage() {
+  const [rollingYear, rollingMonth] = await Promise.all([
+    getVisitLeaderboard("year"),
+    getVisitLeaderboard("month"),
+  ]);
+
+  const renderBody = (rows: Awaited<ReturnType<typeof getVisitLeaderboard>>) => {
+    if (!rows.length) {
+      return (
+        <tr className="border-t">
+          <td className="py-2 pr-3" colSpan={3}>No data yet.</td>
+        </tr>
+      );
+    }
+    return rows.slice(0, 20).map((row) => (
+      <tr key={row.userId} className="border-t">
+        <td className="py-2 pr-3">#{row.rank}</td>
+        <td className="py-2 pr-3">{row.name}</td>
+        <td className="py-2 pr-3">{row.visits}</td>
+      </tr>
+    ));
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -7,7 +31,6 @@ export default function LeaderboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Rolling 12 Months */}
         <div className="card">
           <div className="card-body">
             <div className="flex items-center justify-between mb-3">
@@ -19,22 +42,15 @@ export default function LeaderboardPage() {
                   <tr className="text-left text-slate-500">
                     <th className="py-2 pr-3">Rank</th>
                     <th className="py-2 pr-3">Name</th>
-                    <th className="py-2 pr-3">Points</th>
+                    <th className="py-2 pr-3">Visits</th>
                   </tr>
                 </thead>
-                <tbody>
-                  <tr className="border-t">
-                    <td className="py-2 pr-3">—</td>
-                    <td className="py-2 pr-3">—</td>
-                    <td className="py-2 pr-3">—</td>
-                  </tr>
-                </tbody>
+                <tbody>{renderBody(rollingYear)}</tbody>
               </table>
             </div>
           </div>
         </div>
 
-        {/* Rolling Month */}
         <div className="card">
           <div className="card-body">
             <div className="flex items-center justify-between mb-3">
@@ -46,16 +62,10 @@ export default function LeaderboardPage() {
                   <tr className="text-left text-slate-500">
                     <th className="py-2 pr-3">Rank</th>
                     <th className="py-2 pr-3">Name</th>
-                    <th className="py-2 pr-3">Points</th>
+                    <th className="py-2 pr-3">Visits</th>
                   </tr>
                 </thead>
-                <tbody>
-                  <tr className="border-t">
-                    <td className="py-2 pr-3">—</td>
-                    <td className="py-2 pr-3">—</td>
-                    <td className="py-2 pr-3">—</td>
-                  </tr>
-                </tbody>
+                <tbody>{renderBody(rollingMonth)}</tbody>
               </table>
             </div>
           </div>

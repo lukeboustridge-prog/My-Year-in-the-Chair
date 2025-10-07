@@ -8,6 +8,7 @@ const schema = z.object({
   work: z.enum(["INITIATION","PASSING","RAISING","INSTALLATION","PRESENTATION","LECTURE","OTHER"]),
   candidateName: z.string().optional(),
   comments: z.string().optional(),
+  grandLodgeVisit: z.boolean().optional(),
 });
 
 export async function GET() {
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
         work: d.work,
         candidateName: d.candidateName ?? null,
         comments: d.comments ?? null,
+        grandLodgeVisit: Boolean(d.grandLodgeVisit),
       },
     });
     return NextResponse.json(row, { status: 201 });

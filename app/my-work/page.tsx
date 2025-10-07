@@ -44,12 +44,15 @@ function degreeFromWorkType(work?: string): Degree {
 }
 
 function normalizeWorking(raw: any): Working {
+  const grandLodgeValue = raw?.grandLodgeVisit ?? raw?.isGrandLodgeVisit ?? raw?.grand_lodge_visit;
   return {
     id: raw?.id,
     dateISO: toISODate(raw?.dateISO ?? raw?.date ?? ''),
     degree: degreeFromWorkType(raw?.work ?? raw?.degree),
     candidateName: raw?.candidateName ?? raw?.section ?? '',
-    grandLodgeVisit: Boolean(raw?.grandLodgeVisit),
+    grandLodgeVisit: typeof grandLodgeValue === 'string'
+      ? grandLodgeValue === 'true'
+      : Boolean(grandLodgeValue),
     notes: raw?.comments ?? raw?.notes ?? '',
   };
 }
@@ -93,6 +96,7 @@ export default function MyWorkPage() {
         work,
         candidateName: candidateName ? candidateName : undefined,
         comments: editing.notes?.trim() ? editing.notes : undefined,
+        grandLodgeVisit: Boolean(editing.grandLodgeVisit),
       };
       if (!isNew) payload.id = editing.id;
       const res = await fetch('/api/mywork', {
