@@ -1,7 +1,7 @@
 'use client';
 import React from "react";
 
-export default function SignOutButton() {
+export default function SignOutButton({ className = "" }: { className?: string }) {
   const [busy, setBusy] = React.useState(false);
   const onClick = async () => {
     if (busy) return;
@@ -18,7 +18,7 @@ export default function SignOutButton() {
     }
   };
   return (
-    <button className="navlink" onClick={onClick} aria-busy={busy}>
+    <button className={`navlink ${className}`} onClick={onClick} aria-busy={busy}>
       {busy ? 'Signing out…' : 'Sign out'}
     </button>
   );

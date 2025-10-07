@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { RANK_OPTIONS, RANK_META, deriveTitle } from "@/lib/constants";
 
+const REGION_OPTIONS = Array.from({ length: 9 }, (_, idx) => `Region ${idx + 1}`);
+
 export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [state, setState] = useState({
@@ -12,12 +14,13 @@ export default function ProfilePage() {
     postNominals: [] as string[],
     lodgeName: "",
     lodgeNumber: "",
+    region: "",
   });
 
   // Load existing data
   useEffect(() => {
     (async () => {
-      const res = await fetch("/api/profile"); if (!res.ok) return;
+      const res = await fetch("/api/profile", { credentials: "include" }); if (!res.ok) return;
       const u = await res.json();
       setState(s => ({
         ...s,
@@ -28,6 +31,7 @@ export default function ProfilePage() {
         postNominals: u.postNominals || [],
         lodgeName: u.lodgeName || "",
         lodgeNumber: u.lodgeNumber || "",
+        region: u.region || "",
       }));
     })();
   }, []);
@@ -47,6 +51,7 @@ export default function ProfilePage() {
     const res = await fetch("/api/profile", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify(state),
     });
     setSaving(false);
@@ -82,16 +87,6 @@ export default function ProfilePage() {
           </label>
 
           <label className="stat">
-            <span className="label">Prefix (auto)</span>
-            <input className="card" style={{padding:".6rem"}} value={state.prefix} readOnly/>
-          </label>
-
-          <label className="stat">
-            <span className="label">Post-nominals (auto)</span>
-            <input className="card" style={{padding:".6rem"}} value={state.postNominals.join(", ")} readOnly/>
-          </label>
-
-          <label className="stat">
             <span className="label">Lodge Name</span>
             <input className="card" style={{padding:".6rem"}} value={state.lodgeName}
               onChange={(e)=>setState(s=>({...s, lodgeName: e.target.value}))} placeholder="e.g., Lodge Example"/>
@@ -101,6 +96,17 @@ export default function ProfilePage() {
             <span className="label">Lodge Number</span>
             <input className="card" style={{padding:".6rem"}} value={state.lodgeNumber}
               onChange={(e)=>setState(s=>({...s, lodgeNumber: e.target.value}))} placeholder="e.g., No. 123"/>
+          </label>
+
+          <label className="stat">
+            <span className="label">Region</span>
+            <select className="card" style={{padding:".6rem"}} value={state.region}
+              onChange={(e)=>setState(s=>({...s, region: e.target.value}))}>
+              <option value="">Select region</option>
+              {REGION_OPTIONS.map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
           </label>
         </div>
 

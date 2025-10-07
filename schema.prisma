@@ -57,6 +57,7 @@ model Visit {
   lodgeName     String?
   lodgeNumber   String?
   region        String?
+  grandLodgeVisit Boolean @default(false)
 
   workOfEvening WorkType @default(OTHER)
   candidateName String?
@@ -71,10 +72,17 @@ model LodgeWork {
   user          User     @relation(fields: [userId], references: [id])
   userId        String
 
+  meetingDate   DateTime?
   month         Int
   year          Int
+  grandLodgeVisit Boolean  @default(false)
+  emergencyMeeting Boolean @default(false)
   work          WorkType @default(OTHER)
   candidateName String?
+  lecture       String?
+  tracingBoard1 Boolean  @default(false)
+  tracingBoard2 Boolean  @default(false)
+  tracingBoard3 Boolean  @default(false)
   notes         String?
   createdAt     DateTime @default(now())
 }

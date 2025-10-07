@@ -28,9 +28,11 @@ export default function AuthPage() {
         <input type="password" value={password} onChange={e=>setPassword(e.target.value)} required />
         <button className="btn btn-primary w-full" disabled={loading}>{loading ? "Signing in..." : "Sign in"}</button>
       </form>
-      <div className="text-sm mt-4">
-        <span>Don't have an account? </span>
-        <Link className="link" href="/auth/register">Create one</Link>
+      <div className="mt-4 space-y-2">
+        <p className="text-sm">Don't have an account?</p>
+        <Link className="btn-soft w-full justify-center" href="/auth/register">
+          Create account
+        </Link>
       </div>
     </div>
   );

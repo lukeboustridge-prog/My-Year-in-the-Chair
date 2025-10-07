@@ -9,12 +9,14 @@ export async function GET() {
   if (!u) return new NextResponse("Unauthorized", { status: 401 });
   return NextResponse.json({
     name: u.name,
+    fullName: u.name,
     rank: u.rank,
     isPastGrand: u.isPastGrand,
     prefix: u.prefix,
     postNominals: u.postNominals,
     lodgeName: u.lodgeName,
     lodgeNumber: u.lodgeNumber,
+    region: u.region,
   });
 }
 
@@ -33,6 +35,7 @@ export async function PUT(req: Request) {
       postNominals: Array.isArray(body.postNominals) ? body.postNominals : [],
       lodgeName: body.lodgeName ?? null,
       lodgeNumber: body.lodgeNumber ?? null,
+      region: body.region ?? null,
     },
   });
 

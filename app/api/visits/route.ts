@@ -1,31 +1,47 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
+import { parseVisitDate, visitSchema } from "./shared";
 
 export async function GET() {
   const uid = getUserId();
   if (!uid) return new NextResponse("Unauthorized", { status: 401 });
-  const rows = await db.visit.findMany({ where: { userId: uid }, orderBy: { date: "desc" } });
+  const rows = await db.visit.findMany({
+    where: { userId: uid },
+    orderBy: { date: "desc" },
+  });
   return NextResponse.json(rows);
 }
 
 export async function POST(req: Request) {
   const uid = getUserId();
   if (!uid) return new NextResponse("Unauthorized", { status: 401 });
-  const body = await req.json();
-  const created = await db.visit.create({
-    data: {
-      userId: uid,
-      date: new Date(body.date),
-      lodgeName: body.lodgeName || null,
-      lodgeNumber: body.lodgeNumber || null,
-      region: body.region || null,
-      workOfEvening: body.workOfEvening || "OTHER",
-      candidateName: body.candidateName || null,
-      comments: body.comments || null,
-    },
-  });
-  return NextResponse.json(created, { status: 201 });
+  try {
+    const body = await req.json();
+    const parsed = visitSchema.safeParse(body);
+    if (!parsed.success) {
+      return new NextResponse("Invalid input", { status: 400 });
+    }
+    const data = parsed.data;
+    const created = await db.visit.create({
+      data: {
+        userId: uid,
+        date: parseVisitDate(data.date),
+        lodgeName: data.lodgeName ?? null,
+        lodgeNumber: data.lodgeNumber ?? null,
+        region: data.region ?? null,
+        workOfEvening: data.workOfEvening ?? "OTHER",
+        candidateName: data.candidateName ?? null,
+        grandLodgeVisit: data.grandLodgeVisit ?? false,
+        comments: data.comments ?? null,
+        notes: data.notes ?? null,
+      },
+    });
+    return NextResponse.json(created, { status: 201 });
+  } catch (error) {
+    console.error("VISITS_POST", error);
+    return new NextResponse("Server error", { status: 500 });
+  }
 }
 
 export async function PUT(req: Request) {
@@ -37,16 +53,23 @@ export async function PUT(req: Request) {
   const existing = await db.visit.findUnique({ where: { id: body.id } });
   if (!existing || existing.userId !== uid) return new NextResponse("Not found", { status: 404 });
 
+  const parsed = visitSchema.partial().safeParse(body);
+  if (!parsed.success) {
+    return new NextResponse("Invalid input", { status: 400 });
+  }
+  const data = parsed.data;
   const updated = await db.visit.update({
     where: { id: body.id },
     data: {
-      date: body.date ? new Date(body.date) : existing.date,
-      lodgeName: body.lodgeName ?? existing.lodgeName,
-      lodgeNumber: body.lodgeNumber ?? existing.lodgeNumber,
-      region: body.region ?? existing.region,
-      workOfEvening: body.workOfEvening ?? existing.workOfEvening,
-      candidateName: body.candidateName ?? existing.candidateName,
-      comments: body.comments ?? existing.comments,
+      date: data.date ? parseVisitDate(data.date) : existing.date,
+      lodgeName: data.lodgeName ?? existing.lodgeName,
+      lodgeNumber: data.lodgeNumber ?? existing.lodgeNumber,
+      region: data.region ?? existing.region,
+      workOfEvening: data.workOfEvening ?? existing.workOfEvening,
+      candidateName: data.candidateName ?? existing.candidateName,
+      grandLodgeVisit: data.grandLodgeVisit ?? existing.grandLodgeVisit,
+      comments: data.comments ?? existing.comments,
+      notes: data.notes ?? existing.notes,
     },
   });
   return NextResponse.json(updated);
