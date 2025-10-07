@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
-import { lodgeWorkSchema } from "../route";
+import { lodgeWorkSchema, parseMeetingDate } from "../shared";
 
 const partialSchema = lodgeWorkSchema.partial().extend({
   work: lodgeWorkSchema.shape.work.optional(),
@@ -21,8 +21,10 @@ export async function PATCH(
     if (!parsed.success)
       return new NextResponse("Invalid input", { status: 400 });
     const d = parsed.data;
-    const meetingDate = d.meetingDate ? new Date(d.meetingDate) : undefined;
-    if (meetingDate && isNaN(meetingDate.getTime())) {
+    let meetingDate: Date | undefined;
+    try {
+      meetingDate = d.meetingDate ? parseMeetingDate(d.meetingDate) : undefined;
+    } catch {
       return new NextResponse("Invalid meeting date", { status: 400 });
     }
     const month = meetingDate
