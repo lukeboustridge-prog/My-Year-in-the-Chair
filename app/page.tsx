@@ -4,7 +4,16 @@ import Link from "next/link";
 import { toDisplayDate } from "../lib/date";
 
 type Profile = { prefix?: string; fullName?: string; postNominals?: string };
-type Visit = { id?: string; dateISO?: string; lodgeName?: string; eventType?: string; grandLodgeVisit?: boolean };
+type Visit = {
+  id?: string;
+  date?: string;
+  dateISO?: string;
+  lodgeName?: string;
+  lodgeNumber?: string;
+  workOfEvening?: string;
+  eventType?: string;
+  grandLodgeVisit?: boolean;
+};
 type Working = { id?: string; dateISO?: string; degree?: string; section?: string; grandLodgeVisit?: boolean };
 
 export default function HomePage() {
@@ -91,10 +100,10 @@ export default function HomePage() {
                   {visits.length === 0 ? (
                     <tr className="border-t"><td className="py-2 pr-3" colSpan={4}>No recent visits.</td></tr>
                   ) : visits.map(v => (
-                    <tr key={v.id || (v.dateISO || '') + (v.lodgeName || '')} className="border-t">
-                      <td className="py-2 pr-3">{toDisplayDate(v.dateISO || '')}</td>
+                    <tr key={v.id || (v.date || v.dateISO || '') + (v.lodgeName || '')} className="border-t">
+                      <td className="py-2 pr-3">{toDisplayDate(v.date || v.dateISO || '')}</td>
                       <td className="py-2 pr-3">{v.lodgeName || '—'}</td>
-                      <td className="py-2 pr-3">{v.eventType || '—'}</td>
+                      <td className="py-2 pr-3">{v.workOfEvening || v.eventType || '—'}</td>
                       <td className="py-2 pr-3">{v.grandLodgeVisit ? 'Yes' : 'No'}</td>
                     </tr>
                   ))}
