@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
-import { parseVisitDate, visitSchema } from "../route";
+import { parseVisitDate, visitSchema } from "../shared";
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const uid = getUserId();
