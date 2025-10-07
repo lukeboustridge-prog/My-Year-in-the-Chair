@@ -54,7 +54,7 @@ export async function getVisitLeaderboard(range: "month" | "year") {
   let grouped: Awaited<ReturnType<typeof db.visit.groupBy>>;
   try {
     grouped = await db.visit.groupBy({
-      by: ["userId"] as Prisma.VisitScalarFieldEnum[],
+      by: [Prisma.VisitScalarFieldEnum.userId],
       where: { date: { gte: start } },
       _count: { _all: true },
     });
