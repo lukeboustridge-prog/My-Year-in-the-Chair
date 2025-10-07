@@ -1,7 +1,7 @@
 'use client';
 import React from "react";
 import Link from "next/link";
-import { toDisplayDate } from "../lib/date";
+import { toDisplayDate, toISODate } from "../lib/date";
 
 type Profile = {
   prefix?: string;
@@ -11,6 +11,59 @@ type Profile = {
 };
 type Visit = { id?: string; dateISO?: string; lodgeName?: string; eventType?: string; grandLodgeVisit?: boolean };
 type Working = { id?: string; dateISO?: string; degree?: string; section?: string; grandLodgeVisit?: boolean };
+
+type WorkType = 'INITIATION' | 'PASSING' | 'RAISING' | 'INSTALLATION' | 'PRESENTATION' | 'LECTURE' | 'OTHER';
+
+const workTypeToLabel: Record<WorkType, string> = {
+  INITIATION: 'Initiation',
+  PASSING: 'Passing',
+  RAISING: 'Raising',
+  INSTALLATION: 'Installation',
+  PRESENTATION: 'Other',
+  LECTURE: 'Other',
+  OTHER: 'Other',
+};
+
+function visitLabelFromWorkType(value?: string) {
+  const key = (value || '').toUpperCase() as WorkType;
+  return workTypeToLabel[key] ?? 'Other';
+}
+
+function degreeFromWorkType(value?: string) {
+  const key = (value || '').toUpperCase() as WorkType;
+  switch (key) {
+    case 'INITIATION':
+      return 'Initiation';
+    case 'PASSING':
+      return 'Passing';
+    case 'RAISING':
+      return 'Raising';
+    case 'INSTALLATION':
+      return 'Installation';
+    default:
+      return 'Other';
+  }
+}
+
+function normalizeVisit(raw: any): Visit {
+  return {
+    id: raw?.id,
+    dateISO: toISODate(raw?.dateISO ?? raw?.date ?? ''),
+    lodgeName: raw?.lodgeName ?? raw?.lodge ?? '',
+    eventType: visitLabelFromWorkType(raw?.workOfEvening ?? raw?.eventType ?? raw?.degree),
+    grandLodgeVisit: Boolean(raw?.grandLodgeVisit),
+  };
+}
+
+function normalizeWorking(raw: any): Working {
+  return {
+    id: raw?.id,
+    dateISO: toISODate(raw?.dateISO ?? raw?.date ?? ''),
+    degree: degreeFromWorkType(raw?.work ?? raw?.degree),
+    section: raw?.candidateName ?? raw?.section ?? '',
+    grandLodgeVisit: Boolean(raw?.grandLodgeVisit),
+  };
+}
 
 export default function HomePage() {
   const [profile, setProfile] = React.useState<Profile | null>(null);
@@ -27,12 +80,12 @@ export default function HomePage() {
       try {
         const res = await fetch('/api/visits?limit=5', { credentials: 'include' });
         const data = await res.json().catch(()=> []);
-        setVisits(Array.isArray(data) ? data : []);
+        setVisits(Array.isArray(data) ? data.map(normalizeVisit) : []);
       } catch { setVisits([]); }
       try {
-        const res = await fetch('/api/my-work?limit=5', { credentials: 'include' });
+        const res = await fetch('/api/mywork?limit=5', { credentials: 'include' });
         const data = await res.json().catch(()=> []);
-        setWorkings(Array.isArray(data) ? data : []);
+        setWorkings(Array.isArray(data) ? data.map(normalizeWorking) : []);
       } catch { setWorkings([]); }
     })();
   }, []);

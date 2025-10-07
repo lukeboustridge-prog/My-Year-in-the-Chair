@@ -4,6 +4,7 @@ import Modal from "../../components/Modal";
 import { toISODate, toDisplayDate } from "../../lib/date";
 
 type Degree = 'Initiation' | 'Passing' | 'Raising' | 'Installation' | 'Other';
+type WorkType = 'INITIATION' | 'PASSING' | 'RAISING' | 'INSTALLATION' | 'PRESENTATION' | 'LECTURE' | 'OTHER';
 
 type Visit = {
   id?: string;
@@ -15,6 +16,40 @@ type Visit = {
 };
 
 const emptyVisit: Visit = { dateISO: '', lodgeName: '', eventType: 'Initiation', grandLodgeVisit: false, notes: '' };
+
+const workTypeFromLabel: Record<Degree, WorkType> = {
+  Initiation: 'INITIATION',
+  Passing: 'PASSING',
+  Raising: 'RAISING',
+  Installation: 'INSTALLATION',
+  Other: 'OTHER',
+};
+
+function labelFromWorkType(work?: string): Degree {
+  switch ((work || '').toUpperCase()) {
+    case 'INITIATION':
+      return 'Initiation';
+    case 'PASSING':
+      return 'Passing';
+    case 'RAISING':
+      return 'Raising';
+    case 'INSTALLATION':
+      return 'Installation';
+    default:
+      return 'Other';
+  }
+}
+
+function normalizeVisit(raw: any): Visit {
+  return {
+    id: raw?.id,
+    dateISO: toISODate(raw?.dateISO ?? raw?.date ?? ''),
+    lodgeName: raw?.lodgeName ?? raw?.lodge ?? '',
+    eventType: labelFromWorkType(raw?.workOfEvening ?? raw?.eventType ?? raw?.degree),
+    grandLodgeVisit: Boolean(raw?.grandLodgeVisit),
+    notes: raw?.comments ?? raw?.notes ?? '',
+  };
+}
 
 export default function VisitsPage() {
   const [records, setRecords] = React.useState<Visit[] | null>(null);
@@ -29,14 +64,7 @@ export default function VisitsPage() {
         const res = await fetch('/api/visits', { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to load visits');
         const data = await res.json();
-        const norm = (Array.isArray(data) ? data : []).map((r:any) => ({
-          id: r.id,
-          dateISO: toISODate(r.dateISO || r.date || ''),
-          lodgeName: r.lodgeName || r.lodge || '',
-          eventType: r.eventType || r.degree || 'Other',
-          grandLodgeVisit: Boolean(r.grandLodgeVisit),
-          notes: r.notes || ''
-        }));
+        const norm = (Array.isArray(data) ? data : []).map(normalizeVisit);
         setRecords(norm);
       } catch (e:any) {
         setRecords([]);
@@ -55,26 +83,27 @@ export default function VisitsPage() {
     setBusy(true);
     try {
       const isNew = !editing.id;
-      const payload = {
-        id: editing.id,
-        dateISO: toISODate(editing.dateISO),
-        lodgeName: editing.lodgeName,
-        eventType: editing.eventType,
-        grandLodgeVisit: !!editing.grandLodgeVisit,
-        notes: editing.notes || ''
+      const workOfEvening = workTypeFromLabel[editing.eventType] ?? 'OTHER';
+      const payload: Record<string, unknown> = {
+        date: toISODate(editing.dateISO),
+        lodgeName: editing.lodgeName || undefined,
+        workOfEvening,
+        comments: editing.notes?.trim() ? editing.notes : undefined,
       };
-      const res = await fetch(isNew ? '/api/visits' : `/api/visits/${editing.id}`, {
+      if (!isNew) payload.id = editing.id;
+      const res = await fetch('/api/visits', {
         method: isNew ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
-      const saved = await res.json().catch(() => payload);
+      const raw = await res.json().catch(() => null);
+      const saved = normalizeVisit(raw ?? { ...payload, id: editing.id, workOfEvening });
       setRecords(prev => {
         const next = prev ? [...prev] : [];
-        if (isNew) return [saved as Visit, ...next];
-        return next.map(r => (r.id === editing.id ? (saved as Visit) : r));
+        if (isNew) return [saved, ...next];
+        return next.map(r => (r.id === editing.id ? saved : r));
       });
       closeModal();
     } catch (e:any) {
@@ -90,7 +119,12 @@ export default function VisitsPage() {
     const prev = records || [];
     setRecords(prev.filter(r => r.id !== id));
     try {
-      const res = await fetch(`/api/visits/${id}`, { method: 'DELETE', credentials: 'include' });
+      const res = await fetch('/api/visits', {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
       if (!res.ok) throw new Error(await res.text());
     } catch {
       setRecords(prev);

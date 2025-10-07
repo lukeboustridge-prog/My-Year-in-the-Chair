@@ -4,6 +4,7 @@ import Modal from "../../components/Modal";
 import { toISODate, toDisplayDate } from "../../lib/date";
 
 type Degree = 'Initiation' | 'Passing' | 'Raising' | 'Installation' | 'Other';
+type WorkType = 'INITIATION' | 'PASSING' | 'RAISING' | 'INSTALLATION' | 'PRESENTATION' | 'LECTURE' | 'OTHER';
 
 type Working = {
   id?: string;
@@ -16,6 +17,40 @@ type Working = {
 
 const emptyWorking: Working = { dateISO: '', degree: 'Initiation', section: '', grandLodgeVisit: false, notes: '' };
 
+const workTypeFromDegree: Record<Degree, WorkType> = {
+  Initiation: 'INITIATION',
+  Passing: 'PASSING',
+  Raising: 'RAISING',
+  Installation: 'INSTALLATION',
+  Other: 'OTHER',
+};
+
+function degreeFromWorkType(work?: string): Degree {
+  switch ((work || '').toUpperCase()) {
+    case 'INITIATION':
+      return 'Initiation';
+    case 'PASSING':
+      return 'Passing';
+    case 'RAISING':
+      return 'Raising';
+    case 'INSTALLATION':
+      return 'Installation';
+    default:
+      return 'Other';
+  }
+}
+
+function normalizeWorking(raw: any): Working {
+  return {
+    id: raw?.id,
+    dateISO: toISODate(raw?.dateISO ?? raw?.date ?? ''),
+    degree: degreeFromWorkType(raw?.work ?? raw?.degree),
+    section: raw?.candidateName ?? raw?.section ?? '',
+    grandLodgeVisit: Boolean(raw?.grandLodgeVisit),
+    notes: raw?.comments ?? raw?.notes ?? '',
+  };
+}
+
 export default function MyWorkPage() {
   const [records, setRecords] = React.useState<Working[] | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -26,17 +61,10 @@ export default function MyWorkPage() {
   React.useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/my-work', { credentials: 'include' });
+        const res = await fetch('/api/mywork', { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to load records');
         const data = await res.json();
-        const norm = (Array.isArray(data) ? data : []).map((r:any) => ({
-          id: r.id,
-          dateISO: toISODate(r.dateISO || r.date || ''),
-          degree: r.degree || 'Other',
-          section: r.section || '',
-          grandLodgeVisit: Boolean(r.grandLodgeVisit),
-          notes: r.notes || ''
-        }));
+        const norm = (Array.isArray(data) ? data : []).map(normalizeWorking);
         setRecords(norm);
       } catch (e:any) {
         setRecords([]);
@@ -55,26 +83,27 @@ export default function MyWorkPage() {
     setBusy(true);
     try {
       const isNew = !editing.id;
-      const payload = {
-        id: editing.id,
-        dateISO: toISODate(editing.dateISO),
-        degree: editing.degree,
-        section: editing.section,
-        grandLodgeVisit: !!editing.grandLodgeVisit,
-        notes: editing.notes || ''
+      const work = workTypeFromDegree[editing.degree] ?? 'OTHER';
+      const payload: Record<string, unknown> = {
+        date: toISODate(editing.dateISO),
+        work,
+        candidateName: editing.section?.trim() ? editing.section : undefined,
+        comments: editing.notes?.trim() ? editing.notes : undefined,
       };
-      const res = await fetch(isNew ? '/api/my-work' : `/api/my-work/${editing.id}`, {
+      if (!isNew) payload.id = editing.id;
+      const res = await fetch('/api/mywork', {
         method: isNew ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
-      const saved = await res.json().catch(() => payload);
+      const raw = await res.json().catch(() => null);
+      const saved = normalizeWorking(raw ?? { ...payload, id: editing.id, work });
       setRecords(prev => {
         const next = prev ? [...prev] : [];
-        if (isNew) return [saved as Working, ...next];
-        return next.map(r => (r.id === editing.id ? (saved as Working) : r));
+        if (isNew) return [saved, ...next];
+        return next.map(r => (r.id === editing.id ? saved : r));
       });
       closeModal();
     } catch (e:any) {
@@ -90,7 +119,12 @@ export default function MyWorkPage() {
     const prev = records || [];
     setRecords(prev.filter(r => r.id !== id));
     try {
-      const res = await fetch(`/api/my-work/${id}`, { method: 'DELETE', credentials: 'include' });
+      const res = await fetch('/api/mywork', {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
       if (!res.ok) throw new Error(await res.text());
     } catch {
       setRecords(prev);
