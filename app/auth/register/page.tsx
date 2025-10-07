@@ -22,8 +22,8 @@ export default function RegisterPage() {
     });
     setLoading(false);
     if (res.ok) {
-      // go straight to dashboard after auto-login
-      window.location.href = "/dashboard";
+      // go straight to the primary dashboard experience
+      window.location.href = "/";
     } else {
       const msg = await res.text();
       alert(msg || "Could not create account");

@@ -3,7 +3,12 @@ import React from "react";
 import Link from "next/link";
 import { toDisplayDate } from "../lib/date";
 
-type Profile = { prefix?: string; fullName?: string; postNominals?: string };
+type Profile = {
+  prefix?: string;
+  name?: string;
+  fullName?: string;
+  postNominals?: string | string[];
+};
 type Visit = { id?: string; dateISO?: string; lodgeName?: string; eventType?: string; grandLodgeVisit?: boolean };
 type Working = { id?: string; dateISO?: string; degree?: string; section?: string; grandLodgeVisit?: boolean };
 
@@ -32,7 +37,11 @@ export default function HomePage() {
     })();
   }, []);
 
-  const nameLine = [profile?.prefix, profile?.fullName, profile?.postNominals].filter(Boolean).join(' ') || 'Brother';
+  const displayName = profile?.fullName || profile?.name || '';
+  const postNominals = Array.isArray(profile?.postNominals)
+    ? profile?.postNominals.join(', ')
+    : profile?.postNominals;
+  const nameLine = [profile?.prefix, displayName, postNominals].filter(Boolean).join(' ') || 'Brother';
 
   return (
     <div className="space-y-6">
