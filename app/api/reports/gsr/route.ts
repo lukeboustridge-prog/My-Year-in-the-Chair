@@ -4,6 +4,7 @@ import type PDFKit from "pdfkit";
 import { PassThrough } from "node:stream";
 import fs from "node:fs";
 import path from "node:path";
+import { Blob } from "buffer";
 
 import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
@@ -464,10 +465,7 @@ export async function GET(request: Request) {
 
   doc.end();
   const pdfBuffer = await pdfPromise;
-  const pdfArrayBuffer = pdfBuffer.buffer.slice(
-    pdfBuffer.byteOffset,
-    pdfBuffer.byteOffset + pdfBuffer.byteLength,
-  );
+  const pdfBlob = new Blob([pdfBuffer], { type: "application/pdf" });
 
   const lodgeIdentifier = (user.lodgeNumber && user.lodgeNumber.trim())
     ? user.lodgeNumber.trim().replace(/\s+/g, "-")
@@ -479,6 +477,6 @@ export async function GET(request: Request) {
     "Content-Disposition": `attachment; filename="${filename}"`,
   });
 
-  return new NextResponse(pdfArrayBuffer, { status: 200, headers });
+  return new NextResponse(pdfBlob, { status: 200, headers });
 }
 
