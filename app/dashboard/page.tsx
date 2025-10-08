@@ -207,7 +207,7 @@ export default async function DashboardPage() {
               {user?.lodgeName ? (
                 <span>
                   Lodge: {user.lodgeName}
-                  {user.lodgeNumber ? ` (${user.lodgeNumber})` : ""}
+                  {user.lodgeNumber ? ` No. ${user.lodgeNumber}` : ""}
                   {user.region ? ` • ${user.region}` : ""}
                 </span>
               ) : null}
@@ -221,7 +221,7 @@ export default async function DashboardPage() {
 
       <section className="card">
         <div className="card-body">
-          <h2 className="text-lg font-semibold text-slate-900">My rank</h2>
+          <h2 className="text-lg font-semibold text-slate-900">My Leaderboard Ranking</h2>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <RankSummaryBlock label="Rolling 12 months" summary={rollingYearRank} />
             <RankSummaryBlock label="This month" summary={rollingMonthRank} />

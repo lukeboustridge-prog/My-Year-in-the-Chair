@@ -16,3 +16,7 @@ and adds `export const dynamic = "force-dynamic";` stubs to DB-backed pages.
    pnpm db:push && pnpm build
    ```
 4. Redeploy — Prisma will now connect to your Neon PostgreSQL database.
+
+### Deployment Note
+
+This repository was updated with a small README change to verify the Vercel deployment pipeline.

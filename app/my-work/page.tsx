@@ -74,6 +74,17 @@ function normaliseWorking(row: any, fallback?: WorkingRecord): WorkingRecord {
   };
 }
 
+function sortByDateDescending(list: WorkingRecord[]): WorkingRecord[] {
+  return [...list].sort((a, b) => {
+    const aTime = new Date(a.date).getTime();
+    const bTime = new Date(b.date).getTime();
+    if (Number.isNaN(aTime) && Number.isNaN(bTime)) return 0;
+    if (Number.isNaN(aTime)) return 1;
+    if (Number.isNaN(bTime)) return -1;
+    return bTime - aTime;
+  });
+}
+
 type WorkingItemProps = {
   record: WorkingRecord;
   saving: boolean;
@@ -446,10 +457,9 @@ export default function MyWorkPage() {
         const res = await fetch("/api/mywork", { credentials: "include" });
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
-        const normalised: WorkingRecord[] = (Array.isArray(data) ? data : []).map((row: any) =>
-          normaliseWorking(row)
-        );
-        setRecords(normalised);
+        const normalised: WorkingRecord[] = (Array.isArray(data) ? data : [])
+          .map((row: any) => normaliseWorking(row));
+        setRecords(sortByDateDescending(normalised));
         setError(null);
       } catch (err: any) {
         console.error("MYWORK_LOAD", err);
@@ -489,9 +499,16 @@ export default function MyWorkPage() {
       setRecords((prev) => {
         const list = Array.isArray(prev) ? [...prev] : [];
         if (isNew) {
-          return [normalised, ...list];
+          list.push(normalised);
+        } else {
+          const index = list.findIndex((record) => record.id === normalised.id);
+          if (index >= 0) {
+            list[index] = normalised;
+          } else {
+            list.push(normalised);
+          }
         }
-        return list.map((record) => (record.id === normalised.id ? normalised : record));
+        return sortByDateDescending(list);
       });
       if (isNew) {
         setCreating(false);

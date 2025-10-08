@@ -113,7 +113,7 @@ export default function ProfilePage() {
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70"
+      className="fixed inset-0 z-50 overflow-x-hidden overflow-y-auto bg-slate-900/70"
       onClick={(event) => {
         if (event.target === event.currentTarget) close();
       }}
@@ -140,7 +140,7 @@ export default function ProfilePage() {
               </button>
             </div>
 
-            <div className="flex-1 space-y-6 overflow-y-auto p-5 pt-4 sm:p-6 sm:pt-5">
+            <div className="flex-1 space-y-6 overflow-x-hidden overflow-y-auto p-5 pt-4 sm:p-6 sm:pt-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="stat md:col-span-2">
                   <span className="label">Name</span>

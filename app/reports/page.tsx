@@ -2,8 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import type { Profile as PdfProfile, Visit as PdfVisit, Office as PdfOffice } from "@/src/utils/pdfReport";
-import { downloadFullPdf, downloadVisitsPdf } from "@/src/utils/pdfReport";
+import {
+  downloadGrandSuperintendentReportPdf,
+  type CandidateCeremonyRecord,
+  type CandidateProgressRecord,
+  type EmergencyMeetingRecord,
+  type GrandSuperintendentReportData,
+  type MeetingOverviewRecord,
+  type SummaryMetrics,
+} from "@/src/utils/gsrReportPdf";
 
 type VisitRecord = {
   id?: string;
@@ -37,6 +44,9 @@ type ProfileRecord = {
   postNominals?: string[];
   lodgeName?: string | null;
   lodgeNumber?: string | null;
+  termStart?: string | null;
+  termEnd?: string | null;
+  region?: string | null;
 };
 
 const WORK_LABELS: Record<string, string> = {
@@ -49,9 +59,50 @@ const WORK_LABELS: Record<string, string> = {
   OTHER: "Other",
 };
 
+const CEREMONY_LABELS: Record<string, string> = {
+  INITIATION: "Initiation",
+  PASSING: "Passing",
+  RAISING: "Raising",
+  INSTALLATION: "Installation",
+  PRESENTATION: "Presentation",
+  LECTURE: "Lecture",
+  OTHER: "Working",
+};
+
 function formatWork(work: string | undefined | null) {
   if (!work) return "";
   return WORK_LABELS[work] ?? work.replace(/_/g, " ");
+}
+
+function normaliseWork(value: string | undefined | null) {
+  if (!value) return "OTHER";
+  const trimmed = value.trim().toUpperCase();
+  return CEREMONY_LABELS[trimmed] ? trimmed : trimmed || "OTHER";
+}
+
+function parseDate(value: string | null | undefined) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isWithinPeriod(iso: string, start: Date, end: Date) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return false;
+  return date.getTime() >= start.getTime() && date.getTime() <= end.getTime();
+}
+
+function splitCandidates(name?: string | null) {
+  if (!name) return [] as string[];
+  return name
+    .split(/[;,]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function pluralise(value: number, singular: string, plural?: string) {
+  const resolvedPlural = plural ?? `${singular}s`;
+  return `${value} ${value === 1 ? singular : resolvedPlural}`;
 }
 
 export default function ReportsPage() {
@@ -77,7 +128,14 @@ export default function ReportsPage() {
         if (!workRes.ok) throw new Error("Failed to load lodge work");
 
         const profileJson = await profileRes.json();
-        setProfile(profileJson);
+        setProfile({
+          ...profileJson,
+          postNominals: Array.isArray(profileJson.postNominals)
+            ? profileJson.postNominals
+            : profileJson.postNominals
+            ? [profileJson.postNominals]
+            : [],
+        });
 
         const visitJson = await visitsRes.json();
         setVisits(
@@ -137,97 +195,266 @@ export default function ReportsPage() {
     });
   }, [visits, from, to]);
 
-  const pdfProfile: PdfProfile | null = useMemo(() => {
-    if (!profile) return null;
-    const fullName = profile.name || "Master";
-    return {
-      prefix: profile.prefix ?? undefined,
-      fullName,
-      postNominals: Array.isArray(profile.postNominals) ? profile.postNominals.join(", ") : undefined,
-    };
-  }, [profile]);
+  const filteredWorkings = useMemo(() => {
+    if (!workings.length) return [] as WorkingRecord[];
+    const fromTime = from ? new Date(from).getTime() : null;
+    const toTime = to ? new Date(to).getTime() : null;
+    return workings.filter((working) => {
+      const workingTime = new Date(working.date).getTime();
+      if (Number.isNaN(workingTime)) return true;
+      if (fromTime && workingTime < fromTime) return false;
+      if (toTime && workingTime > toTime) return false;
+      return true;
+    });
+  }, [workings, from, to]);
 
-  const pdfVisits: PdfVisit[] = useMemo(
-    () =>
-      filteredVisits.map((visit) => ({
-        dateISO: visit.date,
-        lodgeName: [visit.lodgeName, visit.lodgeNumber ? `No. ${visit.lodgeNumber}` : ""].filter(Boolean).join(" "),
-        eventType: formatWork(visit.workOfEvening),
-        role: visit.isGrandLodgeVisit ? "Grand Lodge" : undefined,
-        notes: [
-          visit.candidateName,
-          visit.hasTracingBoards ? "Tracing boards" : null,
-          visit.comments,
-        ]
-          .filter(Boolean)
-          .join(" — "),
-      })),
-    [filteredVisits]
-  );
-
-  const pdfOffices: PdfOffice[] = useMemo(() => {
-    if (!profile) return [];
-    return workings.map((record) => ({
-      lodgeName: profile.lodgeName || "My Lodge",
-      office: (() => {
-        const parts: string[] = [];
-        const base = formatWork(record.work);
-        if (base) parts.push(base);
-        if (record.candidateName) parts.push(record.candidateName);
-        const tags = [
-          record.isGrandLodgeVisit ? "Grand Lodge" : null,
-          record.isEmergencyMeeting ? "Emergency meeting" : null,
-          record.hasFirstTracingBoard ? "1st tracing board" : null,
-          record.hasSecondTracingBoard ? "2nd tracing board" : null,
-          record.hasThirdTracingBoard ? "3rd tracing board" : null,
-        ].filter(Boolean);
-        if (tags.length) parts.push(tags.join(" • "));
-        return parts.join(" – ");
-      })(),
-      startDateISO: record.date,
-      isGrandLodge: Boolean(record.isGrandLodgeVisit),
-      endDateISO: undefined,
-    }));
-  }, [workings, profile]);
-
-  async function onExportVisits() {
-    if (!pdfProfile) {
-      alert('Profile not loaded yet.');
+  async function generateReport(mode: "term" | "custom") {
+    if (!profile) {
+      setError("Profile details are still loading.");
       return;
     }
-    setBusy(true);
-    try {
-      await downloadVisitsPdf(pdfProfile, pdfVisits, {
-        title: "Visits Report",
-        dateFrom: from || undefined,
-        dateTo: to || undefined,
-        includeNotes: true,
-      });
-    } finally {
-      setBusy(false);
-    }
-  }
 
-  async function onExportFull() {
-    if (!pdfProfile) {
-      alert('Profile not loaded yet.');
+    if (!profile.name) {
+      setError("Add your full name in your profile to generate this report.");
       return;
     }
+
+    if (!profile.lodgeName || !profile.lodgeNumber) {
+      setError("Add your lodge name and number in your profile to generate this report.");
+      return;
+    }
+
+    if (!profile.region) {
+      setError("Add your region in your profile to generate this report.");
+      return;
+    }
+
+    let periodStart: Date | null = null;
+    let periodEnd: Date | null = null;
+    let periodLabel: string | undefined;
+
+    if (mode === "custom") {
+      if (!from || !to) {
+        setError("Select both a start and end date for a custom report.");
+        return;
+      }
+      periodStart = parseDate(from);
+      periodEnd = parseDate(to);
+      if (!periodStart || !periodEnd) {
+        setError("Enter valid dates for the custom range.");
+        return;
+      }
+      if (periodEnd.getTime() < periodStart.getTime()) {
+        setError("The end date must be on or after the start date.");
+        return;
+      }
+    } else {
+      periodStart = parseDate(profile.termStart);
+      periodEnd = parseDate(profile.termEnd);
+      if (!periodStart || !periodEnd) {
+        setError("Set your current term start and end dates in your profile to generate this report.");
+        return;
+      }
+      periodLabel = `Current term (${periodStart.toLocaleDateString()} – ${periodEnd.toLocaleDateString()})`;
+    }
+
+    if (!periodStart || !periodEnd) {
+      setError("Unable to resolve the reporting period.");
+      return;
+    }
+
     setBusy(true);
+    setError(null);
+
     try {
-      await downloadFullPdf(pdfProfile, pdfVisits, pdfOffices, {
-        title: "My Year in the Chair – Full Report",
-        dateFrom: from || undefined,
-        dateTo: to || undefined,
-        includeNotes: true,
-      });
+      const resolvedStart = periodStart as Date;
+      const resolvedEnd = periodEnd as Date;
+
+      const visitsInPeriod = visits.filter((visit) => isWithinPeriod(visit.date, resolvedStart, resolvedEnd));
+      const workingsInPeriod = workings.filter((working) => isWithinPeriod(working.date, resolvedStart, resolvedEnd));
+
+      const lodgeDisplay = [profile.lodgeName, profile.lodgeNumber ? `No. ${profile.lodgeNumber}` : null]
+        .filter(Boolean)
+        .join(" ");
+
+      const summaryMetrics: SummaryMetrics = {
+        initiated: 0,
+        passed: 0,
+        raised: 0,
+        totalWorkings: workingsInPeriod.length,
+        emergencyMeetings: 0,
+        grandLodgeVisits: 0,
+      };
+
+      const candidateEvents = new Map<string, CandidateCeremonyRecord[]>();
+      const candidateMilestones = new Map<
+        string,
+        { initiatedOn?: string; passedOn?: string; raisedOn?: string }
+      >();
+
+      const meetingSummaries: MeetingOverviewRecord[] = [];
+      const emergencyMeetings: EmergencyMeetingRecord[] = [];
+
+      for (const working of workingsInPeriod) {
+        const workCode = normaliseWork(working.work);
+        if (workCode === "INITIATION") summaryMetrics.initiated += 1;
+        if (workCode === "PASSING") summaryMetrics.passed += 1;
+        if (workCode === "RAISING") summaryMetrics.raised += 1;
+        if (working.isEmergencyMeeting) summaryMetrics.emergencyMeetings += 1;
+        if (working.isGrandLodgeVisit) summaryMetrics.grandLodgeVisits += 1;
+
+        const candidates = splitCandidates(working.candidateName);
+        const ceremonyLabel = CEREMONY_LABELS[workCode] ?? formatWork(workCode);
+        const baseNotes = [working.comments?.trim() || null];
+        if (working.hasTracingBoards) {
+          baseNotes.push("Tracing boards presented");
+        }
+        const notes = baseNotes.filter(Boolean).join(" — ") || undefined;
+        const ceremonyRecord: CandidateCeremonyRecord = {
+          date: working.date,
+          ceremony: ceremonyLabel,
+          lodge: lodgeDisplay,
+          result: working.isGrandLodgeVisit ? "Grand Lodge visit" : "Recorded",
+          notes,
+        };
+
+        if (candidates.length) {
+          for (const candidateName of candidates) {
+            const existing = candidateEvents.get(candidateName) ?? [];
+            existing.push(ceremonyRecord);
+            candidateEvents.set(candidateName, existing);
+
+            const milestones = candidateMilestones.get(candidateName) ?? {};
+            if (workCode === "INITIATION" && !milestones.initiatedOn) milestones.initiatedOn = working.date;
+            if (workCode === "PASSING" && !milestones.passedOn) milestones.passedOn = working.date;
+            if (workCode === "RAISING" && !milestones.raisedOn) milestones.raisedOn = working.date;
+            candidateMilestones.set(candidateName, milestones);
+          }
+        }
+
+        meetingSummaries.push({
+          date: working.date,
+          meetingType: working.isEmergencyMeeting ? "Emergency Meeting" : "Stated Meeting",
+          purpose: formatWork(workCode),
+          candidates,
+          result: working.comments?.trim() || (working.isGrandLodgeVisit ? "Grand Lodge visit" : "Completed"),
+          isGrandLodgeVisit: working.isGrandLodgeVisit,
+        });
+
+        if (working.isEmergencyMeeting) {
+          emergencyMeetings.push({
+            date: working.date,
+            purpose: ceremonyLabel,
+            candidates,
+            notes: working.comments?.trim() || undefined,
+          });
+        }
+      }
+
+      const visitsGrandLodgeCount = visitsInPeriod.filter((visit) => visit.isGrandLodgeVisit).length;
+      summaryMetrics.grandLodgeVisits += visitsGrandLodgeCount;
+
+      const candidateRecords: CandidateProgressRecord[] = Array.from(candidateEvents.entries()).map(
+        ([name, ceremonies]) => {
+          const orderedCeremonies = [...ceremonies].sort(
+            (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+          );
+          const milestones = candidateMilestones.get(name) ?? {};
+          const latest = orderedCeremonies[orderedCeremonies.length - 1];
+          const ceremonySummary = orderedCeremonies
+            .map((ceremony) => `${ceremony.ceremony} on ${new Date(ceremony.date).toLocaleDateString()}`)
+            .join("; ");
+          const narrative = ceremonySummary
+            ? `${name} progressed through ${ceremonySummary}.`
+            : `${name} has no recorded ceremonies during this period.`;
+          return {
+            name,
+            narrative,
+            ceremonies: orderedCeremonies,
+            status: latest?.ceremony,
+            initiatedOn: milestones.initiatedOn,
+            passedOn: milestones.passedOn,
+            raisedOn: milestones.raisedOn,
+          } satisfies CandidateProgressRecord;
+        }
+      );
+
+      if (!candidateRecords.length) {
+        candidateRecords.push({
+          name: "No recorded candidates",
+          narrative: "No candidate progression events were recorded during this period.",
+          ceremonies: [
+            {
+              date: resolvedStart.toISOString(),
+              ceremony: "No ceremonies recorded",
+              lodge: lodgeDisplay,
+              result: "No records in the reporting period",
+            },
+          ],
+        });
+      }
+
+      if (!emergencyMeetings.length) {
+        summaryMetrics.emergencyMeetings = 0;
+      }
+
+      const formatter = new Intl.DateTimeFormat(undefined, { dateStyle: "long" });
+      const summaryParts = [
+        `${lodgeDisplay} recorded ${pluralise(
+          summaryMetrics.totalWorkings,
+          "working"
+        )} between ${formatter.format(resolvedStart)} and ${formatter.format(resolvedEnd)}.`,
+        `The lodge hosted ${pluralise(summaryMetrics.initiated, "initiation")}, ${pluralise(
+          summaryMetrics.passed,
+          "passing"
+        )}, and ${pluralise(summaryMetrics.raised, "raising")}.`,
+        `Emergency meetings: ${summaryMetrics.emergencyMeetings}. Grand Lodge visits: ${summaryMetrics.grandLodgeVisits}.`,
+      ];
+
+      const reportData: GrandSuperintendentReportData = {
+        lodge: { name: profile.lodgeName, number: profile.lodgeNumber },
+        regionName: profile.region,
+        reportingPeriod: {
+          from: resolvedStart.toISOString(),
+          to: resolvedEnd.toISOString(),
+          label: periodLabel,
+        },
+        preparedBy: {
+          prefix: profile.prefix ?? undefined,
+          fullName: profile.name ?? "",
+          postNominals: profile.postNominals ?? [],
+        },
+        preparationDate: new Date().toISOString(),
+        executiveSummary: summaryParts.join(" "),
+        summaryMetrics,
+        candidates: candidateRecords,
+        emergencyMeetings,
+        meetings: meetingSummaries.length
+          ? meetingSummaries
+          : [
+              {
+                date: resolvedStart.toISOString(),
+                meetingType: "Stated Meeting",
+                purpose: "No workings recorded",
+                candidates: [],
+                result: "No meetings recorded during this period.",
+              },
+            ],
+        hasGrandLodgeVisit: summaryMetrics.grandLodgeVisits > 0,
+      };
+
+      await downloadGrandSuperintendentReportPdf(reportData);
+    } catch (err: any) {
+      console.error("GSR_PDF_ERROR", err);
+      setError(err?.message || "Unable to generate the PDF report.");
     } finally {
       setBusy(false);
     }
   }
 
   const visitSummary = filteredVisits.length;
-  const workingSummary = workings.length;
+  const workingSummary = filteredWorkings.length;
+  const termReady = Boolean(profile?.termStart && profile?.termEnd);
 
   return (
     <div className="space-y-6">
@@ -252,17 +479,17 @@ export default function ReportsPage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <button
                 className="btn-soft w-full sm:w-auto"
-                onClick={onExportVisits}
-                disabled={busy || !pdfProfile || !pdfVisits.length}
+                onClick={() => generateReport("term")}
+                disabled={busy || !profile}
               >
-                {busy ? 'Working…' : 'Export Visits PDF'}
+                {busy ? 'Working…' : 'Generate for current term'}
               </button>
               <button
                 className="btn-primary w-full sm:w-auto"
-                onClick={onExportFull}
-                disabled={busy || !pdfProfile || !pdfVisits.length}
+                onClick={() => generateReport("custom")}
+                disabled={busy || !from || !to}
               >
-                {busy ? 'Working…' : 'Export Full PDF'}
+                {busy ? 'Working…' : 'Generate custom period'}
               </button>
             </div>
           </div>
@@ -277,14 +504,14 @@ export default function ReportsPage() {
               <div className="text-lg font-semibold">{workingSummary}</div>
             </div>
             <div>
-              <div className="subtle">Profile ready</div>
-              <div className="text-lg font-semibold">{pdfProfile ? 'Yes' : 'No'}</div>
+              <div className="subtle">Term configured</div>
+              <div className="text-lg font-semibold">{termReady ? 'Yes' : 'No'}</div>
             </div>
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
-          {!error && !pdfVisits.length && (
-            <p className="text-sm text-slate-500">Add visits to generate a PDF report.</p>
+          {!error && !visits.length && !workings.length && (
+            <p className="text-sm text-slate-500">Add lodge visits and workings to unlock the Grand Superintendent report.</p>
           )}
         </div>
       </div>
