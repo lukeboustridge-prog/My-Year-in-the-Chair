@@ -67,33 +67,34 @@ export default function ProfilePage() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4"
+      className="fixed inset-0 z-50 bg-slate-900/70"
       onClick={(event) => {
         if (event.target === event.currentTarget) close();
       }}
     >
-      <div className="card w-full max-w-2xl">
-        <div className="card-body space-y-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="h2">Edit profile</h1>
-              <p className="text-sm text-slate-500">Update your personal and lodge details.</p>
+      <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
+        <div className="card w-full max-w-lg overflow-hidden sm:max-w-xl md:max-w-2xl max-h-[90vh]">
+          <div className="card-body space-y-6 overflow-y-auto p-5 sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h1 className="h2">Edit profile</h1>
+                <p className="text-sm text-slate-500">Update your personal and lodge details.</p>
+              </div>
+              <button
+                className="btn"
+                type="button"
+                onClick={close}
+              >
+                Close
+              </button>
             </div>
-            <button
-              className="btn"
-              type="button"
-              onClick={close}
-            >
-              Close
-            </button>
-          </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="stat">
-              <span className="label">Name</span>
-              <input
-                className="card"
-                style={{ padding: ".6rem" }}
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="stat">
+                <span className="label">Name</span>
+                <input
+                  className="card"
+                  style={{ padding: ".6rem" }}
                 value={state.name}
                 onChange={(e) => setState((s) => ({ ...s, name: e.target.value }))}
                 placeholder="e.g., John Smith"

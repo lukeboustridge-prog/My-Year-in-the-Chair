@@ -116,7 +116,7 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
       <button
         type="button"
         onClick={toggle}
@@ -131,8 +131,8 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
         </span>
       </button>
       {open ? (
-        <form onSubmit={handleSave} className="border-t border-slate-200 px-4 py-4 space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form onSubmit={handleSave} className="border-t border-slate-200 px-4 py-4 space-y-4 sm:px-5">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <label className="label">
               <span>Date</span>
               <input
@@ -193,7 +193,7 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
               />
             </label>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input
                 type="checkbox"
@@ -277,15 +277,15 @@ function VisitCreateCard({ onClose, onSave, saving }: VisitCreateCardProps) {
   };
 
   return (
-    <div className="rounded-xl border border-dashed border-slate-300 bg-white shadow-sm">
+    <div className="rounded-xl border border-dashed border-slate-300 bg-white shadow-sm overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3">
         <h2 className="font-semibold text-slate-800">Add visit</h2>
         <button type="button" className="navlink" onClick={onClose}>
           Close
         </button>
       </div>
-      <form onSubmit={handleSubmit} className="border-t border-slate-200 px-4 py-4 space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <form onSubmit={handleSubmit} className="border-t border-slate-200 px-4 py-4 space-y-4 sm:px-5">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="label">
             <span>Date</span>
             <input
@@ -346,7 +346,7 @@ function VisitCreateCard({ onClose, onSave, saving }: VisitCreateCardProps) {
             />
           </label>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
