@@ -63,6 +63,17 @@ function normaliseVisit(row: any, fallback?: VisitRecord): VisitRecord {
   };
 }
 
+function sortByDateDescending(list: VisitRecord[]): VisitRecord[] {
+  return [...list].sort((a, b) => {
+    const aTime = new Date(a.date).getTime();
+    const bTime = new Date(b.date).getTime();
+    if (Number.isNaN(aTime) && Number.isNaN(bTime)) return 0;
+    if (Number.isNaN(aTime)) return 1;
+    if (Number.isNaN(bTime)) return -1;
+    return bTime - aTime;
+  });
+}
+
 type VisitItemProps = {
   record: VisitRecord;
   saving: boolean;
@@ -400,10 +411,9 @@ export default function VisitsPage() {
         const res = await fetch("/api/visits", { credentials: "include" });
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
-        const normalised: VisitRecord[] = (Array.isArray(data) ? data : []).map((row: any) =>
-          normaliseVisit(row)
-        );
-        setRecords(normalised);
+        const normalised: VisitRecord[] = (Array.isArray(data) ? data : [])
+          .map((row: any) => normaliseVisit(row));
+        setRecords(sortByDateDescending(normalised));
         setError(null);
       } catch (err: any) {
         console.error("VISITS_LOAD", err);
@@ -442,9 +452,16 @@ export default function VisitsPage() {
       setRecords((prev) => {
         const list = Array.isArray(prev) ? [...prev] : [];
         if (isNew) {
-          return [normalised, ...list];
+          list.push(normalised);
+        } else {
+          const index = list.findIndex((record) => record.id === normalised.id);
+          if (index >= 0) {
+            list[index] = normalised;
+          } else {
+            list.push(normalised);
+          }
         }
-        return list.map((record) => (record.id === normalised.id ? normalised : record));
+        return sortByDateDescending(list);
       });
       if (isNew) {
         setCreating(false);
