@@ -69,7 +69,15 @@ export default function AppHeader() {
   return (
     <header className="w-full border-b bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 sticky top-0 z-40">
       <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-3">
-        <Link href="/" className="font-semibold text-base sm:text-lg">My Year in the Chair</Link>
+        <Link href="/" className="flex items-center gap-2 font-semibold text-base sm:text-lg">
+          <img
+            src="https://freemasonsnz.org/wp-content/uploads/2024/05/TransparentBlueCompass.png"
+            alt="Freemasons New Zealand"
+            className="h-8 w-8 shrink-0 rounded"
+            loading="lazy"
+          />
+          <span className="sr-only sm:not-sr-only">My Year in the Chair</span>
+        </Link>
         <button
           type="button"
           onClick={toggleMenu}
