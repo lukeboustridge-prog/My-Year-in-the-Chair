@@ -1,68 +1,99 @@
 "use client";
+
 import { useEffect, useMemo, useState } from "react";
 import { RANK_OPTIONS, RANK_META, deriveTitle } from "@/lib/constants";
 
-export default function ProfilePage() {
-  const [saving, setSaving] = useState(false);
-  const [state, setState] = useState({
-    name: "",
-    rank: "Master Mason",
-    isPastGrand: false,
-    prefix: "",
-    postNominals: [] as string[],
-    lodgeName: "",
-    lodgeNumber: "",
-    region: "",
-    termStart: "",
-    termEnd: "",
-  });
+type ProfileForm = {
+  name: string;
+  rank: string;
+  isPastGrand: boolean;
+  lodgeName: string;
+  lodgeNumber: string;
+  region: string;
+  termStart: string;
+  termEnd: string;
+};
 
-  // Load existing data
+const DEFAULT_FORM: ProfileForm = {
+  name: "",
+  rank: "Master Mason",
+  isPastGrand: false,
+  lodgeName: "",
+  lodgeNumber: "",
+  region: "",
+  termStart: "",
+  termEnd: "",
+};
+
+export default function ProfilePage() {
+  const [form, setForm] = useState<ProfileForm>(DEFAULT_FORM);
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     (async () => {
-      const res = await fetch("/api/profile"); if (!res.ok) return;
-      const u = await res.json();
-      setState(s => ({
-        ...s,
-        name: u.name || "",
-        rank: u.rank || "Master Mason",
-        isPastGrand: u.isPastGrand ?? false,
-        prefix: u.prefix || "",
-        postNominals: u.postNominals || [],
-        lodgeName: u.lodgeName || "",
-        lodgeNumber: u.lodgeNumber || "",
-        region: u.region || "",
-        termStart: u.termStart ? u.termStart.slice(0, 10) : "",
-        termEnd: u.termEnd ? u.termEnd.slice(0, 10) : "",
-      }));
+      try {
+        const res = await fetch("/api/profile");
+        if (!res.ok) return;
+        const data = await res.json();
+        setForm({
+          name: data.name ?? "",
+          rank: data.rank ?? "Master Mason",
+          isPastGrand: data.isPastGrand ?? false,
+          lodgeName: data.lodgeName ?? "",
+          lodgeNumber: data.lodgeNumber ?? "",
+          region: data.region ?? "",
+          termStart: data.termStart ? data.termStart.slice(0, 10) : "",
+          termEnd: data.termEnd ? data.termEnd.slice(0, 10) : "",
+        });
+      } catch (error) {
+        console.error("Failed to load profile", error);
+      }
     })();
   }, []);
 
-  // Auto-derive prefix & post-nominals from current rank + isPastGrand
+  const derivedTitles = useMemo(
+    () => deriveTitle(form.rank, form.isPastGrand),
+    [form.rank, form.isPastGrand],
+  );
+
+  const grandRanks = useMemo(
+    () => RANK_OPTIONS.filter((rank) => RANK_META[rank]?.grand),
+    []
+  );
+  const rankChoices = form.isPastGrand ? grandRanks : RANK_OPTIONS;
+
   useEffect(() => {
-    const derived = deriveTitle(state.rank, state.isPastGrand);
-    setState(s => ({ ...s, prefix: derived.prefix, postNominals: derived.postNominals }));
-  }, [state.rank, state.isPastGrand]);
+    const options = form.isPastGrand ? grandRanks : RANK_OPTIONS;
+    if (!options.includes(form.rank)) {
+      setForm((prev) => ({ ...prev, rank: options[0] ?? prev.rank }));
+    }
+  }, [form.isPastGrand, form.rank, grandRanks]);
 
-  const grandRanks = useMemo(() => RANK_OPTIONS.filter(r => RANK_META[r]?.grand), []);
-  const nonGrandRanks = useMemo(() => RANK_OPTIONS.filter(r => !RANK_META[r]?.grand), []);
-  const rankList = state.isPastGrand ? grandRanks : RANK_OPTIONS;
-
-  async function save() {
-    setSaving(true);
-    const res = await fetch("/api/profile", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(state),
-    });
-    setSaving(false);
-    if (!res.ok) alert("Failed to save profile");
-  }
-
-  function close() {
+  const close = () => {
     if (typeof window === "undefined") return;
     if (window.history.length > 1) window.history.back();
     else window.location.href = "/dashboard";
+  };
+
+  async function save() {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          prefix: derivedTitles.prefix,
+          postNominals: derivedTitles.postNominals,
+        }),
+      });
+      if (!res.ok) alert("Failed to save profile");
+    } catch (error) {
+      console.error("Failed to save profile", error);
+      alert("Failed to save profile");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -73,144 +104,154 @@ export default function ProfilePage() {
       }}
     >
       <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
-        <div className="card w-full max-w-lg overflow-hidden sm:max-w-xl md:max-w-2xl max-h-[90vh]">
+        <div className="card max-h-[90vh] w-full max-w-lg overflow-hidden sm:max-w-xl md:max-w-2xl">
           <div className="card-body space-y-6 overflow-y-auto p-5 sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h1 className="h2">Edit profile</h1>
-                <p className="text-sm text-slate-500">Update your personal and lodge details.</p>
+                <p className="text-sm text-slate-500">
+                  Update your personal and lodge details.
+                </p>
               </div>
-              <button
-                className="btn"
-                type="button"
-                onClick={close}
-              >
+              <button type="button" className="btn" onClick={close}>
                 Close
               </button>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <label className="stat">
+              <label className="stat md:col-span-2">
                 <span className="label">Name</span>
                 <input
                   className="card"
                   style={{ padding: ".6rem" }}
-                value={state.name}
-                onChange={(e) => setState((s) => ({ ...s, name: e.target.value }))}
-                placeholder="e.g., John Smith"
-              />
-            </label>
+                  value={form.name}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, name: event.target.value }))
+                  }
+                  placeholder="e.g., John Smith"
+                />
+              </label>
 
-            <div className="stat">
-              <span className="label">Past Grand Rank</span>
-              <label className="card flex items-center gap-3" style={{ padding: ".6rem" }}>
+              <div className="stat md:col-span-2">
+                <span className="label">Past Grand Rank</span>
+                <label className="card flex items-center gap-3" style={{ padding: ".6rem" }}>
+                  <input
+                    type="checkbox"
+                    checked={form.isPastGrand}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, isPastGrand: event.target.checked }))
+                    }
+                  />
+                  <span className="muted">Show only Grand ranks (as Past)</span>
+                </label>
+              </div>
+
+              <label className="stat md:col-span-2">
+                <span className="label">Rank</span>
+                <select
+                  className="card"
+                  style={{ padding: ".6rem" }}
+                  value={form.rank}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, rank: event.target.value }))
+                  }
+                >
+                  {rankChoices.map((rank) => (
+                    <option key={rank} value={rank}>
+                      {form.isPastGrand && RANK_META[rank]?.grand
+                        ? `Past ${rank}`
+                        : rank}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="stat">
+                <span className="label">Lodge Name</span>
                 <input
-                  type="checkbox"
-                  checked={state.isPastGrand}
-                  onChange={(e) =>
-                    setState((s) => ({ ...s, isPastGrand: e.target.checked }))
+                  className="card"
+                  style={{ padding: ".6rem" }}
+                  value={form.lodgeName}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, lodgeName: event.target.value }))
+                  }
+                  placeholder="e.g., Lodge Example"
+                />
+              </label>
+
+              <label className="stat">
+                <span className="label">Lodge Number</span>
+                <input
+                  className="card"
+                  style={{ padding: ".6rem" }}
+                  value={form.lodgeNumber}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, lodgeNumber: event.target.value }))
+                  }
+                  placeholder="e.g., No. 123"
+                />
+              </label>
+
+              <label className="stat">
+                <span className="label">Region</span>
+                <select
+                  className="card"
+                  style={{ padding: ".6rem" }}
+                  value={form.region}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, region: event.target.value }))
+                  }
+                >
+                  <option value="">Select a region</option>
+                  {Array.from({ length: 9 }).map((_, index) => {
+                    const region = `Region ${index + 1}`;
+                    return (
+                      <option key={region} value={region}>
+                        {region}
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
+
+              <label className="stat">
+                <span className="label">Term start</span>
+                <input
+                  type="date"
+                  className="card"
+                  style={{ padding: ".6rem" }}
+                  value={form.termStart}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, termStart: event.target.value }))
                   }
                 />
-                <span className="muted">Show only Grand ranks (as Past)</span>
+              </label>
+
+              <label className="stat">
+                <span className="label">Term end</span>
+                <input
+                  type="date"
+                  className="card"
+                  style={{ padding: ".6rem" }}
+                  value={form.termEnd}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, termEnd: event.target.value }))
+                  }
+                />
               </label>
             </div>
-
-            <label className="stat md:col-span-2">
-              <span className="label">Rank</span>
-              <select
-                className="card"
-                style={{ padding: ".6rem" }}
-                value={state.rank}
-                onChange={(e) => setState((s) => ({ ...s, rank: e.target.value }))}
-              >
-                {rankList.map((r) => (
-                  <option key={r} value={r}>
-                    {state.isPastGrand && RANK_META[r]?.grand ? `Past ${r}` : r}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="stat">
-              <span className="label">Lodge Name</span>
-              <input
-                className="card"
-                style={{ padding: ".6rem" }}
-                value={state.lodgeName}
-                onChange={(e) =>
-                  setState((s) => ({ ...s, lodgeName: e.target.value }))
-                }
-                placeholder="e.g., Lodge Example"
-              />
-            </label>
-
-            <label className="stat">
-              <span className="label">Lodge Number</span>
-              <input
-                className="card"
-                style={{ padding: ".6rem" }}
-                value={state.lodgeNumber}
-                onChange={(e) =>
-                  setState((s) => ({ ...s, lodgeNumber: e.target.value }))
-                }
-                placeholder="e.g., No. 123"
-              />
-            </label>
-
-            <label className="stat">
-              <span className="label">Region</span>
-              <select
-                className="card"
-                style={{ padding: ".6rem" }}
-                value={state.region}
-                onChange={(e) => setState((s) => ({ ...s, region: e.target.value }))}
-              >
-                <option value="">Select a region</option>
-                {Array.from({ length: 9 }).map((_, idx) => {
-                  const region = `Region ${idx + 1}`;
-                  return (
-                    <option key={region} value={region}>
-                      {region}
-                    </option>
-                  );
-                })}
-              </select>
-            </label>
-
-            <label className="stat">
-              <span className="label">Term start</span>
-              <input
-                type="date"
-                className="card"
-                style={{ padding: ".6rem" }}
-                value={state.termStart}
-                onChange={(e) =>
-                  setState((s) => ({ ...s, termStart: e.target.value }))
-                }
-              />
-            </label>
-
-            <label className="stat">
-              <span className="label">Term end</span>
-              <input
-                type="date"
-                className="card"
-                style={{ padding: ".6rem" }}
-                value={state.termEnd}
-                onChange={(e) => setState((s) => ({ ...s, termEnd: e.target.value }))}
-              />
-            </label>
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              className="btn"
-              onClick={close}
-            >
+          <div className="flex flex-col gap-2 border-t border-slate-200 bg-slate-50 p-4 sm:flex-row sm:justify-end">
+            <button type="button" className="btn" onClick={close}>
               Cancel
             </button>
-            <button onClick={save} disabled={saving} className="btn-primary">
+            <button
+              type="button"
+              onClick={save}
+              disabled={saving}
+              className="btn-primary"
+            >
               {saving ? "Saving…" : "Save changes"}
             </button>
           </div>
