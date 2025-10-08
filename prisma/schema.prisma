@@ -94,6 +94,11 @@ model MyWork {
   work          WorkType @default(OTHER)
   candidateName String?
   comments      String?
+  isGrandLodgeVisit    Boolean  @default(false)
+  isEmergencyMeeting   Boolean  @default(false)
+  hasFirstTracingBoard  Boolean  @default(false)
+  hasSecondTracingBoard Boolean  @default(false)
+  hasThirdTracingBoard  Boolean  @default(false)
 
   createdAt     DateTime @default(now())
 }

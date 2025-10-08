@@ -2,13 +2,6 @@ export const dynamic = "force-dynamic";
 
 import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
-import {
-  fetchUsersById,
-  formatDisplayName as formatLeaderboardName,
-  formatLodge,
-  formatPostNominals,
-  type LeaderboardUser,
-} from "@/lib/leaderboard";
 
 function displayName(user: any) {
   const parts: string[] = [];
@@ -19,75 +12,73 @@ function displayName(user: any) {
   return parts.join(" ");
 }
 
-type LeaderboardEntry = {
-  rank: number;
+type RankSummary = {
+  rank: number | null;
+  total: number;
   count: number;
-  user: LeaderboardUser | undefined;
 };
 
-async function getVisitLeaderboard(since: Date, limit = 5): Promise<LeaderboardEntry[]> {
+async function getUserRank(userId: string, since: Date): Promise<RankSummary> {
   const grouped = await db.visit.groupBy({
     by: ["userId"],
     where: { date: { gte: since } },
     _count: { _all: true },
     orderBy: { _count: { userId: "desc" } },
-    take: limit,
   });
 
-  if (!grouped.length) return [];
+  if (!grouped.length) {
+    return { rank: null, total: 0, count: 0 };
+  }
 
-  const users = await fetchUsersById(grouped.map((row) => row.userId));
+  const index = grouped.findIndex((row) => row.userId === userId);
+  if (index === -1) {
+    return { rank: null, total: grouped.length, count: 0 };
+  }
 
-  return grouped.map((row, index) => ({
+  return {
     rank: index + 1,
-    count: row._count._all,
-    user: users.get(row.userId),
-  }));
+    total: grouped.length,
+    count: grouped[index]._count._all,
+  };
 }
 
-function LeaderboardSummary({ title, entries }: { title: string; entries: LeaderboardEntry[] }) {
+function formatOrdinal(value: number): string {
+  const mod100 = value % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${value}th`;
+  const mod10 = value % 10;
+  if (mod10 === 1) return `${value}st`;
+  if (mod10 === 2) return `${value}nd`;
+  if (mod10 === 3) return `${value}rd`;
+  return `${value}th`;
+}
+
+function RankCard({ label, summary }: { label: string; summary: RankSummary | null }) {
+  const details = summary ?? null;
+  const hasData = Boolean(details && details.total > 0);
+  const rankLabel = details?.rank ? formatOrdinal(details.rank) : hasData ? "Unranked" : "No visits yet";
+  const visitCount = details?.count ?? 0;
+  const visitText = `${visitCount} visit${visitCount === 1 ? "" : "s"}`;
+  const cohortText = hasData
+    ? details?.rank
+      ? `out of ${details.total}`
+      : `from ${details?.total ?? 0} lodges`
+    : "Record visits to see your rank";
+
   return (
     <div className="card">
       <div className="card-body">
-        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-slate-500">
-                <th className="py-2 pr-3">Rank</th>
-                <th className="py-2 pr-3">Name</th>
-                <th className="py-2 pr-3">Lodge</th>
-                <th className="py-2 pr-3 text-right">Visits</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.length === 0 ? (
-                <tr className="border-t">
-                  <td className="py-3 pr-3" colSpan={4}>
-                    <span className="subtle">No qualifying visits yet.</span>
-                  </td>
-                </tr>
-              ) : (
-                entries.map((entry) => {
-                  const post = formatPostNominals(entry.user);
-                  return (
-                    <tr key={entry.user?.id ?? entry.rank} className="border-t">
-                      <td className="py-2 pr-3">{entry.rank}</td>
-                      <td className="py-2 pr-3">
-                        <div className="font-medium">{formatLeaderboardName(entry.user)}</div>
-                        {post ? <div className="text-xs text-slate-500">{post}</div> : null}
-                      </td>
-                      <td className="py-2 pr-3 text-sm">
-                        {formatLodge(entry.user) || <span className="text-slate-400">—</span>}
-                      </td>
-                      <td className="py-2 pl-3 text-right font-semibold text-slate-900">{entry.count}</td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+        <p className="text-sm text-slate-500">{label}</p>
+        <p className="mt-2 text-3xl font-semibold text-slate-900">{rankLabel}</p>
+        <p className="mt-2 text-sm text-slate-600">
+          {hasData ? (
+            <>
+              {visitText}
+              {details?.rank ? <span className="ml-1 text-slate-500">{cohortText}</span> : null}
+            </>
+          ) : (
+            cohortText
+          )}
+        </p>
       </div>
     </div>
   );
@@ -101,18 +92,17 @@ export default async function DashboardPage() {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const yearAgo = new Date(now);
   yearAgo.setFullYear(now.getFullYear() - 1);
-  const termStartDate = user?.termStart ? new Date(user.termStart) : new Date(yearAgo);
 
   type VisitsResult = Awaited<ReturnType<typeof db.visit.findMany>>;
   let visits: VisitsResult = [];
-  let rollingYearLeaders: LeaderboardEntry[] = [];
-  let rollingMonthLeaders: LeaderboardEntry[] = [];
+  let rollingYearRank: RankSummary | null = null;
+  let rollingMonthRank: RankSummary | null = null;
 
   if (uid) {
-    [visits, rollingYearLeaders, rollingMonthLeaders] = await Promise.all([
+    [visits, rollingYearRank, rollingMonthRank] = await Promise.all([
       db.visit.findMany({ where: { userId: uid }, orderBy: { date: "desc" } }),
-      getVisitLeaderboard(new Date(yearAgo), 5),
-      getVisitLeaderboard(startOfMonth, 5),
+      getUserRank(uid, new Date(yearAgo)),
+      getUserRank(uid, startOfMonth),
     ]);
   }
 
@@ -120,24 +110,13 @@ export default async function DashboardPage() {
   const thisMonth = visits.filter((v) => v.date >= startOfMonth).length;
 
   const statCards = [
-    {
-      label: "Term start",
-      value: termStartDate.toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      }),
-    },
-    {
-      label: "Today",
-      value: now.toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      }),
-    },
     { label: "Visits (rolling 12 months)", value: rolling12.toString() },
     { label: "Visits (this month)", value: thisMonth.toString() },
+  ];
+
+  const rankCards = [
+    { label: "Rolling 12 months", summary: rollingYearRank },
+    { label: "This month", summary: rollingMonthRank },
   ];
 
   const welcomeName = user ? displayName(user) : null;
@@ -181,9 +160,10 @@ export default async function DashboardPage() {
         ))}
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        <LeaderboardSummary title="Rolling 12 months" entries={rollingYearLeaders} />
-        <LeaderboardSummary title="This month" entries={rollingMonthLeaders} />
+      <section className="grid gap-4 md:grid-cols-2">
+        {rankCards.map((card) => (
+          <RankCard key={card.label} label={`My rank (${card.label})`} summary={card.summary} />
+        ))}
       </section>
 
       <section className="card">

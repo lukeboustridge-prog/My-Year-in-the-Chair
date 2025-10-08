@@ -22,6 +22,11 @@ type WorkingRecord = {
   work: (typeof WORK_OPTIONS)[number]["value"];
   candidateName?: string | null;
   comments?: string | null;
+  isGrandLodgeVisit?: boolean;
+  isEmergencyMeeting?: boolean;
+  hasFirstTracingBoard?: boolean;
+  hasSecondTracingBoard?: boolean;
+  hasThirdTracingBoard?: boolean;
 };
 
 const emptyRecord: WorkingRecord = {
@@ -29,6 +34,11 @@ const emptyRecord: WorkingRecord = {
   work: "OTHER",
   candidateName: "",
   comments: "",
+  isGrandLodgeVisit: false,
+  isEmergencyMeeting: false,
+  hasFirstTracingBoard: false,
+  hasSecondTracingBoard: false,
+  hasThirdTracingBoard: false,
 };
 
 function formatWork(value: WorkingRecord["work"]): string {
@@ -54,6 +64,11 @@ export default function MyWorkPage() {
           work: row.work ?? "OTHER",
           candidateName: row.candidateName ?? "",
           comments: row.comments ?? row.notes ?? "",
+          isGrandLodgeVisit: Boolean(row.isGrandLodgeVisit),
+          isEmergencyMeeting: Boolean(row.isEmergencyMeeting),
+          hasFirstTracingBoard: Boolean(row.hasFirstTracingBoard),
+          hasSecondTracingBoard: Boolean(row.hasSecondTracingBoard),
+          hasThirdTracingBoard: Boolean(row.hasThirdTracingBoard),
         }));
         setRecords(normalised);
         setError(null);
@@ -91,6 +106,11 @@ export default function MyWorkPage() {
         work: editing.work,
         candidateName: editing.candidateName?.trim() || null,
         comments: editing.comments?.trim() || null,
+        isGrandLodgeVisit: Boolean(editing.isGrandLodgeVisit),
+        isEmergencyMeeting: Boolean(editing.isEmergencyMeeting),
+        hasFirstTracingBoard: Boolean(editing.hasFirstTracingBoard),
+        hasSecondTracingBoard: Boolean(editing.hasSecondTracingBoard),
+        hasThirdTracingBoard: Boolean(editing.hasThirdTracingBoard),
       };
       const isNew = !payload.id;
       const { id, ...createPayload } = payload;
@@ -110,6 +130,26 @@ export default function MyWorkPage() {
           work: saved.work ?? payload.work,
           candidateName: saved.candidateName ?? payload.candidateName ?? "",
           comments: saved.comments ?? saved.notes ?? payload.comments ?? "",
+          isGrandLodgeVisit:
+            typeof saved.isGrandLodgeVisit === "boolean"
+              ? saved.isGrandLodgeVisit
+              : payload.isGrandLodgeVisit,
+          isEmergencyMeeting:
+            typeof saved.isEmergencyMeeting === "boolean"
+              ? saved.isEmergencyMeeting
+              : payload.isEmergencyMeeting,
+          hasFirstTracingBoard:
+            typeof saved.hasFirstTracingBoard === "boolean"
+              ? saved.hasFirstTracingBoard
+              : payload.hasFirstTracingBoard,
+          hasSecondTracingBoard:
+            typeof saved.hasSecondTracingBoard === "boolean"
+              ? saved.hasSecondTracingBoard
+              : payload.hasSecondTracingBoard,
+          hasThirdTracingBoard:
+            typeof saved.hasThirdTracingBoard === "boolean"
+              ? saved.hasThirdTracingBoard
+              : payload.hasThirdTracingBoard,
         };
         if (isNew) {
           next.unshift(normalised);
@@ -153,6 +193,11 @@ export default function MyWorkPage() {
         <td className="py-2 pr-3 whitespace-nowrap">{toDisplayDate(record.date)}</td>
         <td className="py-2 pr-3 whitespace-nowrap">{formatWork(record.work)}</td>
         <td className="py-2 pr-3 whitespace-nowrap">{record.candidateName || "—"}</td>
+        <td className="py-2 pr-3 whitespace-nowrap">{record.isGrandLodgeVisit ? "Yes" : "No"}</td>
+        <td className="py-2 pr-3 whitespace-nowrap">{record.isEmergencyMeeting ? "Yes" : "No"}</td>
+        <td className="py-2 pr-3 whitespace-nowrap">{record.hasFirstTracingBoard ? "Yes" : "No"}</td>
+        <td className="py-2 pr-3 whitespace-nowrap">{record.hasSecondTracingBoard ? "Yes" : "No"}</td>
+        <td className="py-2 pr-3 whitespace-nowrap">{record.hasThirdTracingBoard ? "Yes" : "No"}</td>
         <td className="py-2 pr-3 min-w-[12rem]">{record.comments || "—"}</td>
         <td className="py-2 pr-3">
           <div className="flex gap-2">
@@ -194,6 +239,11 @@ export default function MyWorkPage() {
                     <th className="py-2 pr-3">Date</th>
                     <th className="py-2 pr-3">Work</th>
                     <th className="py-2 pr-3">Candidate</th>
+                    <th className="py-2 pr-3">Grand Lodge</th>
+                    <th className="py-2 pr-3">Emergency</th>
+                    <th className="py-2 pr-3">1st TB</th>
+                    <th className="py-2 pr-3">2nd TB</th>
+                    <th className="py-2 pr-3">3rd TB</th>
                     <th className="py-2 pr-3">Notes</th>
                     <th className="py-2 pr-3">Actions</th>
                   </tr>
@@ -251,6 +301,78 @@ export default function MyWorkPage() {
                 }
                 placeholder="If applicable"
               />
+            </label>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={Boolean(editing?.isGrandLodgeVisit)}
+                onChange={(event) =>
+                  setEditing((prev) => ({
+                    ...(prev as WorkingRecord),
+                    isGrandLodgeVisit: event.target.checked,
+                  }))
+                }
+              />
+              Grand Lodge visit
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={Boolean(editing?.isEmergencyMeeting)}
+                onChange={(event) =>
+                  setEditing((prev) => ({
+                    ...(prev as WorkingRecord),
+                    isEmergencyMeeting: event.target.checked,
+                  }))
+                }
+              />
+              Emergency meeting
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={Boolean(editing?.hasFirstTracingBoard)}
+                onChange={(event) =>
+                  setEditing((prev) => ({
+                    ...(prev as WorkingRecord),
+                    hasFirstTracingBoard: event.target.checked,
+                  }))
+                }
+              />
+              1st tracing board
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={Boolean(editing?.hasSecondTracingBoard)}
+                onChange={(event) =>
+                  setEditing((prev) => ({
+                    ...(prev as WorkingRecord),
+                    hasSecondTracingBoard: event.target.checked,
+                  }))
+                }
+              />
+              2nd tracing board
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={Boolean(editing?.hasThirdTracingBoard)}
+                onChange={(event) =>
+                  setEditing((prev) => ({
+                    ...(prev as WorkingRecord),
+                    hasThirdTracingBoard: event.target.checked,
+                  }))
+                }
+              />
+              3rd tracing board
             </label>
           </div>
           <label className="label">

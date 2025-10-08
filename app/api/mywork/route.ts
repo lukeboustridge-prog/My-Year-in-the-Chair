@@ -20,6 +20,11 @@ export async function POST(req: Request) {
       work: body.work || "OTHER",
       candidateName: body.candidateName || null,
       comments: body.comments || null,
+      isGrandLodgeVisit: Boolean(body.isGrandLodgeVisit),
+      isEmergencyMeeting: Boolean(body.isEmergencyMeeting),
+      hasFirstTracingBoard: Boolean(body.hasFirstTracingBoard),
+      hasSecondTracingBoard: Boolean(body.hasSecondTracingBoard),
+      hasThirdTracingBoard: Boolean(body.hasThirdTracingBoard),
     },
   });
   return NextResponse.json(created, { status: 201 });
@@ -41,6 +46,26 @@ export async function PUT(req: Request) {
       work: body.work ?? existing.work,
       candidateName: body.candidateName ?? existing.candidateName,
       comments: body.comments ?? existing.comments,
+      isGrandLodgeVisit:
+        typeof body.isGrandLodgeVisit === "boolean"
+          ? body.isGrandLodgeVisit
+          : existing.isGrandLodgeVisit,
+      isEmergencyMeeting:
+        typeof body.isEmergencyMeeting === "boolean"
+          ? body.isEmergencyMeeting
+          : existing.isEmergencyMeeting,
+      hasFirstTracingBoard:
+        typeof body.hasFirstTracingBoard === "boolean"
+          ? body.hasFirstTracingBoard
+          : existing.hasFirstTracingBoard,
+      hasSecondTracingBoard:
+        typeof body.hasSecondTracingBoard === "boolean"
+          ? body.hasSecondTracingBoard
+          : existing.hasSecondTracingBoard,
+      hasThirdTracingBoard:
+        typeof body.hasThirdTracingBoard === "boolean"
+          ? body.hasThirdTracingBoard
+          : existing.hasThirdTracingBoard,
     },
   });
   return NextResponse.json(updated);
