@@ -196,8 +196,25 @@ async function resolveLogoBuffer() {
   return null;
 }
 
-async function ensureUser(userId: string) {
-  const user = await db.user.findUnique({
+type LoadedUser = {
+  id: string;
+  name: string | null;
+  rank: string | null;
+  isPastGrand: boolean | null;
+  prefix: string | null;
+  postNominals: string[];
+  lodgeName: string | null;
+  lodgeNumber: string | null;
+  region: string | null;
+  termStart: Date | null;
+  termEnd: Date | null;
+  role: string | null;
+};
+
+type EnsureUserResult = { user: NonNullable<LoadedUser> } | { response: NextResponse };
+
+async function ensureUser(userId: string): Promise<EnsureUserResult> {
+  const user = (await db.user.findUnique({
     where: { id: userId },
     select: {
       id: true,
@@ -213,27 +230,44 @@ async function ensureUser(userId: string) {
       termEnd: true,
       role: true,
     },
-  });
+  })) as LoadedUser | null;
 
-  if (!user) return null;
-  const allowedRoles = new Set(["ADMIN", "USER"]);
-  if (!allowedRoles.has(user.role ?? "")) {
-    throw new NextResponse(
-      "You do not have permission to generate this report. Please ask a Lodge Master or Administrator to run it.",
-      { status: 403 }
-    );
+  if (!user) {
+    return { response: new NextResponse("Unauthorized", { status: 401 }) };
+  }
+
+  const role = (user.role ?? "").toUpperCase();
+  const permittedRoles = new Set([
+    "ADMIN",
+    "USER",
+    "LODGE_ADMIN",
+    "LODGE_MASTER",
+    "GRAND_SUPERINTENDENT",
+    "DEPUTY_GRAND_SUPERINTENDENT",
+  ]);
+
+  if (role && !permittedRoles.has(role)) {
+    return {
+      response: new NextResponse(
+        "You do not have permission to generate this report. Please ask a Lodge Master or Administrator to run it.",
+        { status: 403 }
+      ),
+    };
   }
 
   if (!user.lodgeName) {
-    throw new NextResponse("Select an active lodge first. Update your lodge details in /profile to continue.", {
-      status: 409,
-    });
+    return {
+      response: new NextResponse(
+        "Select an active lodge first. Update your lodge details in /profile to continue.",
+        { status: 409 }
+      ),
+    };
   }
 
-  return user;
+  return { user };
 }
 
-function resolvePreparedBy(user: Awaited<ReturnType<typeof ensureUser>>) {
+function resolvePreparedBy(user: LoadedUser | null) {
   if (!user) return "";
   const derived = deriveTitle(user.rank ?? "Master Mason", Boolean(user.isPastGrand));
   const prefix = user.prefix?.trim() || derived.prefix;
@@ -244,11 +278,7 @@ function resolvePreparedBy(user: Awaited<ReturnType<typeof ensureUser>>) {
   return parts.join(" ");
 }
 
-function resolvePeriod(user: Awaited<ReturnType<typeof ensureUser>>, request: NextRequest): ReportPeriod | NextResponse {
-  if (!user) {
-    return new NextResponse("Unauthorized", { status: 401 });
-  }
-
+function resolvePeriod(user: LoadedUser, request: NextRequest): ReportPeriod | NextResponse {
   const timezone = resolveTimeZone();
   const params = request.nextUrl.searchParams;
   const mode = params.get("period");
@@ -452,8 +482,9 @@ export async function GET(request: NextRequest) {
     const userId = getUserId();
     if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
-    const user = await ensureUser(userId);
-    if (!user) return new NextResponse("Unauthorized", { status: 401 });
+    const ensured = await ensureUser(userId);
+    if ("response" in ensured) return ensured.response;
+    const user = ensured.user;
 
     const period = resolvePeriod(user, request);
     if (period instanceof NextResponse) return period;
@@ -591,7 +622,7 @@ export async function GET(request: NextRequest) {
 
     doc.end();
     const pdfBytes = await pdfPromise;
-    const pdfBuffer = Buffer.from(pdfBytes);
+    const pdfArrayBuffer = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
 
     const lodgeIdentifier = user.lodgeNumber?.trim()
       ? user.lodgeNumber.trim().replace(/\s+/g, "-")
@@ -599,17 +630,17 @@ export async function GET(request: NextRequest) {
 
     const filename = `GSR_${lodgeIdentifier}_${formatForFilename(period.start)}_${formatForFilename(period.end)}.pdf`;
 
-    return new NextResponse(pdfBuffer as unknown as BodyInit, {
+    return new NextResponse(pdfArrayBuffer, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${filename}"`,
-        "Content-Length": String(pdfBuffer.byteLength),
+        "Content-Length": String(pdfBytes.byteLength),
       },
     });
   } catch (error) {
     console.error("REPORT_GSR_FAILURE", error);
-    if (error instanceof NextResponse) return error;
+    if (error instanceof Response) return error;
     return new NextResponse(
       "Unable to generate the PDF report. Please try again or review your lodge data for missing details.",
       { status: 500 }
