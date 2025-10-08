@@ -113,19 +113,22 @@ export default function ProfilePage() {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-slate-900/70"
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70"
       onClick={(event) => {
         if (event.target === event.currentTarget) close();
       }}
     >
       <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
         <div
-          className="card w-full max-w-lg overflow-hidden sm:max-w-xl md:max-w-2xl"
+          className="card w-full max-w-lg sm:max-w-xl md:max-w-2xl"
           style={{ maxHeight: "90vh" }}
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="space-y-6 overflow-y-auto p-5 sm:p-6" style={{ maxHeight: "90vh" }}>
-            <div className="flex items-start justify-between gap-4">
+          <div
+            className="flex h-full flex-col"
+            style={{ maxHeight: "min(90vh, 680px)" }}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
               <div>
                 <h1 className="h2">Edit profile</h1>
                 <p className="text-sm text-slate-500">
@@ -137,168 +140,177 @@ export default function ProfilePage() {
               </button>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="stat md:col-span-2">
-                <span className="label">Name</span>
-                <input
-                  className="card"
-                  style={{ padding: ".6rem" }}
-                  value={form.name}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      name: event.target.value,
-                    }))
-                  }
-                  placeholder="e.g., John Smith"
-                />
-              </label>
-
-              <div className="stat md:col-span-2">
-                <span className="label">Past Grand Rank</span>
-                <label
-                  className="card flex items-center gap-3"
-                  style={{ padding: ".6rem" }}
-                >
+            <div className="flex-1 space-y-6 overflow-y-auto p-5 pt-4 sm:p-6 sm:pt-5">
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="stat md:col-span-2">
+                  <span className="label">Name</span>
                   <input
-                    type="checkbox"
-                    checked={form.isPastGrand}
+                    className="card"
+                    style={{ padding: ".6rem" }}
+                    value={form.name}
                     onChange={(event) =>
                       setForm((previous) => ({
                         ...previous,
-                        isPastGrand: event.target.checked,
+                        name: event.target.value,
+                      }))
+                    }
+                    placeholder="e.g., John Smith"
+                  />
+                </label>
+
+                <div className="stat md:col-span-2">
+                  <span className="label">Past Grand Rank</span>
+                  <label
+                    className="card flex items-center gap-3"
+                    style={{ padding: ".6rem" }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form.isPastGrand}
+                      onChange={(event) =>
+                        setForm((previous) => ({
+                          ...previous,
+                          isPastGrand: event.target.checked,
+                        }))
+                      }
+                    />
+                    <span className="muted">Show only Grand ranks (as Past)</span>
+                  </label>
+                </div>
+
+                <label className="stat md:col-span-2">
+                  <span className="label">Rank</span>
+                  <select
+                    className="card"
+                    style={{ padding: ".6rem" }}
+                    value={form.rank}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      if (isRank(value)) {
+                        setForm((previous) => ({ ...previous, rank: value }));
+                      }
+                    }}
+                  >
+                    {rankChoices.map((rank) => (
+                      <option key={rank} value={rank}>
+                        {form.isPastGrand && RANK_META[rank]?.grand
+                          ? `Past ${rank}`
+                          : rank}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="stat">
+                  <span className="label">Lodge Name</span>
+                  <input
+                    className="card"
+                    style={{ padding: ".6rem" }}
+                    value={form.lodgeName}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        lodgeName: event.target.value,
+                      }))
+                    }
+                    placeholder="e.g., Lodge Example"
+                  />
+                </label>
+
+                <label className="stat">
+                  <span className="label">Lodge Number</span>
+                  <input
+                    className="card"
+                    style={{ padding: ".6rem" }}
+                    value={form.lodgeNumber}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        lodgeNumber: event.target.value,
+                      }))
+                    }
+                    placeholder="e.g., No. 123"
+                  />
+                </label>
+
+                <label className="stat">
+                  <span className="label">Region</span>
+                  <select
+                    className="card"
+                    style={{ padding: ".6rem" }}
+                    value={form.region}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        region: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Select a region</option>
+                    {Array.from({ length: 9 }).map((_, index) => {
+                      const region = `Region ${index + 1}`;
+                      return (
+                        <option key={region} value={region}>
+                          {region}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+
+                <label className="stat">
+                  <span className="label">Term start</span>
+                  <input
+                    type="date"
+                    className="card"
+                    style={{ padding: ".6rem" }}
+                    value={form.termStart}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        termStart: event.target.value,
                       }))
                     }
                   />
-                  <span className="muted">Show only Grand ranks (as Past)</span>
+                </label>
+
+                <label className="stat">
+                  <span className="label">Term end</span>
+                  <input
+                    type="date"
+                    className="card"
+                    style={{ padding: ".6rem" }}
+                    value={form.termEnd}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        termEnd: event.target.value,
+                      }))
+                    }
+                  />
                 </label>
               </div>
-
-              <label className="stat md:col-span-2">
-                <span className="label">Rank</span>
-                <select
-                  className="card"
-                  style={{ padding: ".6rem" }}
-                  value={form.rank}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    if (isRank(value)) {
-                      setForm((previous) => ({ ...previous, rank: value }));
-                    }
-                  }}
-                >
-                  {rankChoices.map((rank) => (
-                    <option key={rank} value={rank}>
-                      {form.isPastGrand && RANK_META[rank]?.grand
-                        ? `Past ${rank}`
-                        : rank}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="stat">
-                <span className="label">Lodge Name</span>
-                <input
-                  className="card"
-                  style={{ padding: ".6rem" }}
-                  value={form.lodgeName}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      lodgeName: event.target.value,
-                    }))
-                  }
-                  placeholder="e.g., Lodge Example"
-                />
-              </label>
-
-              <label className="stat">
-                <span className="label">Lodge Number</span>
-                <input
-                  className="card"
-                  style={{ padding: ".6rem" }}
-                  value={form.lodgeNumber}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      lodgeNumber: event.target.value,
-                    }))
-                  }
-                  placeholder="e.g., No. 123"
-                />
-              </label>
-
-              <label className="stat">
-                <span className="label">Region</span>
-                <select
-                  className="card"
-                  style={{ padding: ".6rem" }}
-                  value={form.region}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      region: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="">Select a region</option>
-                  {Array.from({ length: 9 }).map((_, index) => {
-                    const region = `Region ${index + 1}`;
-                    return (
-                      <option key={region} value={region}>
-                        {region}
-                      </option>
-                    );
-                  })}
-                </select>
-              </label>
-
-              <label className="stat">
-                <span className="label">Term start</span>
-                <input
-                  type="date"
-                  className="card"
-                  style={{ padding: ".6rem" }}
-                  value={form.termStart}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      termStart: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-
-              <label className="stat">
-                <span className="label">Term end</span>
-                <input
-                  type="date"
-                  className="card"
-                  style={{ padding: ".6rem" }}
-                  value={form.termEnd}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      termEnd: event.target.value,
-                    }))
-                  }
-                />
-              </label>
             </div>
 
-            <div className="flex flex-col gap-2 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end sm:pt-6">
-              <button type="button" className="btn" onClick={close}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={save}
-                disabled={saving}
-                className="btn-primary"
-              >
-                {saving ? "Saving…" : "Save changes"}
-              </button>
+            <div
+              className="sticky bottom-0 border-t border-slate-200 bg-white/95 p-5 backdrop-blur sm:p-6"
+              style={{
+                paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))",
+              }}
+            >
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <button type="button" className="btn" onClick={close}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={save}
+                  disabled={saving}
+                  className="btn-primary"
+                >
+                  {saving ? "Saving…" : "Save changes"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
