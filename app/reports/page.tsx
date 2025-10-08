@@ -2,9 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import type { Profile as PdfProfile, Visit as PdfVisit, Office as PdfOffice } from "@/src/utils/pdfReport";
-import { downloadFullPdf, downloadVisitsPdf } from "@/src/utils/pdfReport";
-
 type VisitRecord = {
   id?: string;
   date: string;
@@ -37,6 +34,8 @@ type ProfileRecord = {
   postNominals?: string[];
   lodgeName?: string | null;
   lodgeNumber?: string | null;
+  termStart?: string | null;
+  termEnd?: string | null;
 };
 
 const WORK_LABELS: Record<string, string> = {
@@ -137,90 +136,57 @@ export default function ReportsPage() {
     });
   }, [visits, from, to]);
 
-  const pdfProfile: PdfProfile | null = useMemo(() => {
-    if (!profile) return null;
-    const fullName = profile.name || "Master";
-    return {
-      prefix: profile.prefix ?? undefined,
-      fullName,
-      postNominals: Array.isArray(profile.postNominals) ? profile.postNominals.join(", ") : undefined,
-    };
-  }, [profile]);
-
-  const pdfVisits: PdfVisit[] = useMemo(
-    () =>
-      filteredVisits.map((visit) => ({
-        dateISO: visit.date,
-        lodgeName: [visit.lodgeName, visit.lodgeNumber ? `No. ${visit.lodgeNumber}` : ""].filter(Boolean).join(" "),
-        eventType: formatWork(visit.workOfEvening),
-        role: visit.isGrandLodgeVisit ? "Grand Lodge" : undefined,
-        notes: [
-          visit.candidateName,
-          visit.hasTracingBoards ? "Tracing boards" : null,
-          visit.comments,
-        ]
-          .filter(Boolean)
-          .join(" — "),
-      })),
-    [filteredVisits]
-  );
-
-  const pdfOffices: PdfOffice[] = useMemo(() => {
-    if (!profile) return [];
-    return workings.map((record) => ({
-      lodgeName: profile.lodgeName || "My Lodge",
-      office: (() => {
-        const parts: string[] = [];
-        const base = formatWork(record.work);
-        if (base) parts.push(base);
-        if (record.candidateName) parts.push(record.candidateName);
-        const tags = [
-          record.isGrandLodgeVisit ? "Grand Lodge" : null,
-          record.isEmergencyMeeting ? "Emergency meeting" : null,
-          record.hasFirstTracingBoard ? "1st tracing board" : null,
-          record.hasSecondTracingBoard ? "2nd tracing board" : null,
-          record.hasThirdTracingBoard ? "3rd tracing board" : null,
-        ].filter(Boolean);
-        if (tags.length) parts.push(tags.join(" • "));
-        return parts.join(" – ");
-      })(),
-      startDateISO: record.date,
-      isGrandLodge: Boolean(record.isGrandLodgeVisit),
-      endDateISO: undefined,
-    }));
-  }, [workings, profile]);
-
-  async function onExportVisits() {
-    if (!pdfProfile) {
-      alert('Profile not loaded yet.');
-      return;
-    }
-    setBusy(true);
-    try {
-      await downloadVisitsPdf(pdfProfile, pdfVisits, {
-        title: "Visits Report",
-        dateFrom: from || undefined,
-        dateTo: to || undefined,
-        includeNotes: true,
-      });
-    } finally {
-      setBusy(false);
-    }
+  function extractFilename(contentDisposition: string | null) {
+    if (!contentDisposition) return null;
+    const match = /filename="?([^";]+)"?/i.exec(contentDisposition);
+    return match?.[1] ?? null;
   }
 
-  async function onExportFull() {
-    if (!pdfProfile) {
-      alert('Profile not loaded yet.');
+  async function generateReport(mode: "term" | "custom") {
+    if (mode === "custom" && (!from || !to)) {
+      setError("Select both a start and end date for a custom report.");
       return;
     }
     setBusy(true);
+    setError(null);
     try {
-      await downloadFullPdf(pdfProfile, pdfVisits, pdfOffices, {
-        title: "My Year in the Chair – Full Report",
-        dateFrom: from || undefined,
-        dateTo: to || undefined,
-        includeNotes: true,
+      const params = new URLSearchParams();
+      if (mode === "custom") {
+        params.set("period", "custom");
+        params.set("from", from);
+        params.set("to", to);
+      } else if (profile?.termStart && profile?.termEnd) {
+        const now = new Date();
+        const start = new Date(profile.termStart);
+        const end = new Date(profile.termEnd);
+        if (start instanceof Date && end instanceof Date && !Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+          if (now < start || now > end) {
+            params.set("term", "current");
+          }
+        }
+      }
+      const query = params.toString();
+      const res = await fetch(`/api/reports/gsr${query ? `?${query}` : ""}`, {
+        method: "GET",
+        credentials: "include",
       });
+      if (!res.ok) {
+        const message = await res.text();
+        setError(message || "Unable to generate the PDF report.");
+        return;
+      }
+      const blob = await res.blob();
+      const filename = extractFilename(res.headers.get("Content-Disposition")) ?? "Grand-Superintendent-of-Region-Report.pdf";
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setError(err?.message || "Unable to generate the PDF report.");
     } finally {
       setBusy(false);
     }
@@ -228,6 +194,7 @@ export default function ReportsPage() {
 
   const visitSummary = filteredVisits.length;
   const workingSummary = workings.length;
+  const termReady = Boolean(profile?.termStart && profile?.termEnd);
 
   return (
     <div className="space-y-6">
@@ -252,17 +219,17 @@ export default function ReportsPage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <button
                 className="btn-soft w-full sm:w-auto"
-                onClick={onExportVisits}
-                disabled={busy || !pdfProfile || !pdfVisits.length}
+                onClick={() => generateReport("term")}
+                disabled={busy || !profile}
               >
-                {busy ? 'Working…' : 'Export Visits PDF'}
+                {busy ? 'Working…' : 'Generate for current term'}
               </button>
               <button
                 className="btn-primary w-full sm:w-auto"
-                onClick={onExportFull}
-                disabled={busy || !pdfProfile || !pdfVisits.length}
+                onClick={() => generateReport("custom")}
+                disabled={busy || !from || !to}
               >
-                {busy ? 'Working…' : 'Export Full PDF'}
+                {busy ? 'Working…' : 'Generate custom period'}
               </button>
             </div>
           </div>
@@ -277,14 +244,14 @@ export default function ReportsPage() {
               <div className="text-lg font-semibold">{workingSummary}</div>
             </div>
             <div>
-              <div className="subtle">Profile ready</div>
-              <div className="text-lg font-semibold">{pdfProfile ? 'Yes' : 'No'}</div>
+              <div className="subtle">Term configured</div>
+              <div className="text-lg font-semibold">{termReady ? 'Yes' : 'No'}</div>
             </div>
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
-          {!error && !pdfVisits.length && (
-            <p className="text-sm text-slate-500">Add visits to generate a PDF report.</p>
+          {!error && !visits.length && !workings.length && (
+            <p className="text-sm text-slate-500">Add lodge visits and workings to unlock the Grand Superintendent report.</p>
           )}
         </div>
       </div>
