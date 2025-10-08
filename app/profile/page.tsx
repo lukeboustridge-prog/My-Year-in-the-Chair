@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { RANK_OPTIONS, RANK_META, deriveTitle } from "@/lib/constants";
+import { RANK_OPTIONS, RANK_META, deriveTitle, type Rank } from "@/lib/constants";
+
+const isRank = (value: string): value is Rank =>
+  RANK_OPTIONS.includes(value as Rank);
 
 type ProfileForm = {
   name: string;
-  rank: string;
+  rank: Rank;
   isPastGrand: boolean;
   lodgeName: string;
   lodgeNumber: string;
@@ -37,7 +40,10 @@ export default function ProfilePage() {
         const data = await res.json();
         setForm({
           name: data.name ?? "",
-          rank: data.rank ?? "Master Mason",
+          rank:
+            typeof data.rank === "string" && isRank(data.rank)
+              ? data.rank
+              : "Master Mason",
           isPastGrand: data.isPastGrand ?? false,
           lodgeName: data.lodgeName ?? "",
           lodgeNumber: data.lodgeNumber ?? "",
@@ -56,14 +62,14 @@ export default function ProfilePage() {
     [form.rank, form.isPastGrand],
   );
 
-  const grandRanks = useMemo(
+  const grandRanks = useMemo<Rank[]>(
     () => RANK_OPTIONS.filter((rank) => RANK_META[rank]?.grand),
     []
   );
-  const rankChoices = form.isPastGrand ? grandRanks : RANK_OPTIONS;
+  const rankChoices = (form.isPastGrand ? grandRanks : RANK_OPTIONS) as ReadonlyArray<Rank>;
 
   useEffect(() => {
-    const options = form.isPastGrand ? grandRanks : RANK_OPTIONS;
+    const options = (form.isPastGrand ? grandRanks : RANK_OPTIONS) as ReadonlyArray<Rank>;
     if (!options.includes(form.rank)) {
       setForm((prev) => ({ ...prev, rank: options[0] ?? prev.rank }));
     }
@@ -153,7 +159,11 @@ export default function ProfilePage() {
                   style={{ padding: ".6rem" }}
                   value={form.rank}
                   onChange={(event) =>
-                    setForm((prev) => ({ ...prev, rank: event.target.value }))
+                    setForm((prev) => {
+                      const value = event.target.value;
+                      if (isRank(value)) return { ...prev, rank: value };
+                      return prev;
+                    })
                   }
                 >
                   {rankChoices.map((rank) => (
