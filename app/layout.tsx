@@ -4,6 +4,10 @@ import Header from "../components/Header";
 export const metadata = {
   title: "My Year in the Chair",
   description: "Freemasons Master companion",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
