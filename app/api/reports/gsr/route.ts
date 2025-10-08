@@ -4,8 +4,6 @@ import type PDFKit from "pdfkit";
 import { PassThrough } from "node:stream";
 import fs from "node:fs";
 import path from "node:path";
-import { Blob } from "buffer";
-
 import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 import type { Visit, MyWork } from "@prisma/client";
@@ -465,7 +463,6 @@ export async function GET(request: Request) {
 
   doc.end();
   const pdfBuffer = await pdfPromise;
-  const pdfBlob = new Blob([pdfBuffer], { type: "application/pdf" });
 
   const lodgeIdentifier = (user.lodgeNumber && user.lodgeNumber.trim())
     ? user.lodgeNumber.trim().replace(/\s+/g, "-")
@@ -476,7 +473,15 @@ export async function GET(request: Request) {
     "Content-Type": "application/pdf",
     "Content-Disposition": `attachment; filename="${filename}"`,
   });
+  headers.set("Content-Length", String(pdfBuffer.byteLength));
 
-  return new NextResponse(pdfBlob, { status: 200, headers });
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(pdfBuffer);
+      controller.close();
+    },
+  });
+
+  return new NextResponse(stream, { status: 200, headers });
 }
 
