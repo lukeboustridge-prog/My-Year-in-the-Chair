@@ -38,6 +38,15 @@ const STATUS_LABELS: Record<string, string> = {
   OTHER: "Working recorded",
 };
 
+function coerceWorkType(value?: string | null) {
+  return typeof value === "string" && value.trim().length ? value : "OTHER";
+}
+
+function workLabel(value?: string | null) {
+  const key = coerceWorkType(value);
+  return WORK_LABELS[key] ?? key.replace(/_/g, " ");
+}
+
 function normalise(value?: string | null) {
   return (value ?? "").trim().toLowerCase();
 }
@@ -64,8 +73,8 @@ function formatForFilename(date: Date) {
 }
 
 function compareWorkPriority(a: MyWork, b: MyWork) {
-  const pa = WORK_PRIORITY[a.work] ?? 0;
-  const pb = WORK_PRIORITY[b.work] ?? 0;
+  const pa = WORK_PRIORITY[coerceWorkType(a.work)] ?? 0;
+  const pb = WORK_PRIORITY[coerceWorkType(b.work)] ?? 0;
   if (pa !== pb) return pa - pb;
   return new Date(a.date).getTime() - new Date(b.date).getTime();
 }
@@ -259,7 +268,7 @@ export async function GET(request: Request) {
     .join(" ");
 
   const workingTypeCounts = workings.reduce<Record<string, number>>((acc, row) => {
-    const key = row.work;
+    const key = coerceWorkType(row.work);
     acc[key] = (acc[key] || 0) + 1;
     return acc;
   }, {});
@@ -338,7 +347,7 @@ export async function GET(request: Request) {
     Object.entries(workingTypeCounts)
       .sort(([, a], [, b]) => b - a)
       .forEach(([type, count]) => {
-        const label = WORK_LABELS[type] ?? type.replace(/_/g, " ");
+        const label = workLabel(type);
         doc.text(` • ${label}: ${count}`);
       });
   }
@@ -354,8 +363,9 @@ export async function GET(request: Request) {
   } else {
     candidateRows.forEach((row, index) => {
       const eventDate = asPeriodLabel(new Date(row.event.date), timezone);
-      const ceremony = WORK_LABELS[row.event.work] ?? row.event.work.replace(/_/g, " ");
-      const result = STATUS_LABELS[row.event.work] ?? STATUS_LABELS.OTHER;
+      const eventWorkType = coerceWorkType(row.event.work);
+      const ceremony = workLabel(eventWorkType);
+      const result = STATUS_LABELS[eventWorkType] ?? STATUS_LABELS.OTHER;
       const notes = row.event.comments?.trim() || "None recorded";
       doc.text(`${index + 1}. ${row.candidate || "Candidate"}`);
       doc.text(`    Date: ${eventDate}`);
@@ -376,7 +386,7 @@ export async function GET(request: Request) {
   } else {
     emergencyMeetings.forEach((meeting, index) => {
       const meetingDate = asPeriodLabel(new Date(meeting.date), timezone);
-      const purpose = WORK_LABELS[meeting.work] ?? meeting.work.replace(/_/g, " ");
+      const purpose = workLabel(meeting.work);
       const candidate = meeting.candidateName?.trim() || "None recorded";
       const notes = meeting.comments?.trim() || "None recorded";
       doc.text(`${index + 1}. ${meetingDate}`);
@@ -397,7 +407,7 @@ export async function GET(request: Request) {
     grandLodgeVisits.forEach((visit, index) => {
       const visitDate = asPeriodLabel(new Date(visit.date), timezone);
       const officer = visit.candidateName?.trim() || visit.comments?.trim() || visit.notes?.trim() || "Officer not recorded";
-      const occasion = WORK_LABELS[visit.workOfEvening] ?? visit.workOfEvening.replace(/_/g, " ");
+      const occasion = workLabel(visit.workOfEvening);
       const notes = visit.notes?.trim() || visit.comments?.trim() || "None recorded";
       doc.text(`${index + 1}. ${visitDate}`);
       doc.text(`    Visiting officer: ${officer}`);
@@ -417,7 +427,7 @@ export async function GET(request: Request) {
     otherVisits.forEach((visit, index) => {
       const visitDate = asPeriodLabel(new Date(visit.date), timezone);
       const lodge = lodgeDisplay(visit.lodgeName, visit.lodgeNumber) || lodgeLabel || "Not recorded";
-      const eventType = WORK_LABELS[visit.workOfEvening] ?? visit.workOfEvening.replace(/_/g, " ");
+      const eventType = workLabel(visit.workOfEvening);
       const notes = visit.notes?.trim() || visit.comments?.trim() || "None recorded";
       doc.text(`${index + 1}. ${visitDate}`);
       doc.text(`    Lodge: ${lodge}`);
@@ -438,7 +448,7 @@ export async function GET(request: Request) {
   } else {
     workingRows.forEach((row, index) => {
       const date = asPeriodLabel(new Date(row.date), timezone);
-      const type = WORK_LABELS[row.work] ?? row.work.replace(/_/g, " ");
+      const type = workLabel(row.work);
       const purpose = row.comments?.trim() || "None recorded";
       const candidate = row.candidateName?.trim() || "None recorded";
       const tags: string[] = [];
