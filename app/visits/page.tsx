@@ -1,202 +1,529 @@
 'use client';
-import React from "react";
-import Modal from "../../components/Modal";
-import { toISODate, toDisplayDate } from "../../lib/date";
 
-type Degree = 'Initiation' | 'Passing' | 'Raising' | 'Installation' | 'Other';
+import type { FormEvent } from "react";
+import { useEffect, useState } from "react";
 
-type Visit = {
+import { toDisplayDate, toISODate } from "../../lib/date";
+
+const WORK_OPTIONS = [
+  { value: "INITIATION", label: "First Degree" },
+  { value: "PASSING", label: "Second Degree" },
+  { value: "RAISING", label: "Third Degree" },
+  { value: "INSTALLATION", label: "Installation" },
+  { value: "PRESENTATION", label: "Presentation" },
+  { value: "LECTURE", label: "Lecture" },
+  { value: "OTHER", label: "Other" },
+] as const;
+
+type VisitRecord = {
   id?: string;
-  dateISO: string; // normalized YYYY-MM-DD
+  date: string;
   lodgeName: string;
-  eventType: Degree;
-  grandLodgeVisit: boolean;
-  notes?: string;
+  lodgeNumber?: string | null;
+  workOfEvening: (typeof WORK_OPTIONS)[number]["value"];
+  candidateName?: string | null;
+  comments?: string | null;
+  isGrandLodgeVisit: boolean;
+  hasTracingBoards: boolean;
 };
 
-const emptyVisit: Visit = { dateISO: '', lodgeName: '', eventType: 'Initiation', grandLodgeVisit: false, notes: '' };
+const emptyVisit: VisitRecord = {
+  date: new Date().toISOString().slice(0, 10),
+  lodgeName: "",
+  lodgeNumber: "",
+  workOfEvening: "OTHER",
+  candidateName: "",
+  comments: "",
+  isGrandLodgeVisit: false,
+  hasTracingBoards: false,
+};
 
-export default function VisitsPage() {
-  const [records, setRecords] = React.useState<Visit[] | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-  const [modalOpen, setModalOpen] = React.useState(false);
-  const [editing, setEditing] = React.useState<Visit | null>(null);
-  const [busy, setBusy] = React.useState(false);
+function formatWork(value: VisitRecord["workOfEvening"]): string {
+  const option = WORK_OPTIONS.find((o) => o.value === value);
+  return option?.label ?? value.replace(/_/g, " ");
+}
 
-  React.useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/visits', { credentials: 'include' });
-        if (!res.ok) throw new Error('Failed to load visits');
-        const data = await res.json();
-        const norm = (Array.isArray(data) ? data : []).map((r:any) => ({
-          id: r.id,
-          dateISO: toISODate(r.dateISO || r.date || ''),
-          lodgeName: r.lodgeName || r.lodge || '',
-          eventType: r.eventType || r.degree || 'Other',
-          grandLodgeVisit: Boolean(r.grandLodgeVisit),
-          notes: r.notes || ''
-        }));
-        setRecords(norm);
-      } catch (e:any) {
-        setRecords([]);
-        setError(e?.message || 'Failed to load');
+function normaliseVisit(row: any, fallback?: VisitRecord): VisitRecord {
+  return {
+    id: row?.id ?? fallback?.id,
+    date: toISODate(row?.date ?? row?.dateISO ?? fallback?.date ?? emptyVisit.date),
+    lodgeName: row?.lodgeName ?? fallback?.lodgeName ?? "",
+    lodgeNumber: row?.lodgeNumber ?? fallback?.lodgeNumber ?? "",
+    workOfEvening: row?.workOfEvening ?? fallback?.workOfEvening ?? "OTHER",
+    candidateName: row?.candidateName ?? fallback?.candidateName ?? "",
+    comments: row?.comments ?? row?.notes ?? fallback?.comments ?? "",
+    isGrandLodgeVisit:
+      typeof row?.isGrandLodgeVisit === "boolean"
+        ? row.isGrandLodgeVisit
+        : fallback?.isGrandLodgeVisit ?? false,
+    hasTracingBoards:
+      typeof row?.hasTracingBoards === "boolean"
+        ? row.hasTracingBoards
+        : fallback?.hasTracingBoards ?? false,
+  };
+}
+
+type VisitItemProps = {
+  record: VisitRecord;
+  saving: boolean;
+  onSave: (next: VisitRecord) => Promise<boolean>;
+  onDelete: (id: string) => Promise<void>;
+};
+
+function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState<VisitRecord>(record);
+
+  useEffect(() => {
+    if (!open) {
+      setForm(record);
+    }
+  }, [record, open]);
+
+  const lodgeDisplay = [
+    form.lodgeName,
+    form.lodgeNumber ? `No. ${form.lodgeNumber}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const toggle = () => {
+    setOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        setForm(record);
       }
-    })();
-  }, []);
+      return next;
+    });
+  };
 
-  function openNew() { setEditing({ ...emptyVisit }); setModalOpen(true); }
-  function openEdit(v: Visit) { setEditing({ ...v }); setModalOpen(true); }
-  function closeModal() { setModalOpen(false); setEditing(null); }
-
-  async function saveVisit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editing) return;
-    setBusy(true);
-    try {
-      const isNew = !editing.id;
-      const payload = {
-        id: editing.id,
-        dateISO: toISODate(editing.dateISO),
-        lodgeName: editing.lodgeName,
-        eventType: editing.eventType,
-        grandLodgeVisit: !!editing.grandLodgeVisit,
-        notes: editing.notes || ''
-      };
-      const res = await fetch(isNew ? '/api/visits' : `/api/visits/${editing.id}`, {
-        method: isNew ? 'POST' : 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const saved = await res.json().catch(() => payload);
-      setRecords(prev => {
-        const next = prev ? [...prev] : [];
-        if (isNew) return [saved as Visit, ...next];
-        return next.map(r => (r.id === editing.id ? (saved as Visit) : r));
-      });
-      closeModal();
-    } catch (e:any) {
-      alert(e?.message || 'Save failed');
-    } finally {
-      setBusy(false);
+  const handleSave = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const success = await onSave(form);
+    if (success) {
+      setOpen(false);
     }
-  }
+  };
 
-  async function deleteVisit(id?: string) {
-    if (!id) return;
-    if (!confirm('Delete this visit?')) return;
-    const prev = records || [];
-    setRecords(prev.filter(r => r.id !== id));
+  const handleDelete = async () => {
+    if (!record.id) return;
     try {
-      const res = await fetch(`/api/visits/${id}`, { method: 'DELETE', credentials: 'include' });
-      if (!res.ok) throw new Error(await res.text());
+      await onDelete(record.id);
+      setOpen(false);
     } catch {
-      setRecords(prev);
-      alert('Delete failed');
+      // parent already surfaced the error
     }
-  }
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="h1">Visits</h1>
-          <p className="subtle">Add, view, and edit your visiting record.</p>
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <button
+        type="button"
+        onClick={toggle}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <div className="min-w-0">
+          <p className="truncate font-medium text-slate-900">{lodgeDisplay || "Visit"}</p>
+          <p className="text-xs text-slate-500">{toDisplayDate(form.date)} · {formatWork(form.workOfEvening)}</p>
         </div>
-        <button className="btn-primary" onClick={openNew}>Add Visit</button>
-      </div>
-
-      <div className="card">
-        <div className="card-body">
-          {records === null ? (
-            <div className="subtle">Loading…</div>
-          ) : records.length === 0 ? (
-            <div className="subtle">No visits yet.</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-slate-500">
-                    <th className="py-2 pr-3">Date</th>
-                    <th className="py-2 pr-3">Lodge</th>
-                    <th className="py-2 pr-3">Work</th>
-                    <th className="py-2 pr-3">GL Visit</th>
-                    <th className="py-2 pr-3">Notes</th>
-                    <th className="py-2 pr-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {records.map((r) => (
-                    <tr key={r.id || r.dateISO + r.lodgeName} className="border-t">
-                      <td className="py-2 pr-3">{toDisplayDate(r.dateISO)}</td>
-                      <td className="py-2 pr-3">{r.lodgeName || '—'}</td>
-                      <td className="py-2 pr-3">{r.eventType || '—'}</td>
-                      <td className="py-2 pr-3">{r.grandLodgeVisit ? 'Yes' : 'No'}</td>
-                      <td className="py-2 pr-3">{r.notes || '—'}</td>
-                      <td className="py-2 pr-3">
-                        <div className="flex gap-2">
-                          <button className="navlink" onClick={() => openEdit(r)}>Edit</button>
-                          <button className="navlink" onClick={() => deleteVisit(r.id)}>Delete</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
-        </div>
-      </div>
-
-      <Modal open={modalOpen} title={editing?.id ? 'Edit Visit' : 'Add Visit'} onClose={closeModal}>
-        <form className="space-y-4" onSubmit={saveVisit}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <span className={`text-sm text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden>
+          ▾
+        </span>
+      </button>
+      {open ? (
+        <form onSubmit={handleSave} className="border-t border-slate-200 px-4 py-4 space-y-4 sm:px-5">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <label className="label">
-              <span>Date (dd/mm/yyyy)</span>
+              <span>Date</span>
               <input
                 className="input mt-1"
-                placeholder="dd/mm/yyyy"
-                value={editing?.dateISO ? toDisplayDate(editing.dateISO) : ''}
-                onChange={e=>{
-                  const v = e.target.value;
-                  // keep free-form dd/mm/yyyy, normalize on save
-                  setEditing(prev => ({...(prev as Visit), dateISO: v }));
-                }}
+                type="date"
+                value={form.date}
+                onChange={(event) => setForm((prev) => ({ ...prev, date: event.target.value }))}
                 required
               />
             </label>
             <label className="label">
-              <span>Lodge</span>
-              <input className="input mt-1" type="text" value={editing?.lodgeName || ''} onChange={e=>setEditing(v=>({...(v as Visit), lodgeName: e.target.value}))} required />
-            </label>
-            <label className="label">
-              <span>Work of the evening (Degree)</span>
-              <select className="input mt-1" value={editing?.eventType || 'Initiation'} onChange={e=>setEditing(v=>({...(v as Visit), eventType: e.target.value as Visit['eventType']}))}>
-                <option>Initiation</option>
-                <option>Passing</option>
-                <option>Raising</option>
-                <option>Installation</option>
-                <option>Other</option>
+              <span>Work of the evening</span>
+              <select
+                className="input mt-1"
+                value={form.workOfEvening}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    workOfEvening: event.target.value as VisitRecord["workOfEvening"],
+                  }))
+                }
+              >
+                {WORK_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </label>
-            <label className="flex items-center gap-2 mt-6">
-              <input type="checkbox" checked={!!editing?.grandLodgeVisit} onChange={e=>setEditing(v=>({...(v as Visit), grandLodgeVisit: e.target.checked}))} />
-              <span className="text-sm font-medium">Grand Lodge Visit</span>
+            <label className="label">
+              <span>Lodge name</span>
+              <input
+                className="input mt-1"
+                type="text"
+                value={form.lodgeName}
+                onChange={(event) => setForm((prev) => ({ ...prev, lodgeName: event.target.value }))}
+                required
+              />
+            </label>
+            <label className="label">
+              <span>Lodge number</span>
+              <input
+                className="input mt-1"
+                type="text"
+                value={form.lodgeNumber ?? ""}
+                onChange={(event) => setForm((prev) => ({ ...prev, lodgeNumber: event.target.value }))}
+                placeholder="Optional"
+              />
+            </label>
+            <label className="label sm:col-span-2">
+              <span>Candidate name</span>
+              <input
+                className="input mt-1"
+                type="text"
+                value={form.candidateName ?? ""}
+                onChange={(event) => setForm((prev) => ({ ...prev, candidateName: event.target.value }))}
+                placeholder="If applicable"
+              />
+            </label>
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={Boolean(form.isGrandLodgeVisit)}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, isGrandLodgeVisit: event.target.checked }))
+                }
+              />
+              Grand Lodge visit
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={Boolean(form.hasTracingBoards)}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, hasTracingBoards: event.target.checked }))
+                }
+              />
+              Tracing boards
             </label>
           </div>
           <label className="label">
             <span>Notes</span>
-            <textarea className="input mt-1" rows={3} value={editing?.notes || ''} onChange={e=>setEditing(v=>({...(v as Visit), notes: e.target.value}))} />
+            <textarea
+              className="input mt-1 min-h-[6rem]"
+              value={form.comments ?? ""}
+              onChange={(event) => setForm((prev) => ({ ...prev, comments: event.target.value }))}
+              placeholder="Optional notes"
+            />
           </label>
-          <div className="flex justify-end gap-2">
-            <button type="button" className="btn-soft" onClick={closeModal}>Cancel</button>
-            <button type="submit" className="btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button type="submit" className="btn-primary w-full sm:w-auto" disabled={saving}>
+              {saving ? "Saving…" : "Save changes"}
+            </button>
+            <button
+              type="button"
+              className="btn-soft w-full sm:w-auto"
+              onClick={() => {
+                setForm(record);
+                setOpen(false);
+              }}
+              disabled={saving}
+            >
+              Cancel
+            </button>
+            {record.id ? (
+              <button
+                type="button"
+                className="btn-soft w-full sm:w-auto text-red-600"
+                onClick={handleDelete}
+                disabled={saving}
+              >
+                Delete
+              </button>
+            ) : null}
           </div>
         </form>
-      </Modal>
+      ) : null}
+    </div>
+  );
+}
+
+type VisitCreateCardProps = {
+  onClose: () => void;
+  onSave: (next: VisitRecord) => Promise<boolean>;
+  saving: boolean;
+};
+
+function VisitCreateCard({ onClose, onSave, saving }: VisitCreateCardProps) {
+  const [form, setForm] = useState<VisitRecord>({ ...emptyVisit });
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const success = await onSave(form);
+    if (success) {
+      setForm({ ...emptyVisit });
+      onClose();
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-dashed border-slate-300 bg-white shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3">
+        <h2 className="font-semibold text-slate-800">Add visit</h2>
+        <button type="button" className="navlink" onClick={onClose}>
+          Close
+        </button>
+      </div>
+        <form onSubmit={handleSubmit} className="border-t border-slate-200 px-4 py-4 space-y-4 sm:px-5">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <label className="label">
+            <span>Date</span>
+            <input
+              className="input mt-1"
+              type="date"
+              value={form.date}
+              onChange={(event) => setForm((prev) => ({ ...prev, date: event.target.value }))}
+              required
+            />
+          </label>
+          <label className="label">
+            <span>Work of the evening</span>
+            <select
+              className="input mt-1"
+              value={form.workOfEvening}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  workOfEvening: event.target.value as VisitRecord["workOfEvening"],
+                }))
+              }
+            >
+              {WORK_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="label">
+            <span>Lodge name</span>
+            <input
+              className="input mt-1"
+              type="text"
+              value={form.lodgeName}
+              onChange={(event) => setForm((prev) => ({ ...prev, lodgeName: event.target.value }))}
+              required
+            />
+          </label>
+          <label className="label">
+            <span>Lodge number</span>
+            <input
+              className="input mt-1"
+              type="text"
+              value={form.lodgeNumber ?? ""}
+              onChange={(event) => setForm((prev) => ({ ...prev, lodgeNumber: event.target.value }))}
+              placeholder="Optional"
+            />
+          </label>
+          <label className="label sm:col-span-2">
+            <span>Candidate name</span>
+            <input
+              className="input mt-1"
+              type="text"
+              value={form.candidateName ?? ""}
+              onChange={(event) => setForm((prev) => ({ ...prev, candidateName: event.target.value }))}
+              placeholder="If applicable"
+            />
+          </label>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              checked={Boolean(form.isGrandLodgeVisit)}
+              onChange={(event) => setForm((prev) => ({ ...prev, isGrandLodgeVisit: event.target.checked }))}
+            />
+            Grand Lodge visit
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              checked={Boolean(form.hasTracingBoards)}
+              onChange={(event) => setForm((prev) => ({ ...prev, hasTracingBoards: event.target.checked }))}
+            />
+            Tracing boards
+          </label>
+        </div>
+        <label className="label">
+          <span>Notes</span>
+          <textarea
+            className="input mt-1 min-h-[6rem]"
+            value={form.comments ?? ""}
+            onChange={(event) => setForm((prev) => ({ ...prev, comments: event.target.value }))}
+            placeholder="Optional notes"
+          />
+        </label>
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button type="submit" className="btn-primary w-full sm:w-auto" disabled={saving}>
+            {saving ? "Saving…" : "Save visit"}
+          </button>
+          <button type="button" className="btn-soft w-full sm:w-auto" onClick={onClose} disabled={saving}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+export default function VisitsPage() {
+  const [records, setRecords] = useState<VisitRecord[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/visits", { credentials: "include" });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        const normalised: VisitRecord[] = (Array.isArray(data) ? data : []).map((row: any) =>
+          normaliseVisit(row)
+        );
+        setRecords(normalised);
+        setError(null);
+      } catch (err: any) {
+        console.error("VISITS_LOAD", err);
+        setError(err?.message || "Failed to load visits");
+        setRecords([]);
+      }
+    })();
+  }, []);
+
+  async function saveVisit(next: VisitRecord): Promise<boolean> {
+    const key = next.id ?? "new";
+    setSavingKey(key);
+    try {
+      const payload = {
+        id: next.id,
+        date: toISODate(next.date),
+        lodgeName: next.lodgeName.trim(),
+        lodgeNumber: next.lodgeNumber?.trim() || null,
+        workOfEvening: next.workOfEvening,
+        candidateName: next.candidateName?.trim() || null,
+        comments: next.comments?.trim() || null,
+        isGrandLodgeVisit: Boolean(next.isGrandLodgeVisit),
+        hasTracingBoards: Boolean(next.hasTracingBoards),
+      };
+      const isNew = !payload.id;
+      const body = JSON.stringify(isNew ? { ...payload, id: undefined } : payload);
+      const res = await fetch("/api/visits", {
+        method: isNew ? "POST" : "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const saved = await res.json().catch(() => payload);
+      const normalised = normaliseVisit(saved, payload as VisitRecord);
+      setRecords((prev) => {
+        const list = Array.isArray(prev) ? [...prev] : [];
+        if (isNew) {
+          return [normalised, ...list];
+        }
+        return list.map((record) => (record.id === normalised.id ? normalised : record));
+      });
+      if (isNew) {
+        setCreating(false);
+      }
+      return true;
+    } catch (err: any) {
+      console.error("VISITS_SAVE", err);
+      alert(err?.message || "Failed to save visit");
+      return false;
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  async function deleteVisit(id: string) {
+    if (!id) return;
+    if (!confirm("Delete this visit?")) {
+      throw new Error("cancelled");
+    }
+    const previous = Array.isArray(records) ? [...records] : [];
+    setRecords((prev) => (prev ? prev.filter((r) => r.id !== id) : prev));
+    try {
+      const res = await fetch("/api/visits", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+    } catch (err) {
+      console.error("VISITS_DELETE", err);
+      alert("Delete failed");
+      setRecords(previous);
+      throw err;
+    }
+  }
+
+  const loading = records === null;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="h1">My Visits</h1>
+          <p className="subtle">Tap a visit to expand the full details and make edits.</p>
+        </div>
+        <button className="btn-primary w-full sm:w-auto" onClick={() => setCreating(true)}>
+          Add visit
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        {creating ? (
+          <VisitCreateCard onClose={() => setCreating(false)} onSave={saveVisit} saving={savingKey === "new"} />
+        ) : null}
+
+        <div className="card">
+          <div className="card-body space-y-4">
+            {loading ? (
+              <p className="subtle">Loading…</p>
+            ) : records && records.length > 0 ? (
+              <div className="space-y-3">
+                {records.map((record) => (
+                  <VisitItem
+                    key={record.id ?? `${record.date}-${record.lodgeName}`}
+                    record={record}
+                    onSave={saveVisit}
+                    onDelete={deleteVisit}
+                    saving={savingKey === (record.id ?? "")}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="subtle">No visits recorded yet.</p>
+            )}
+            {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

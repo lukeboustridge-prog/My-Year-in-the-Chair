@@ -13,10 +13,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       date: new Date(body.date),
       lodgeName: body.lodgeName ?? null,
       lodgeNumber: body.lodgeNumber ?? null,
-      region: body.region ?? null,
       workOfEvening: body.workOfEvening ?? null,
       candidateName: body.candidateName ?? null,
-      comments: body.comments ?? null,
+      comments: body.comments ?? body.notes ?? null,
+      notes: body.notes ?? null,
+      isGrandLodgeVisit:
+        typeof body.isGrandLodgeVisit === "boolean" ? body.isGrandLodgeVisit : undefined,
+      hasTracingBoards:
+        typeof body.hasTracingBoards === "boolean" ? body.hasTracingBoards : undefined,
     },
   });
   return NextResponse.json({ ok: true });

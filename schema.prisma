@@ -55,14 +55,15 @@ model Visit {
 
   date          DateTime
   lodgeName     String?
-  lodgeNumber   String?
-  region        String?
+  lodgeNumber        String?
 
-  workOfEvening WorkType @default(OTHER)
-  candidateName String?
-  comments      String?
-  location      String?
-  notes         String?
+  workOfEvening      WorkType @default(OTHER)
+  candidateName      String?
+  comments           String?
+
+  isGrandLodgeVisit  Boolean  @default(false)
+  hasTracingBoards   Boolean  @default(false)
+  notes              String?
   createdAt     DateTime @default(now())
 }
 
@@ -73,9 +74,15 @@ model LodgeWork {
 
   month         Int
   year          Int
-  work          WorkType @default(OTHER)
-  candidateName String?
-  notes         String?
+  work                 WorkType @default(OTHER)
+  candidateName        String?
+  notes                String?
+  isGrandLodgeVisit    Boolean  @default(false)
+  isEmergencyMeeting   Boolean  @default(false)
+  hasTracingBoards     Boolean  @default(false)
+  hasFirstTracingBoard  Boolean  @default(false)
+  hasSecondTracingBoard Boolean  @default(false)
+  hasThirdTracingBoard  Boolean  @default(false)
   createdAt     DateTime @default(now())
 }
 
@@ -88,6 +95,11 @@ model MyWork {
   work          WorkType @default(OTHER)
   candidateName String?
   comments      String?
+  isGrandLodgeVisit    Boolean  @default(false)
+  isEmergencyMeeting   Boolean  @default(false)
+  hasFirstTracingBoard  Boolean  @default(false)
+  hasSecondTracingBoard Boolean  @default(false)
+  hasThirdTracingBoard  Boolean  @default(false)
   createdAt     DateTime @default(now())
 }
 

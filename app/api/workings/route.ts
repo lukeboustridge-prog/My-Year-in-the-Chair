@@ -9,6 +9,12 @@ const schema = z.object({
   work: z.enum(["INITIATION","PASSING","RAISING","INSTALLATION","PRESENTATION","LECTURE","OTHER"]),
   candidateName: z.string().optional(),
   notes: z.string().optional(),
+  isGrandLodgeVisit: z.boolean().optional(),
+  isEmergencyMeeting: z.boolean().optional(),
+  hasFirstTracingBoard: z.boolean().optional(),
+  hasSecondTracingBoard: z.boolean().optional(),
+  hasThirdTracingBoard: z.boolean().optional(),
+  hasTracingBoards: z.boolean().optional(),
 });
 
 export async function GET() {
@@ -34,6 +40,15 @@ export async function POST(req: Request) {
         work: d.work,
         candidateName: d.candidateName ?? null,
         notes: d.notes ?? null,
+        isGrandLodgeVisit: Boolean(d.isGrandLodgeVisit),
+        isEmergencyMeeting: Boolean(d.isEmergencyMeeting),
+        hasFirstTracingBoard: Boolean(d.hasFirstTracingBoard),
+        hasSecondTracingBoard: Boolean(d.hasSecondTracingBoard),
+        hasThirdTracingBoard: Boolean(d.hasThirdTracingBoard),
+        hasTracingBoards:
+          typeof d.hasTracingBoards === "boolean"
+            ? d.hasTracingBoards
+            : Boolean(d.hasFirstTracingBoard || d.hasSecondTracingBoard || d.hasThirdTracingBoard),
       },
     });
     return NextResponse.json(item, { status: 201 });

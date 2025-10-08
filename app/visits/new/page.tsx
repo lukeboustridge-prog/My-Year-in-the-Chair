@@ -3,15 +3,24 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 const WORKS = ["INITIATION","PASSING","RAISING","INSTALLATION","PRESENTATION","LECTURE","OTHER"] as const;
+const WORK_LABELS: Record<(typeof WORKS)[number], string> = {
+  INITIATION: "First Degree",
+  PASSING: "Second Degree",
+  RAISING: "Third Degree",
+  INSTALLATION: "Installation",
+  PRESENTATION: "Presentation",
+  LECTURE: "Lecture",
+  OTHER: "Other",
+};
 
 export default function NewVisitPage() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0,10));
   const [lodgeName, setLodgeName] = useState("");
   const [lodgeNumber, setLodgeNumber] = useState("");
-  const [region, setRegion] = useState("");
   const [workOfEvening, setWork] = useState<typeof WORKS[number]>("OTHER");
   const [candidateName, setCandidate] = useState("");
-  const [location, setLocation] = useState("");
+  const [isGrandLodgeVisit, setGrandLodgeVisit] = useState(false);
+  const [hasTracingBoards, setTracingBoards] = useState(false);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -26,10 +35,10 @@ export default function NewVisitPage() {
         date,
         lodgeName,
         lodgeNumber,
-        region: region || undefined,
         workOfEvening,
         candidateName: candidateName || undefined,
-        location: location || undefined,
+        isGrandLodgeVisit,
+        hasTracingBoards,
         notes: notes || undefined,
       }),
     });
@@ -51,19 +60,36 @@ export default function NewVisitPage() {
         <label>Lodge number</label>
         <input value={lodgeNumber} onChange={e=>setLodgeNumber(e.target.value)} required />
 
-        <label>Region</label>
-        <input value={region} onChange={e=>setRegion(e.target.value)} placeholder="e.g. Waikato" />
-
         <label>Work of the evening</label>
         <select value={workOfEvening} onChange={e=>setWork(e.target.value as any)}>
-          {WORKS.map(w => <option key={w} value={w}>{w}</option>)}
+          {WORKS.map(w => (
+            <option key={w} value={w}>
+              {WORK_LABELS[w] ?? w}
+            </option>
+          ))}
         </select>
 
         <label>Candidate name</label>
         <input value={candidateName} onChange={e=>setCandidate(e.target.value)} placeholder="If applicable" />
 
-        <label>Location</label>
-        <input value={location} onChange={e=>setLocation(e.target.value)} />
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            className="h-4 w-4"
+            checked={isGrandLodgeVisit}
+            onChange={e=>setGrandLodgeVisit(e.target.checked)}
+          />
+          Grand Lodge visit
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            className="h-4 w-4"
+            checked={hasTracingBoards}
+            onChange={e=>setTracingBoards(e.target.checked)}
+          />
+          Tracing boards delivered
+        </label>
 
         <label>Notes</label>
         <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3} />

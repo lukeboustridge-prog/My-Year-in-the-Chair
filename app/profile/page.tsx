@@ -1,111 +1,318 @@
 "use client";
+
 import { useEffect, useMemo, useState } from "react";
-import { RANK_OPTIONS, RANK_META, deriveTitle } from "@/lib/constants";
+import { RANK_META, RANK_OPTIONS, deriveTitle, type Rank } from "@/lib/constants";
+
+const isRank = (value: string): value is Rank =>
+  RANK_OPTIONS.includes(value as Rank);
+
+type ProfileForm = {
+  name: string;
+  rank: Rank;
+  isPastGrand: boolean;
+  lodgeName: string;
+  lodgeNumber: string;
+  region: string;
+  termStart: string;
+  termEnd: string;
+};
+
+const DEFAULT_FORM: ProfileForm = {
+  name: "",
+  rank: "Master Mason",
+  isPastGrand: false,
+  lodgeName: "",
+  lodgeNumber: "",
+  region: "",
+  termStart: "",
+  termEnd: "",
+};
 
 export default function ProfilePage() {
+  const [form, setForm] = useState<ProfileForm>(DEFAULT_FORM);
   const [saving, setSaving] = useState(false);
-  const [state, setState] = useState({
-    name: "",
-    rank: "Master Mason",
-    isPastGrand: false,
-    prefix: "",
-    postNominals: [] as string[],
-    lodgeName: "",
-    lodgeNumber: "",
-  });
 
-  // Load existing data
   useEffect(() => {
     (async () => {
-      const res = await fetch("/api/profile"); if (!res.ok) return;
-      const u = await res.json();
-      setState(s => ({
-        ...s,
-        name: u.name || "",
-        rank: u.rank || "Master Mason",
-        isPastGrand: u.isPastGrand ?? false,
-        prefix: u.prefix || "",
-        postNominals: u.postNominals || [],
-        lodgeName: u.lodgeName || "",
-        lodgeNumber: u.lodgeNumber || "",
-      }));
+      try {
+        const response = await fetch("/api/profile");
+        if (!response.ok) return;
+        const data = await response.json();
+        setForm({
+          name: data.name ?? "",
+          rank:
+            typeof data.rank === "string" && isRank(data.rank)
+              ? data.rank
+              : "Master Mason",
+          isPastGrand: data.isPastGrand ?? false,
+          lodgeName: data.lodgeName ?? "",
+          lodgeNumber: data.lodgeNumber ?? "",
+          region: data.region ?? "",
+          termStart: data.termStart ? data.termStart.slice(0, 10) : "",
+          termEnd: data.termEnd ? data.termEnd.slice(0, 10) : "",
+        });
+      } catch (error) {
+        console.error("Failed to load profile", error);
+      }
     })();
   }, []);
 
-  // Auto-derive prefix & post-nominals from current rank + isPastGrand
+  const derivedTitles = useMemo(
+    () => deriveTitle(form.rank, form.isPastGrand),
+    [form.rank, form.isPastGrand],
+  );
+
+  const grandRanks = useMemo<Rank[]>(
+    () => RANK_OPTIONS.filter((option) => RANK_META[option]?.grand),
+    [],
+  );
+
+  const rankChoices = useMemo<ReadonlyArray<Rank>>(
+    () => (form.isPastGrand ? grandRanks : RANK_OPTIONS) as ReadonlyArray<Rank>,
+    [form.isPastGrand, grandRanks],
+  );
+
   useEffect(() => {
-    const derived = deriveTitle(state.rank, state.isPastGrand);
-    setState(s => ({ ...s, prefix: derived.prefix, postNominals: derived.postNominals }));
-  }, [state.rank, state.isPastGrand]);
+    if (!rankChoices.includes(form.rank)) {
+      setForm((previous) => ({
+        ...previous,
+        rank: rankChoices[0] ?? previous.rank,
+      }));
+    }
+  }, [form.rank, rankChoices]);
 
-  const grandRanks = useMemo(() => RANK_OPTIONS.filter(r => RANK_META[r]?.grand), []);
-  const nonGrandRanks = useMemo(() => RANK_OPTIONS.filter(r => !RANK_META[r]?.grand), []);
-  const rankList = state.isPastGrand ? grandRanks : RANK_OPTIONS;
+  const close = () => {
+    if (typeof window === "undefined") return;
+    if (window.history.length > 1) window.history.back();
+    else window.location.href = "/dashboard";
+  };
 
-  async function save() {
+  const save = async () => {
     setSaving(true);
-    const res = await fetch("/api/profile", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(state),
-    });
-    setSaving(false);
-    if (!res.ok) alert("Failed to save profile");
-  }
+    try {
+      const response = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          prefix: derivedTitles.prefix,
+          postNominals: derivedTitles.postNominals,
+        }),
+      });
+
+      if (!response.ok) {
+        alert("Failed to save profile");
+      }
+    } catch (error) {
+      console.error("Failed to save profile", error);
+      alert("Failed to save profile");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <div className="grid" style={{gap:"1.25rem", maxWidth: "640px", margin: "0 auto"}}>
-      <div className="card">
-        <h1 style={{marginTop:0}}>Profile</h1>
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) close();
+      }}
+    >
+      <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
+        <div
+          className="card w-full max-w-lg sm:max-w-xl md:max-w-2xl"
+          style={{ maxHeight: "90vh" }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div
+            className="flex h-full flex-col"
+            style={{ maxHeight: "min(90vh, 680px)" }}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
+              <div>
+                <h1 className="h2">Edit profile</h1>
+                <p className="text-sm text-slate-500">
+                  Update your personal and lodge details.
+                </p>
+              </div>
+              <button type="button" className="btn" onClick={close}>
+                Close
+              </button>
+            </div>
 
-        <div className="grid cols-2" style={{gap:"1rem"}}>
-          <label className="stat">
-            <span className="label">Name</span>
-            <input className="card" style={{padding:".6rem"}} value={state.name}
-              onChange={(e)=>setState(s=>({...s, name: e.target.value}))} placeholder="e.g., John Smith"/>
-          </label>
+            <div className="flex-1 space-y-6 overflow-y-auto p-5 pt-4 sm:p-6 sm:pt-5">
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="stat md:col-span-2">
+                  <span className="label">Name</span>
+                  <input
+                    className="card"
+                    style={{ padding: ".6rem" }}
+                    value={form.name}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        name: event.target.value,
+                      }))
+                    }
+                    placeholder="e.g., John Smith"
+                  />
+                </label>
 
-          <div className="stat">
-            <span className="label">Past Grand Rank</span>
-            <label className="card" style={{padding:".6rem", display:"flex", alignItems:"center", gap:".6rem"}}>
-              <input type="checkbox" checked={state.isPastGrand} onChange={(e)=>setState(s=>({...s, isPastGrand: e.target.checked}))}/>
-              <span className="muted">Show only Grand ranks (as Past)</span>
-            </label>
+                <div className="stat md:col-span-2">
+                  <span className="label">Past Grand Rank</span>
+                  <label
+                    className="card flex items-center gap-3"
+                    style={{ padding: ".6rem" }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form.isPastGrand}
+                      onChange={(event) =>
+                        setForm((previous) => ({
+                          ...previous,
+                          isPastGrand: event.target.checked,
+                        }))
+                      }
+                    />
+                    <span className="muted">Show only Grand ranks (as Past)</span>
+                  </label>
+                </div>
+
+                <label className="stat md:col-span-2">
+                  <span className="label">Rank</span>
+                  <select
+                    className="card"
+                    style={{ padding: ".6rem" }}
+                    value={form.rank}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      if (isRank(value)) {
+                        setForm((previous) => ({ ...previous, rank: value }));
+                      }
+                    }}
+                  >
+                    {rankChoices.map((rank) => (
+                      <option key={rank} value={rank}>
+                        {form.isPastGrand && RANK_META[rank]?.grand
+                          ? `Past ${rank}`
+                          : rank}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="stat">
+                  <span className="label">Lodge Name</span>
+                  <input
+                    className="card"
+                    style={{ padding: ".6rem" }}
+                    value={form.lodgeName}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        lodgeName: event.target.value,
+                      }))
+                    }
+                    placeholder="e.g., Lodge Example"
+                  />
+                </label>
+
+                <label className="stat">
+                  <span className="label">Lodge Number</span>
+                  <input
+                    className="card"
+                    style={{ padding: ".6rem" }}
+                    value={form.lodgeNumber}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        lodgeNumber: event.target.value,
+                      }))
+                    }
+                    placeholder="e.g., No. 123"
+                  />
+                </label>
+
+                <label className="stat">
+                  <span className="label">Region</span>
+                  <select
+                    className="card"
+                    style={{ padding: ".6rem" }}
+                    value={form.region}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        region: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Select a region</option>
+                    {Array.from({ length: 9 }).map((_, index) => {
+                      const region = `Region ${index + 1}`;
+                      return (
+                        <option key={region} value={region}>
+                          {region}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+
+                <label className="stat">
+                  <span className="label">Term start</span>
+                  <input
+                    type="date"
+                    className="card"
+                    style={{ padding: ".6rem" }}
+                    value={form.termStart}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        termStart: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+
+                <label className="stat">
+                  <span className="label">Term end</span>
+                  <input
+                    type="date"
+                    className="card"
+                    style={{ padding: ".6rem" }}
+                    value={form.termEnd}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        termEnd: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div
+              className="sticky bottom-0 border-t border-slate-200 bg-white/95 p-5 backdrop-blur sm:p-6"
+              style={{
+                paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))",
+              }}
+            >
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <button type="button" className="btn" onClick={close}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={save}
+                  disabled={saving}
+                  className="btn-primary"
+                >
+                  {saving ? "Saving…" : "Save changes"}
+                </button>
+              </div>
+            </div>
           </div>
-
-          <label className="stat" style={{gridColumn:"1 / -1"}}>
-            <span className="label">Rank</span>
-            <select className="card" style={{padding:".6rem"}} value={state.rank}
-              onChange={(e)=>setState(s=>({...s, rank: e.target.value}))}>
-              {rankList.map(r => <option key={r} value={r}>{state.isPastGrand && RANK_META[r]?.grand ? `Past ${r}` : r}</option>)}
-            </select>
-          </label>
-
-          <label className="stat">
-            <span className="label">Prefix (auto)</span>
-            <input className="card" style={{padding:".6rem"}} value={state.prefix} readOnly/>
-          </label>
-
-          <label className="stat">
-            <span className="label">Post-nominals (auto)</span>
-            <input className="card" style={{padding:".6rem"}} value={state.postNominals.join(", ")} readOnly/>
-          </label>
-
-          <label className="stat">
-            <span className="label">Lodge Name</span>
-            <input className="card" style={{padding:".6rem"}} value={state.lodgeName}
-              onChange={(e)=>setState(s=>({...s, lodgeName: e.target.value}))} placeholder="e.g., Lodge Example"/>
-          </label>
-
-          <label className="stat">
-            <span className="label">Lodge Number</span>
-            <input className="card" style={{padding:".6rem"}} value={state.lodgeNumber}
-              onChange={(e)=>setState(s=>({...s, lodgeNumber: e.target.value}))} placeholder="e.g., No. 123"/>
-          </label>
-        </div>
-
-        <div style={{marginTop:"1rem"}}>
-          <button onClick={save} disabled={saving} className="btn primary">{saving ? "Saving…" : "Save"}</button>
         </div>
       </div>
     </div>

@@ -133,9 +133,9 @@ export const REGIONS = ["Northern","Central","Southern","Overseas"];
 
 // ---------------- Work types (labels Title Case, values UPPER) ----------------
 export const WORK_TYPE_OPTIONS = [
-  { value: "INITIATION", label: "Initiation" },
-  { value: "PASSING", label: "Passing" },
-  { value: "RAISING", label: "Raising" },
+  { value: "INITIATION", label: "First Degree" },
+  { value: "PASSING", label: "Second Degree" },
+  { value: "RAISING", label: "Third Degree" },
   { value: "INSTALLATION", label: "Installation" },
   { value: "PRESENTATION", label: "Presentation" },
   { value: "LECTURE", label: "Lecture" },

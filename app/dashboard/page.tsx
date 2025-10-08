@@ -1,5 +1,9 @@
 export const dynamic = "force-dynamic";
 
+import { redirect } from "next/navigation";
+
+import { WorkType } from "@prisma/client";
+
 import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 
@@ -7,105 +11,302 @@ function displayName(user: any) {
   const parts: string[] = [];
   if (user?.prefix) parts.push(user.prefix);
   if (user?.name) parts.push(user.name);
-  const pn = user?.postNominals ?? [];
-  if (pn.length) parts[parts.length-1] = parts[parts.length-1] + " " + pn.join(", ");
   return parts.join(" ");
+}
+
+type RankSummary = {
+  rank: number | null;
+  total: number;
+  count: number;
+};
+
+const WORK_LABELS: Record<WorkType, string> = {
+  INITIATION: "First Degree",
+  PASSING: "Second Degree",
+  RAISING: "Third Degree",
+  INSTALLATION: "Installation",
+  PRESENTATION: "Presentation",
+  LECTURE: "Lecture",
+  OTHER: "Other",
+};
+
+const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+
+async function getUserRank(userId: string, since: Date): Promise<RankSummary> {
+  const grouped = await db.visit.groupBy({
+    by: ["userId"],
+    where: { date: { gte: since } },
+    _count: { _all: true },
+    orderBy: { _count: { userId: "desc" } },
+  });
+
+  if (!grouped.length) {
+    return { rank: null, total: 0, count: 0 };
+  }
+
+  const index = grouped.findIndex((row) => row.userId === userId);
+  if (index === -1) {
+    return { rank: null, total: grouped.length, count: 0 };
+  }
+
+  return {
+    rank: index + 1,
+    total: grouped.length,
+    count: grouped[index]._count._all,
+  };
+}
+
+function formatOrdinal(value: number): string {
+  const mod100 = value % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${value}th`;
+  const mod10 = value % 10;
+  if (mod10 === 1) return `${value}st`;
+  if (mod10 === 2) return `${value}nd`;
+  if (mod10 === 3) return `${value}rd`;
+  return `${value}th`;
+}
+
+function formatWork(value: WorkType | null | undefined): string {
+  if (!value) return WORK_LABELS.OTHER;
+  return (
+    WORK_LABELS[value] ?? value.charAt(0) + value.slice(1).toLowerCase()
+  );
+}
+
+function formatListDate(date: Date | null | undefined): string {
+  if (!date) return "—";
+  try {
+    return DATE_FORMATTER.format(date);
+  } catch {
+    return new Date(date).toLocaleDateString("en-GB");
+  }
+}
+
+function RankSummaryBlock({ label, summary }: { label: string; summary: RankSummary | null }) {
+  const details = summary ?? null;
+  const hasData = Boolean(details && details.total > 0);
+  const rankLabel = details?.rank
+    ? formatOrdinal(details.rank)
+    : hasData
+    ? "Unranked"
+    : "No visits yet";
+  const visitCount = details?.count ?? 0;
+  const visitText = `${visitCount} visit${visitCount === 1 ? "" : "s"}`;
+  const cohortText = hasData
+    ? details?.rank
+      ? `out of ${details.total}`
+      : `from ${details?.total ?? 0} lodges`
+    : "Record visits to see your rank";
+
+  return (
+    <div className="flex min-w-0 flex-col items-center gap-1 rounded-xl border border-slate-200 p-4 text-center">
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-2xl font-semibold text-slate-900 sm:text-3xl">{rankLabel}</p>
+      <p className="text-sm text-slate-600">
+        {hasData ? (
+          <>
+            {visitText}
+            {details?.rank ? <span className="ml-1 text-slate-500">{cohortText}</span> : null}
+          </>
+        ) : (
+          cohortText
+        )}
+      </p>
+    </div>
+  );
 }
 
 export default async function DashboardPage() {
   const uid = getUserId();
-  const user = uid ? await db.user.findUnique({ where: { id: uid } }) : null;
+  if (!uid) {
+    redirect("/login");
+  }
+  const user = await db.user.findUnique({ where: { id: uid } });
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const yearAgo = new Date(now); yearAgo.setFullYear(now.getFullYear() - 1);
-  const termStart = user?.termStart ?? yearAgo;
+  const yearAgo = new Date(now);
+  yearAgo.setFullYear(now.getFullYear() - 1);
 
-  const [visits, mywork] = uid
-    ? await Promise.all([
-        db.visit.findMany({ where: { userId: uid }, orderBy: { date: "desc" } }),
-        db.myWork.findMany({ where: { userId: uid }, orderBy: { date: "desc" } }),
-      ])
-    : [[], []];
+  type VisitSummary = {
+    id: string;
+    date: Date;
+    lodgeName: string | null;
+    lodgeNumber: string | null;
+    workOfEvening: WorkType | null;
+    candidateName: string | null;
+  };
 
-  const rolling12 = visits.filter(v => v.date >= yearAgo).length;
-  const thisMonth = visits.filter(v => v.date >= startOfMonth).length;
+  type WorkSummary = {
+    id: string;
+    date: Date;
+    work: WorkType;
+    candidateName: string | null;
+  };
 
-  const visitByWork = new Map<string, number>();
-  for (const v of visits) {
-    const k = (v.workOfEvening ?? "OTHER") as string;
-    visitByWork.set(k, (visitByWork.get(k) || 0) + 1);
-  }
+  let rollingYearRank: RankSummary | null = null;
+  let rollingMonthRank: RankSummary | null = null;
+  let recentVisits: VisitSummary[] = [];
+  let recentWorkings: WorkSummary[] = [];
 
-  const myWorkByType = new Map<string, number>();
-  for (const m of mywork) {
-    const k = (m.work ?? "OTHER") as string;
-    myWorkByType.set(k, (myWorkByType.get(k) || 0) + 1);
-  }
+  [
+    rollingYearRank,
+    rollingMonthRank,
+    recentVisits,
+    recentWorkings,
+  ] = await Promise.all([
+    getUserRank(uid, new Date(yearAgo)),
+    getUserRank(uid, startOfMonth),
+    db.visit.findMany({
+      where: { userId: uid },
+      orderBy: { date: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        date: true,
+        lodgeName: true,
+        lodgeNumber: true,
+        workOfEvening: true,
+        candidateName: true,
+      },
+    }),
+    db.myWork.findMany({
+      where: { userId: uid },
+      orderBy: { date: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        date: true,
+        work: true,
+        candidateName: true,
+      },
+    }),
+  ]);
+
+  const welcomeName = user ? displayName(user) : null;
 
   return (
-    <div className="grid" style={{gap:"1.25rem"}}>
-      <section className="card hero">
-        <div>
-          <h1 className="hero-title">Welcome{user ? `, ${displayName(user)}` : ""}</h1>
-          <div className="muted">
-            {user?.rank ? <span className="pill">{user.isPastGrand && user.rank ? `Past ${user.rank}` : user.rank}</span> : null}
-            {user?.lodgeName ? (
-              <span style={{marginLeft:".5rem"}}>
-                Lodge: {user.lodgeName}{user.lodgeNumber ? ` (${user.lodgeNumber})` : ""}{user.region ? ` • ${user.region}` : ""}
-              </span>
-            ) : null}
+    <div className="space-y-6">
+      <section className="card">
+        <div className="card-body flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="sm:min-w-0 sm:flex-1">
+            <p className="text-sm text-slate-500">Welcome back</p>
+            <h1 className="mt-1 text-balance text-2xl font-semibold leading-tight text-slate-900 sm:text-3xl">
+              {welcomeName ?? "Master"}
+            </h1>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+              {user?.rank ? (
+                <span className="badge">
+                  {user.isPastGrand && user.rank ? `Past ${user.rank}` : user.rank}
+                </span>
+              ) : null}
+              {user?.lodgeName ? (
+                <span>
+                  Lodge: {user.lodgeName}
+                  {user.lodgeNumber ? ` (${user.lodgeNumber})` : ""}
+                  {user.region ? ` • ${user.region}` : ""}
+                </span>
+              ) : null}
+            </div>
+          </div>
+          <a className="btn-primary w-full sm:w-auto" href="/profile">
+            Edit profile
+          </a>
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="card-body">
+          <h2 className="text-lg font-semibold text-slate-900">My rank</h2>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <RankSummaryBlock label="Rolling 12 months" summary={rollingYearRank} />
+            <RankSummaryBlock label="This month" summary={rollingMonthRank} />
           </div>
         </div>
-        <a className="btn" href="/profile">Edit profile</a>
       </section>
 
-      <section className="grid cols-4">
-        <div className="card stat">
-          <div className="label">Term start</div>
-          <div className="value">{(user?.termStart ?? termStart).toDateString()}</div>
-        </div>
-        <div className="card stat">
-          <div className="label">Today</div>
-          <div className="value">{new Date().toDateString()}</div>
-        </div>
-        <div className="card stat">
-          <div className="label">Visits (rolling 12 months)</div>
-          <div className="value">{rolling12}</div>
-        </div>
-        <div className="card stat">
-          <div className="label">Visits (this month)</div>
-          <div className="value">{thisMonth}</div>
-        </div>
-      </section>
-
-      <section className="grid cols-2">
+      <section className="grid gap-4 lg:grid-cols-2">
         <div className="card">
-          <h2 style={{marginTop:0}}>Visits by work of the evening</h2>
-          <ul style={{margin:0,paddingLeft:"1.1rem"}}>
-            {Array.from(visitByWork.entries()).map(([k,n]) => (
-              <li key={k}><strong>{k}</strong>: {n}</li>
-            ))}
-            {visitByWork.size === 0 && <li className="muted">No data yet.</li>}
-          </ul>
+          <div className="card-body">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Recent visits</h2>
+                <p className="text-sm text-slate-500">Your latest five visits at a glance.</p>
+              </div>
+              <a className="btn-soft w-full sm:w-auto" href="/visits">
+                Manage visits
+              </a>
+            </div>
+            <div className="mt-4 divide-y divide-slate-200">
+              {recentVisits.length ? (
+                recentVisits.map((visit) => {
+                  const lodgeDisplay = [
+                    visit.lodgeName ?? "",
+                    visit.lodgeNumber ? `No. ${visit.lodgeNumber}` : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
+
+                  return (
+                    <div
+                      key={visit.id}
+                      className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <p className="font-medium text-slate-900">{lodgeDisplay || "Visit"}</p>
+                        <p className="text-sm text-slate-500">
+                          {formatListDate(visit.date)} • {formatWork(visit.workOfEvening)}
+                        </p>
+                      </div>
+                      {visit.candidateName ? (
+                        <p className="text-sm text-slate-600 sm:text-right">{visit.candidateName}</p>
+                      ) : null}
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="py-3 text-sm text-slate-500">Record a visit to see it appear here.</p>
+              )}
+            </div>
+          </div>
         </div>
         <div className="card">
-          <h2 style={{marginTop:0}}>My Lodge Work by type</h2>
-          <ul style={{margin:0,paddingLeft:"1.1rem"}}>
-            {Array.from(myWorkByType.entries()).map(([k,n]) => (
-              <li key={k}><strong>{k}</strong>: {n}</li>
-            ))}
-            {myWorkByType.size === 0 && <li className="muted">No data yet.</li>}
-          </ul>
+          <div className="card-body">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Recent lodge workings</h2>
+                <p className="text-sm text-slate-500">Track the last five workings you recorded.</p>
+              </div>
+              <a className="btn-soft w-full sm:w-auto" href="/my-work">
+                Manage workings
+              </a>
+            </div>
+            <div className="mt-4 divide-y divide-slate-200">
+              {recentWorkings.length ? (
+                recentWorkings.map((work) => (
+                  <div
+                    key={work.id}
+                    className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div>
+                      <p className="font-medium text-slate-900">{formatWork(work.work)}</p>
+                      <p className="text-sm text-slate-500">{formatListDate(work.date)}</p>
+                    </div>
+                    {work.candidateName ? (
+                      <p className="text-sm text-slate-600 sm:text-right">{work.candidateName}</p>
+                    ) : null}
+                  </div>
+                ))
+              ) : (
+                <p className="py-3 text-sm text-slate-500">Add a working to start building your history.</p>
+              )}
+            </div>
+          </div>
         </div>
-      </section>
-
-      <section className="card" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div>
-          <h2 style={{marginTop:0}}>Export</h2>
-          <div className="muted">Download a CSV of your term summary for the Grand Superintendent / Region.</div>
-        </div>
-        <a className="btn primary" href="/api/reports/term">Download CSV</a>
       </section>
     </div>
   );
