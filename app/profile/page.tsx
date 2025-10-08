@@ -12,6 +12,7 @@ export default function ProfilePage() {
     postNominals: [] as string[],
     lodgeName: "",
     lodgeNumber: "",
+    region: "",
   });
 
   // Load existing data
@@ -28,6 +29,7 @@ export default function ProfilePage() {
         postNominals: u.postNominals || [],
         lodgeName: u.lodgeName || "",
         lodgeNumber: u.lodgeNumber || "",
+        region: u.region || "",
       }));
     })();
   }, []);
@@ -53,59 +55,136 @@ export default function ProfilePage() {
     if (!res.ok) alert("Failed to save profile");
   }
 
+  function close() {
+    if (typeof window === "undefined") return;
+    if (window.history.length > 1) window.history.back();
+    else window.location.href = "/dashboard";
+  }
+
   return (
-    <div className="grid" style={{gap:"1.25rem", maxWidth: "640px", margin: "0 auto"}}>
-      <div className="card">
-        <h1 style={{marginTop:0}}>Profile</h1>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) close();
+      }}
+    >
+      <div className="card w-full max-w-2xl">
+        <div className="card-body space-y-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="h2">Edit profile</h1>
+              <p className="text-sm text-slate-500">Update your personal and lodge details.</p>
+            </div>
+            <button
+              className="btn"
+              type="button"
+              onClick={close}
+            >
+              Close
+            </button>
+          </div>
 
-        <div className="grid cols-2" style={{gap:"1rem"}}>
-          <label className="stat">
-            <span className="label">Name</span>
-            <input className="card" style={{padding:".6rem"}} value={state.name}
-              onChange={(e)=>setState(s=>({...s, name: e.target.value}))} placeholder="e.g., John Smith"/>
-          </label>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="stat">
+              <span className="label">Name</span>
+              <input
+                className="card"
+                style={{ padding: ".6rem" }}
+                value={state.name}
+                onChange={(e) => setState((s) => ({ ...s, name: e.target.value }))}
+                placeholder="e.g., John Smith"
+              />
+            </label>
 
-          <div className="stat">
-            <span className="label">Past Grand Rank</span>
-            <label className="card" style={{padding:".6rem", display:"flex", alignItems:"center", gap:".6rem"}}>
-              <input type="checkbox" checked={state.isPastGrand} onChange={(e)=>setState(s=>({...s, isPastGrand: e.target.checked}))}/>
-              <span className="muted">Show only Grand ranks (as Past)</span>
+            <div className="stat">
+              <span className="label">Past Grand Rank</span>
+              <label className="card flex items-center gap-3" style={{ padding: ".6rem" }}>
+                <input
+                  type="checkbox"
+                  checked={state.isPastGrand}
+                  onChange={(e) =>
+                    setState((s) => ({ ...s, isPastGrand: e.target.checked }))
+                  }
+                />
+                <span className="muted">Show only Grand ranks (as Past)</span>
+              </label>
+            </div>
+
+            <label className="stat md:col-span-2">
+              <span className="label">Rank</span>
+              <select
+                className="card"
+                style={{ padding: ".6rem" }}
+                value={state.rank}
+                onChange={(e) => setState((s) => ({ ...s, rank: e.target.value }))}
+              >
+                {rankList.map((r) => (
+                  <option key={r} value={r}>
+                    {state.isPastGrand && RANK_META[r]?.grand ? `Past ${r}` : r}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="stat">
+              <span className="label">Lodge Name</span>
+              <input
+                className="card"
+                style={{ padding: ".6rem" }}
+                value={state.lodgeName}
+                onChange={(e) =>
+                  setState((s) => ({ ...s, lodgeName: e.target.value }))
+                }
+                placeholder="e.g., Lodge Example"
+              />
+            </label>
+
+            <label className="stat">
+              <span className="label">Lodge Number</span>
+              <input
+                className="card"
+                style={{ padding: ".6rem" }}
+                value={state.lodgeNumber}
+                onChange={(e) =>
+                  setState((s) => ({ ...s, lodgeNumber: e.target.value }))
+                }
+                placeholder="e.g., No. 123"
+              />
+            </label>
+
+            <label className="stat">
+              <span className="label">Region</span>
+              <select
+                className="card"
+                style={{ padding: ".6rem" }}
+                value={state.region}
+                onChange={(e) => setState((s) => ({ ...s, region: e.target.value }))}
+              >
+                <option value="">Select a region</option>
+                {Array.from({ length: 9 }).map((_, idx) => {
+                  const region = `Region ${idx + 1}`;
+                  return (
+                    <option key={region} value={region}>
+                      {region}
+                    </option>
+                  );
+                })}
+              </select>
             </label>
           </div>
 
-          <label className="stat" style={{gridColumn:"1 / -1"}}>
-            <span className="label">Rank</span>
-            <select className="card" style={{padding:".6rem"}} value={state.rank}
-              onChange={(e)=>setState(s=>({...s, rank: e.target.value}))}>
-              {rankList.map(r => <option key={r} value={r}>{state.isPastGrand && RANK_META[r]?.grand ? `Past ${r}` : r}</option>)}
-            </select>
-          </label>
-
-          <label className="stat">
-            <span className="label">Prefix (auto)</span>
-            <input className="card" style={{padding:".6rem"}} value={state.prefix} readOnly/>
-          </label>
-
-          <label className="stat">
-            <span className="label">Post-nominals (auto)</span>
-            <input className="card" style={{padding:".6rem"}} value={state.postNominals.join(", ")} readOnly/>
-          </label>
-
-          <label className="stat">
-            <span className="label">Lodge Name</span>
-            <input className="card" style={{padding:".6rem"}} value={state.lodgeName}
-              onChange={(e)=>setState(s=>({...s, lodgeName: e.target.value}))} placeholder="e.g., Lodge Example"/>
-          </label>
-
-          <label className="stat">
-            <span className="label">Lodge Number</span>
-            <input className="card" style={{padding:".6rem"}} value={state.lodgeNumber}
-              onChange={(e)=>setState(s=>({...s, lodgeNumber: e.target.value}))} placeholder="e.g., No. 123"/>
-          </label>
-        </div>
-
-        <div style={{marginTop:"1rem"}}>
-          <button onClick={save} disabled={saving} className="btn primary">{saving ? "Saving…" : "Save"}</button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              className="btn"
+              onClick={close}
+            >
+              Cancel
+            </button>
+            <button onClick={save} disabled={saving} className="btn-primary">
+              {saving ? "Saving…" : "Save changes"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
