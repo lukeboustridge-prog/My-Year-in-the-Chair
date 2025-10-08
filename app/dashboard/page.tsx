@@ -9,8 +9,6 @@ function displayName(user: any) {
   const parts: string[] = [];
   if (user?.prefix) parts.push(user.prefix);
   if (user?.name) parts.push(user.name);
-  const pn = user?.postNominals ?? [];
-  if (pn.length) parts[parts.length-1] = parts[parts.length-1] + " " + pn.join(", ");
   return parts.join(" ");
 }
 
@@ -280,7 +278,7 @@ export default async function DashboardPage() {
                 <h2 className="text-lg font-semibold text-slate-900">Recent lodge workings</h2>
                 <p className="text-sm text-slate-500">Track the last five workings you recorded.</p>
               </div>
-              <a className="btn-soft w-full sm:w-auto" href="/workings">
+              <a className="btn-soft w-full sm:w-auto" href="/my-work">
                 Manage workings
               </a>
             </div>
