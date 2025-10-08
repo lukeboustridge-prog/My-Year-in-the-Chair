@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { RANK_OPTIONS, RANK_META, deriveTitle, type Rank } from "@/lib/constants";
+import { RANK_META, RANK_OPTIONS, deriveTitle, type Rank } from "@/lib/constants";
 
 const isRank = (value: string): value is Rank =>
   RANK_OPTIONS.includes(value as Rank);
@@ -35,9 +35,9 @@ export default function ProfilePage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/profile");
-        if (!res.ok) return;
-        const data = await res.json();
+        const response = await fetch("/api/profile");
+        if (!response.ok) return;
+        const data = await response.json();
         setForm({
           name: data.name ?? "",
           rank:
@@ -63,17 +63,23 @@ export default function ProfilePage() {
   );
 
   const grandRanks = useMemo<Rank[]>(
-    () => RANK_OPTIONS.filter((rank) => RANK_META[rank]?.grand),
-    []
+    () => RANK_OPTIONS.filter((option) => RANK_META[option]?.grand),
+    [],
   );
-  const rankChoices = (form.isPastGrand ? grandRanks : RANK_OPTIONS) as ReadonlyArray<Rank>;
+
+  const rankChoices = useMemo<ReadonlyArray<Rank>>(
+    () => (form.isPastGrand ? grandRanks : RANK_OPTIONS) as ReadonlyArray<Rank>,
+    [form.isPastGrand, grandRanks],
+  );
 
   useEffect(() => {
-    const options = (form.isPastGrand ? grandRanks : RANK_OPTIONS) as ReadonlyArray<Rank>;
-    if (!options.includes(form.rank)) {
-      setForm((prev) => ({ ...prev, rank: options[0] ?? prev.rank }));
+    if (!rankChoices.includes(form.rank)) {
+      setForm((previous) => ({
+        ...previous,
+        rank: rankChoices[0] ?? previous.rank,
+      }));
     }
-  }, [form.isPastGrand, form.rank, grandRanks]);
+  }, [form.rank, rankChoices]);
 
   const close = () => {
     if (typeof window === "undefined") return;
@@ -81,10 +87,10 @@ export default function ProfilePage() {
     else window.location.href = "/dashboard";
   };
 
-  async function save() {
+  const save = async () => {
     setSaving(true);
     try {
-      const res = await fetch("/api/profile", {
+      const response = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -93,48 +99,56 @@ export default function ProfilePage() {
           postNominals: derivedTitles.postNominals,
         }),
       });
-      if (!res.ok) alert("Failed to save profile");
+
+      if (!response.ok) {
+        alert("Failed to save profile");
+      }
     } catch (error) {
       console.error("Failed to save profile", error);
       alert("Failed to save profile");
     } finally {
       setSaving(false);
     }
-  }
+  };
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70"
+      className="fixed inset-0 z-50 bg-slate-900/70"
       onClick={(event) => {
         if (event.target === event.currentTarget) close();
       }}
     >
       <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
-        <div className="card w-full max-w-lg sm:max-w-xl md:max-w-2xl">
-          <div className="flex max-h-[90vh] flex-col">
-            <div className="card-body min-h-0 flex-1 overflow-y-auto p-0">
-              <div className="space-y-6 p-5 sm:p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h1 className="h2">Edit profile</h1>
-                    <p className="text-sm text-slate-500">
-                      Update your personal and lodge details.
-                    </p>
-                  </div>
-                  <button type="button" className="btn" onClick={close}>
-                    Close
-                  </button>
-                </div>
+        <div
+          className="card w-full max-w-lg overflow-hidden sm:max-w-xl md:max-w-2xl"
+          style={{ maxHeight: "90vh" }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="space-y-6 overflow-y-auto p-5 sm:p-6" style={{ maxHeight: "90vh" }}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h1 className="h2">Edit profile</h1>
+                <p className="text-sm text-slate-500">
+                  Update your personal and lodge details.
+                </p>
+              </div>
+              <button type="button" className="btn" onClick={close}>
+                Close
+              </button>
+            </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="stat md:col-span-2">
-                    <span className="label">Name</span>
-                    <input
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="stat md:col-span-2">
+                <span className="label">Name</span>
+                <input
                   className="card"
                   style={{ padding: ".6rem" }}
                   value={form.name}
                   onChange={(event) =>
-                    setForm((prev) => ({ ...prev, name: event.target.value }))
+                    setForm((previous) => ({
+                      ...previous,
+                      name: event.target.value,
+                    }))
                   }
                   placeholder="e.g., John Smith"
                 />
@@ -142,12 +156,18 @@ export default function ProfilePage() {
 
               <div className="stat md:col-span-2">
                 <span className="label">Past Grand Rank</span>
-                <label className="card flex items-center gap-3" style={{ padding: ".6rem" }}>
+                <label
+                  className="card flex items-center gap-3"
+                  style={{ padding: ".6rem" }}
+                >
                   <input
                     type="checkbox"
                     checked={form.isPastGrand}
                     onChange={(event) =>
-                      setForm((prev) => ({ ...prev, isPastGrand: event.target.checked }))
+                      setForm((previous) => ({
+                        ...previous,
+                        isPastGrand: event.target.checked,
+                      }))
                     }
                   />
                   <span className="muted">Show only Grand ranks (as Past)</span>
@@ -160,13 +180,12 @@ export default function ProfilePage() {
                   className="card"
                   style={{ padding: ".6rem" }}
                   value={form.rank}
-                  onChange={(event) =>
-                    setForm((prev) => {
-                      const value = event.target.value;
-                      if (isRank(value)) return { ...prev, rank: value };
-                      return prev;
-                    })
-                  }
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (isRank(value)) {
+                      setForm((previous) => ({ ...previous, rank: value }));
+                    }
+                  }}
                 >
                   {rankChoices.map((rank) => (
                     <option key={rank} value={rank}>
@@ -185,7 +204,10 @@ export default function ProfilePage() {
                   style={{ padding: ".6rem" }}
                   value={form.lodgeName}
                   onChange={(event) =>
-                    setForm((prev) => ({ ...prev, lodgeName: event.target.value }))
+                    setForm((previous) => ({
+                      ...previous,
+                      lodgeName: event.target.value,
+                    }))
                   }
                   placeholder="e.g., Lodge Example"
                 />
@@ -198,7 +220,10 @@ export default function ProfilePage() {
                   style={{ padding: ".6rem" }}
                   value={form.lodgeNumber}
                   onChange={(event) =>
-                    setForm((prev) => ({ ...prev, lodgeNumber: event.target.value }))
+                    setForm((previous) => ({
+                      ...previous,
+                      lodgeNumber: event.target.value,
+                    }))
                   }
                   placeholder="e.g., No. 123"
                 />
@@ -211,7 +236,10 @@ export default function ProfilePage() {
                   style={{ padding: ".6rem" }}
                   value={form.region}
                   onChange={(event) =>
-                    setForm((prev) => ({ ...prev, region: event.target.value }))
+                    setForm((previous) => ({
+                      ...previous,
+                      region: event.target.value,
+                    }))
                   }
                 >
                   <option value="">Select a region</option>
@@ -234,7 +262,10 @@ export default function ProfilePage() {
                   style={{ padding: ".6rem" }}
                   value={form.termStart}
                   onChange={(event) =>
-                    setForm((prev) => ({ ...prev, termStart: event.target.value }))
+                    setForm((previous) => ({
+                      ...previous,
+                      termStart: event.target.value,
+                    }))
                   }
                 />
               </label>
@@ -247,25 +278,27 @@ export default function ProfilePage() {
                   style={{ padding: ".6rem" }}
                   value={form.termEnd}
                   onChange={(event) =>
-                    setForm((prev) => ({ ...prev, termEnd: event.target.value }))
+                    setForm((previous) => ({
+                      ...previous,
+                      termEnd: event.target.value,
+                    }))
                   }
                 />
               </label>
             </div>
 
-              <div className="sticky bottom-0 -mx-5 -mb-5 flex flex-col gap-2 border-t border-slate-200 bg-white/95 p-5 backdrop-blur sm:-mx-6 sm:-mb-6 sm:flex-row sm:justify-end sm:p-6">
-                <button type="button" className="btn" onClick={close}>
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={save}
-                  disabled={saving}
-                  className="btn-primary"
-                >
-                  {saving ? "Saving…" : "Save changes"}
-                </button>
-              </div>
+            <div className="flex flex-col gap-2 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end sm:pt-6">
+              <button type="button" className="btn" onClick={close}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={save}
+                disabled={saving}
+                className="btn-primary"
+              >
+                {saving ? "Saving…" : "Save changes"}
+              </button>
             </div>
           </div>
         </div>
