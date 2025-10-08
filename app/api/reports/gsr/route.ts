@@ -133,7 +133,10 @@ async function collectPdf(doc: PDFKit.PDFDocument) {
   return new Promise<Uint8Array>((resolve, reject) => {
     const chunks: Uint8Array[] = [];
     stream.on("data", (chunk: Uint8Array | Buffer) => {
-      chunks.push(chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk));
+      const normalized = Buffer.isBuffer(chunk)
+        ? new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength)
+        : chunk;
+      chunks.push(normalized);
     });
     stream.on("end", () => {
       const total = chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0);
