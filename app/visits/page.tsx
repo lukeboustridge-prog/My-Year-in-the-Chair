@@ -176,14 +176,21 @@ export default function VisitsPage() {
 
   const tableRows = useMemo(() => {
     if (!records) return null;
-    return records.map((record) => (
-      <tr key={record.id ?? record.date + record.lodgeName} className="border-t">
-        <td className="py-2 pr-3 whitespace-nowrap">{toDisplayDate(record.date)}</td>
-        <td className="py-2 pr-3 min-w-[12rem]">
-          <div className="font-medium">{record.lodgeName || "—"}</div>
-          <div className="text-xs text-slate-500">{record.lodgeNumber || ""}</div>
-        </td>
-        <td className="py-2 pr-3 whitespace-nowrap">{formatWork(record.workOfEvening)}</td>
+    return records.map((record) => {
+      const lodgeDisplay = [
+        record.lodgeName,
+        record.lodgeNumber ? `No. ${record.lodgeNumber}` : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      return (
+        <tr key={record.id ?? record.date + record.lodgeName} className="border-t">
+          <td className="py-2 pr-3 whitespace-nowrap">{toDisplayDate(record.date)}</td>
+          <td className="py-2 pr-3 min-w-[12rem]">
+            <div className="font-medium">{lodgeDisplay || "—"}</div>
+          </td>
+          <td className="py-2 pr-3 whitespace-nowrap">{formatWork(record.workOfEvening)}</td>
         <td className="py-2 pr-3 whitespace-nowrap">{record.candidateName || "—"}</td>
         <td className="py-2 pr-3 whitespace-nowrap">{record.isGrandLodgeVisit ? "Yes" : "No"}</td>
         <td className="py-2 pr-3 whitespace-nowrap">{record.hasTracingBoards ? "Yes" : "No"}</td>
@@ -195,7 +202,8 @@ export default function VisitsPage() {
           </div>
         </td>
       </tr>
-    ));
+      );
+    });
   }, [records]);
 
   return (

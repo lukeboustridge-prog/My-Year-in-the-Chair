@@ -78,6 +78,9 @@ model LodgeWork {
   isGrandLodgeVisit    Boolean  @default(false)
   isEmergencyMeeting   Boolean  @default(false)
   hasTracingBoards     Boolean  @default(false)
+  hasFirstTracingBoard  Boolean  @default(false)
+  hasSecondTracingBoard Boolean  @default(false)
+  hasThirdTracingBoard  Boolean  @default(false)
 
   createdAt     DateTime @default(now())
 }

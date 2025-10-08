@@ -41,8 +41,11 @@ export async function GET() {
 
   const totalVisits = visits.length;
   const byLodge = new Map<string, number>();
+  const formatLodge = (name?: string | null, number?: string | null) =>
+    [name, number ? `No. ${number}` : ""].filter(Boolean).join(" ");
+
   for (const v of visits) {
-    const key = `${v.lodgeName} No. ${v.lodgeNumber}`;
+    const key = formatLodge(v.lodgeName, v.lodgeNumber) || "Unknown lodge";
     byLodge.set(key, (byLodge.get(key) || 0) + 1);
   }
 
@@ -50,12 +53,12 @@ export async function GET() {
   csv += "Master,Email,Term Start,Term End,Total Visits\n";
   csv += [user.name ?? "", user.email, start.toISOString(), end.toISOString(), totalVisits].map(csvEscape).join(",") + "\n\n";
 
-  csv += "Date,Lodge,Number,Grand Lodge Visit,Tracing Boards,Notes\n";
+  csv += "Date,Lodge,Grand Lodge Visit,Tracing Boards,Notes\n";
   for (const v of visits) {
+    const lodge = formatLodge(v.lodgeName, v.lodgeNumber);
     csv += [
       v.date.toISOString(),
-      v.lodgeName,
-      v.lodgeNumber,
+      lodge,
       v.isGrandLodgeVisit ? "Yes" : "No",
       v.hasTracingBoards ? "Yes" : "No",
       (v.comments ?? v.notes ?? "").replaceAll("\n", " ")

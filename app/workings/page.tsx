@@ -22,6 +22,9 @@ type Item = {
   notes?: string | null;
   isGrandLodgeVisit?: boolean;
   isEmergencyMeeting?: boolean;
+  hasFirstTracingBoard?: boolean;
+  hasSecondTracingBoard?: boolean;
+  hasThirdTracingBoard?: boolean;
   hasTracingBoards?: boolean;
 };
 
@@ -35,7 +38,9 @@ export default function WorkingsPage() {
   const [notes, setNotes] = useState("");
   const [isGrandLodgeVisit, setGrandLodgeVisit] = useState(false);
   const [isEmergencyMeeting, setEmergencyMeeting] = useState(false);
-  const [hasTracingBoards, setTracingBoards] = useState(false);
+  const [hasFirstTracingBoard, setFirstTracingBoard] = useState(false);
+  const [hasSecondTracingBoard, setSecondTracingBoard] = useState(false);
+  const [hasThirdTracingBoard, setThirdTracingBoard] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function load() {
@@ -52,7 +57,15 @@ export default function WorkingsPage() {
         notes: row.notes ?? null,
         isGrandLodgeVisit: Boolean(row.isGrandLodgeVisit),
         isEmergencyMeeting: Boolean(row.isEmergencyMeeting),
-        hasTracingBoards: Boolean(row.hasTracingBoards),
+        hasFirstTracingBoard: Boolean(row.hasFirstTracingBoard),
+        hasSecondTracingBoard: Boolean(row.hasSecondTracingBoard),
+        hasThirdTracingBoard: Boolean(row.hasThirdTracingBoard),
+        hasTracingBoards: Boolean(
+          row.hasTracingBoards ||
+            row.hasFirstTracingBoard ||
+            row.hasSecondTracingBoard ||
+            row.hasThirdTracingBoard
+        ),
       }));
       setItems(normalised);
       setError(null);
@@ -83,7 +96,11 @@ export default function WorkingsPage() {
           notes: notes || undefined,
           isGrandLodgeVisit,
           isEmergencyMeeting,
-          hasTracingBoards,
+          hasFirstTracingBoard,
+          hasSecondTracingBoard,
+          hasThirdTracingBoard,
+          hasTracingBoards:
+            hasFirstTracingBoard || hasSecondTracingBoard || hasThirdTracingBoard || undefined,
         }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -91,7 +108,9 @@ export default function WorkingsPage() {
       setNotes("");
       setGrandLodgeVisit(false);
       setEmergencyMeeting(false);
-      setTracingBoards(false);
+      setFirstTracingBoard(false);
+      setSecondTracingBoard(false);
+      setThirdTracingBoard(false);
       await load();
     } catch (err: any) {
       console.error("WORKINGS_SAVE", err);
@@ -165,10 +184,28 @@ export default function WorkingsPage() {
               <input
                 type="checkbox"
                 className="h-4 w-4"
-                checked={hasTracingBoards}
-                onChange={(e) => setTracingBoards(e.target.checked)}
+                checked={hasFirstTracingBoard}
+                onChange={(e) => setFirstTracingBoard(e.target.checked)}
               />
-              Tracing boards delivered
+              1st tracing board
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={hasSecondTracingBoard}
+                onChange={(e) => setSecondTracingBoard(e.target.checked)}
+              />
+              2nd tracing board
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={hasThirdTracingBoard}
+                onChange={(e) => setThirdTracingBoard(e.target.checked)}
+              />
+              3rd tracing board
             </label>
           </div>
           <button className="btn btn-primary self-start" disabled={loading}>
@@ -187,7 +224,9 @@ export default function WorkingsPage() {
                 <th>Candidate</th>
                 <th>Grand Lodge</th>
                 <th>Emergency</th>
-                <th>Tracing Boards</th>
+                <th>1st TB</th>
+                <th>2nd TB</th>
+                <th>3rd TB</th>
                 <th>Notes</th>
               </tr>
             </thead>
@@ -204,13 +243,15 @@ export default function WorkingsPage() {
                   <td>{i.candidateName ?? "—"}</td>
                   <td>{i.isGrandLodgeVisit ? "Yes" : "No"}</td>
                   <td>{i.isEmergencyMeeting ? "Yes" : "No"}</td>
-                  <td>{i.hasTracingBoards ? "Yes" : "No"}</td>
+                  <td>{i.hasFirstTracingBoard ? "Yes" : "No"}</td>
+                  <td>{i.hasSecondTracingBoard ? "Yes" : "No"}</td>
+                  <td>{i.hasThirdTracingBoard ? "Yes" : "No"}</td>
                   <td>{i.notes ?? ""}</td>
                 </tr>
               ))}
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-4 text-sm text-gray-500">
+                  <td colSpan={9} className="py-4 text-sm text-gray-500">
                     No plans yet.
                   </td>
                 </tr>

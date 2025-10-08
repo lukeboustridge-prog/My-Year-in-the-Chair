@@ -25,6 +25,9 @@ type WorkingRecord = {
   comments?: string | null;
   isGrandLodgeVisit?: boolean;
   isEmergencyMeeting?: boolean;
+  hasFirstTracingBoard?: boolean;
+  hasSecondTracingBoard?: boolean;
+  hasThirdTracingBoard?: boolean;
   hasTracingBoards?: boolean;
 };
 
@@ -101,7 +104,15 @@ export default function ReportsPage() {
             comments: row.comments ?? row.notes ?? null,
             isGrandLodgeVisit: Boolean(row.isGrandLodgeVisit),
             isEmergencyMeeting: Boolean(row.isEmergencyMeeting),
-            hasTracingBoards: Boolean(row.hasTracingBoards),
+            hasFirstTracingBoard: Boolean(row.hasFirstTracingBoard),
+            hasSecondTracingBoard: Boolean(row.hasSecondTracingBoard),
+            hasThirdTracingBoard: Boolean(row.hasThirdTracingBoard),
+            hasTracingBoards: Boolean(
+              row.hasTracingBoards ||
+                row.hasFirstTracingBoard ||
+                row.hasSecondTracingBoard ||
+                row.hasThirdTracingBoard
+            ),
           }))
         );
 
@@ -166,7 +177,9 @@ export default function ReportsPage() {
         const tags = [
           record.isGrandLodgeVisit ? "Grand Lodge" : null,
           record.isEmergencyMeeting ? "Emergency meeting" : null,
-          record.hasTracingBoards ? "Tracing boards" : null,
+          record.hasFirstTracingBoard ? "1st tracing board" : null,
+          record.hasSecondTracingBoard ? "2nd tracing board" : null,
+          record.hasThirdTracingBoard ? "3rd tracing board" : null,
         ].filter(Boolean);
         if (tags.length) parts.push(tags.join(" • "));
         return parts.join(" – ");
