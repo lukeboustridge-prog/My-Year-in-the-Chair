@@ -1,8 +1,15 @@
 export const dynamic = "force-dynamic";
 
+import { redirect } from "next/navigation";
+import { getUserId } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export default async function Page() {
+  const uid = getUserId();
+  if (!uid) {
+    redirect(`/login?redirect=${encodeURIComponent("/leaderboard/month")}`);
+  }
+
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 

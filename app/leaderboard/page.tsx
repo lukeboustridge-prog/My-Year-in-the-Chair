@@ -1,4 +1,12 @@
+import { redirect } from "next/navigation";
+import { getUserId } from "@/lib/auth";
+
 export default function LeaderboardPage() {
+  const uid = getUserId();
+  if (!uid) {
+    redirect("/login?redirect=/leaderboard");
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
