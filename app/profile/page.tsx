@@ -13,6 +13,8 @@ export default function ProfilePage() {
     lodgeName: "",
     lodgeNumber: "",
     region: "",
+    termStart: "",
+    termEnd: "",
   });
 
   // Load existing data
@@ -30,6 +32,8 @@ export default function ProfilePage() {
         lodgeName: u.lodgeName || "",
         lodgeNumber: u.lodgeNumber || "",
         region: u.region || "",
+        termStart: u.termStart ? u.termStart.slice(0, 10) : "",
+        termEnd: u.termEnd ? u.termEnd.slice(0, 10) : "",
       }));
     })();
   }, []);
@@ -170,6 +174,30 @@ export default function ProfilePage() {
                   );
                 })}
               </select>
+            </label>
+
+            <label className="stat">
+              <span className="label">Term start</span>
+              <input
+                type="date"
+                className="card"
+                style={{ padding: ".6rem" }}
+                value={state.termStart}
+                onChange={(e) =>
+                  setState((s) => ({ ...s, termStart: e.target.value }))
+                }
+              />
+            </label>
+
+            <label className="stat">
+              <span className="label">Term end</span>
+              <input
+                type="date"
+                className="card"
+                style={{ padding: ".6rem" }}
+                value={state.termEnd}
+                onChange={(e) => setState((s) => ({ ...s, termEnd: e.target.value }))}
+              />
             </label>
           </div>
 

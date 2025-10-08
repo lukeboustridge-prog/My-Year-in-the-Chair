@@ -2,6 +2,13 @@ export const dynamic = "force-dynamic";
 
 import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
+import {
+  fetchUsersById,
+  formatDisplayName as formatLeaderboardName,
+  formatLodge,
+  formatPostNominals,
+  type LeaderboardUser,
+} from "@/lib/leaderboard";
 
 function displayName(user: any) {
   const parts: string[] = [];
@@ -12,19 +19,78 @@ function displayName(user: any) {
   return parts.join(" ");
 }
 
-const WORK_LABELS: Record<string, string> = {
-  INITIATION: "Initiation",
-  PASSING: "Passing",
-  RAISING: "Raising",
-  INSTALLATION: "Installation",
-  PRESENTATION: "Presentation",
-  LECTURE: "Lecture",
-  OTHER: "Other",
+type LeaderboardEntry = {
+  rank: number;
+  count: number;
+  user: LeaderboardUser | undefined;
 };
 
-function formatWorkLabel(work: string | null | undefined) {
-  if (!work) return "Other";
-  return WORK_LABELS[work as keyof typeof WORK_LABELS] ?? work.replace(/_/g, " ");
+async function getVisitLeaderboard(since: Date, limit = 5): Promise<LeaderboardEntry[]> {
+  const grouped = await db.visit.groupBy({
+    by: ["userId"],
+    where: { date: { gte: since } },
+    _count: { _all: true },
+    orderBy: { _count: { userId: "desc" } },
+    take: limit,
+  });
+
+  if (!grouped.length) return [];
+
+  const users = await fetchUsersById(grouped.map((row) => row.userId));
+
+  return grouped.map((row, index) => ({
+    rank: index + 1,
+    count: row._count._all,
+    user: users.get(row.userId),
+  }));
+}
+
+function LeaderboardSummary({ title, entries }: { title: string; entries: LeaderboardEntry[] }) {
+  return (
+    <div className="card">
+      <div className="card-body">
+        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-slate-500">
+                <th className="py-2 pr-3">Rank</th>
+                <th className="py-2 pr-3">Name</th>
+                <th className="py-2 pr-3">Lodge</th>
+                <th className="py-2 pr-3 text-right">Visits</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.length === 0 ? (
+                <tr className="border-t">
+                  <td className="py-3 pr-3" colSpan={4}>
+                    <span className="subtle">No qualifying visits yet.</span>
+                  </td>
+                </tr>
+              ) : (
+                entries.map((entry) => {
+                  const post = formatPostNominals(entry.user);
+                  return (
+                    <tr key={entry.user?.id ?? entry.rank} className="border-t">
+                      <td className="py-2 pr-3">{entry.rank}</td>
+                      <td className="py-2 pr-3">
+                        <div className="font-medium">{formatLeaderboardName(entry.user)}</div>
+                        {post ? <div className="text-xs text-slate-500">{post}</div> : null}
+                      </td>
+                      <td className="py-2 pr-3 text-sm">
+                        {formatLodge(entry.user) || <span className="text-slate-400">—</span>}
+                      </td>
+                      <td className="py-2 pl-3 text-right font-semibold text-slate-900">{entry.count}</td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default async function DashboardPage() {
@@ -37,30 +103,21 @@ export default async function DashboardPage() {
   yearAgo.setFullYear(now.getFullYear() - 1);
   const termStartDate = user?.termStart ? new Date(user.termStart) : new Date(yearAgo);
 
-  const [visits, mywork] = uid
-    ? await Promise.all([
-        db.visit.findMany({ where: { userId: uid }, orderBy: { date: "desc" } }),
-        db.myWork.findMany({ where: { userId: uid }, orderBy: { date: "desc" } }),
-      ])
-    : [[], []];
+  type VisitsResult = Awaited<ReturnType<typeof db.visit.findMany>>;
+  let visits: VisitsResult = [];
+  let rollingYearLeaders: LeaderboardEntry[] = [];
+  let rollingMonthLeaders: LeaderboardEntry[] = [];
 
-  const rolling12 = visits.filter(v => v.date >= yearAgo).length;
-  const thisMonth = visits.filter(v => v.date >= startOfMonth).length;
-
-  const visitByWork = new Map<string, number>();
-  for (const v of visits) {
-    const k = (v.workOfEvening ?? "OTHER") as string;
-    visitByWork.set(k, (visitByWork.get(k) || 0) + 1);
+  if (uid) {
+    [visits, rollingYearLeaders, rollingMonthLeaders] = await Promise.all([
+      db.visit.findMany({ where: { userId: uid }, orderBy: { date: "desc" } }),
+      getVisitLeaderboard(new Date(yearAgo), 5),
+      getVisitLeaderboard(startOfMonth, 5),
+    ]);
   }
 
-  const myWorkByType = new Map<string, number>();
-  for (const m of mywork) {
-    const k = (m.work ?? "OTHER") as string;
-    myWorkByType.set(k, (myWorkByType.get(k) || 0) + 1);
-  }
-
-  const visitByWorkEntries = Array.from(visitByWork.entries());
-  const myWorkEntries = Array.from(myWorkByType.entries());
+  const rolling12 = visits.filter((v) => v.date >= yearAgo).length;
+  const thisMonth = visits.filter((v) => v.date >= startOfMonth).length;
 
   const statCards = [
     {
@@ -125,40 +182,8 @@ export default async function DashboardPage() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
-        <div className="card">
-          <div className="card-body">
-            <h2 className="text-lg font-semibold text-slate-900">Visits by work of the evening</h2>
-            {visitByWorkEntries.length ? (
-              <ul className="mt-4 space-y-2 text-sm">
-                {visitByWorkEntries.map(([work, count]) => (
-                  <li key={work} className="flex items-center justify-between">
-                    <span>{formatWorkLabel(work)}</span>
-                    <span className="font-semibold text-slate-900">{count}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-4 text-sm text-slate-500">No visits recorded yet.</p>
-            )}
-          </div>
-        </div>
-        <div className="card">
-          <div className="card-body">
-            <h2 className="text-lg font-semibold text-slate-900">My Lodge Work by type</h2>
-            {myWorkEntries.length ? (
-              <ul className="mt-4 space-y-2 text-sm">
-                {myWorkEntries.map(([work, count]) => (
-                  <li key={work} className="flex items-center justify-between">
-                    <span>{formatWorkLabel(work)}</span>
-                    <span className="font-semibold text-slate-900">{count}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-4 text-sm text-slate-500">No lodge work planned yet.</p>
-            )}
-          </div>
-        </div>
+        <LeaderboardSummary title="Rolling 12 months" entries={rollingYearLeaders} />
+        <LeaderboardSummary title="This month" entries={rollingMonthLeaders} />
       </section>
 
       <section className="card">
