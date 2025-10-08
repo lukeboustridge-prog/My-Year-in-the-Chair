@@ -40,9 +40,9 @@ type ProfileRecord = {
 };
 
 const WORK_LABELS: Record<string, string> = {
-  INITIATION: "Initiation",
-  PASSING: "Passing",
-  RAISING: "Raising",
+  INITIATION: "First Degree",
+  PASSING: "Second Degree",
+  RAISING: "Third Degree",
   INSTALLATION: "Installation",
   PRESENTATION: "Presentation",
   LECTURE: "Lecture",

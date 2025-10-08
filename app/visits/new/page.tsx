@@ -3,6 +3,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 const WORKS = ["INITIATION","PASSING","RAISING","INSTALLATION","PRESENTATION","LECTURE","OTHER"] as const;
+const WORK_LABELS: Record<(typeof WORKS)[number], string> = {
+  INITIATION: "First Degree",
+  PASSING: "Second Degree",
+  RAISING: "Third Degree",
+  INSTALLATION: "Installation",
+  PRESENTATION: "Presentation",
+  LECTURE: "Lecture",
+  OTHER: "Other",
+};
 
 export default function NewVisitPage() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0,10));
@@ -53,7 +62,11 @@ export default function NewVisitPage() {
 
         <label>Work of the evening</label>
         <select value={workOfEvening} onChange={e=>setWork(e.target.value as any)}>
-          {WORKS.map(w => <option key={w} value={w}>{w}</option>)}
+          {WORKS.map(w => (
+            <option key={w} value={w}>
+              {WORK_LABELS[w] ?? w}
+            </option>
+          ))}
         </select>
 
         <label>Candidate name</label>

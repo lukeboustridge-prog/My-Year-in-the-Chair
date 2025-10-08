@@ -1,5 +1,7 @@
 export const dynamic = "force-dynamic";
 
+import { redirect } from "next/navigation";
+
 import { WorkType } from "@prisma/client";
 
 import { db } from "@/lib/db";
@@ -19,9 +21,9 @@ type RankSummary = {
 };
 
 const WORK_LABELS: Record<WorkType, string> = {
-  INITIATION: "Initiation",
-  PASSING: "Passing",
-  RAISING: "Raising",
+  INITIATION: "First Degree",
+  PASSING: "Second Degree",
+  RAISING: "Third Degree",
   INSTALLATION: "Installation",
   PRESENTATION: "Presentation",
   LECTURE: "Lecture",
@@ -120,7 +122,10 @@ function RankSummaryBlock({ label, summary }: { label: string; summary: RankSumm
 
 export default async function DashboardPage() {
   const uid = getUserId();
-  const user = uid ? await db.user.findUnique({ where: { id: uid } }) : null;
+  if (!uid) {
+    redirect("/login");
+  }
+  const user = await db.user.findUnique({ where: { id: uid } });
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -148,41 +153,39 @@ export default async function DashboardPage() {
   let recentVisits: VisitSummary[] = [];
   let recentWorkings: WorkSummary[] = [];
 
-  if (uid) {
-    [
-      rollingYearRank,
-      rollingMonthRank,
-      recentVisits,
-      recentWorkings,
-    ] = await Promise.all([
-      getUserRank(uid, new Date(yearAgo)),
-      getUserRank(uid, startOfMonth),
-      db.visit.findMany({
-        where: { userId: uid },
-        orderBy: { date: "desc" },
-        take: 5,
-        select: {
-          id: true,
-          date: true,
-          lodgeName: true,
-          lodgeNumber: true,
-          workOfEvening: true,
-          candidateName: true,
-        },
-      }),
-      db.myWork.findMany({
-        where: { userId: uid },
-        orderBy: { date: "desc" },
-        take: 5,
-        select: {
-          id: true,
-          date: true,
-          work: true,
-          candidateName: true,
-        },
-      }),
-    ]);
-  }
+  [
+    rollingYearRank,
+    rollingMonthRank,
+    recentVisits,
+    recentWorkings,
+  ] = await Promise.all([
+    getUserRank(uid, new Date(yearAgo)),
+    getUserRank(uid, startOfMonth),
+    db.visit.findMany({
+      where: { userId: uid },
+      orderBy: { date: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        date: true,
+        lodgeName: true,
+        lodgeNumber: true,
+        workOfEvening: true,
+        candidateName: true,
+      },
+    }),
+    db.myWork.findMany({
+      where: { userId: uid },
+      orderBy: { date: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        date: true,
+        work: true,
+        candidateName: true,
+      },
+    }),
+  ]);
 
   const welcomeName = user ? displayName(user) : null;
 

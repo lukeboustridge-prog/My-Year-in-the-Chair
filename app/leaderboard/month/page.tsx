@@ -72,7 +72,7 @@ export default async function Page() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="h1">Monthly leaderboard</h1>
-          <p className="subtle">Track how each month is shaping up across the Province.</p>
+          <p className="subtle">Track how each month is shaping up across the Districts.</p>
         </div>
       </div>
 

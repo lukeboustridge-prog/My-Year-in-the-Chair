@@ -134,7 +134,7 @@ export default async function LeaderboardPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="h1">Leaderboard</h1>
-          <p className="subtle">Celebrating the busiest Masters in the Province.</p>
+          <p className="subtle">Celebrating the busiest Masters in the Districts.</p>
         </div>
         <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
           <Link href="/leaderboard/month" className="navlink w-full sm:w-auto text-center">

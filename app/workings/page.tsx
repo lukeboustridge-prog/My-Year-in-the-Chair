@@ -12,6 +12,15 @@ const WORKS = [
   "LECTURE",
   "OTHER",
 ] as const;
+const WORK_LABELS: Record<(typeof WORKS)[number], string> = {
+  INITIATION: "First Degree",
+  PASSING: "Second Degree",
+  RAISING: "Third Degree",
+  INSTALLATION: "Installation",
+  PRESENTATION: "Presentation",
+  LECTURE: "Lecture",
+  OTHER: "Other",
+};
 
 type Item = {
   id: string;
@@ -129,7 +138,7 @@ export default function WorkingsPage() {
       <div key={i.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-2">
           <div>
-            <p className="font-medium text-slate-900">{i.work.replace(/_/g, " ")}</p>
+            <p className="font-medium text-slate-900">{WORK_LABELS[i.work] ?? i.work.replace(/_/g, " ")}</p>
             <p className="text-xs text-slate-500">{monthLabel}</p>
           </div>
           {i.candidateName ? (
@@ -202,7 +211,7 @@ export default function WorkingsPage() {
             >
               {WORKS.map((w) => (
                 <option key={w} value={w}>
-                  {w}
+                  {WORK_LABELS[w] ?? w}
                 </option>
               ))}
             </select>
@@ -305,7 +314,7 @@ export default function WorkingsPage() {
                         year: "numeric",
                       })}
                     </td>
-                    <td>{i.work.replace(/_/g, " ")}</td>
+                    <td>{WORK_LABELS[i.work] ?? i.work.replace(/_/g, " ")}</td>
                     <td>{i.candidateName ?? "—"}</td>
                     <td>{i.isGrandLodgeVisit ? "Yes" : "No"}</td>
                     <td>{i.isEmergencyMeeting ? "Yes" : "No"}</td>
