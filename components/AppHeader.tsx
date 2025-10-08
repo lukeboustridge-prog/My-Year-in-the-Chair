@@ -76,7 +76,7 @@ export default function AppHeader() {
             className="h-8 w-8 shrink-0 rounded"
             loading="lazy"
           />
-          <span className="sr-only sm:not-sr-only">My Year in the Chair</span>
+          <span className="text-slate-900">My Year in the Chair</span>
         </Link>
         <button
           type="button"
