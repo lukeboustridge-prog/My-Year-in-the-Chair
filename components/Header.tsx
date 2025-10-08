@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React from "react";
 import SignOutButton from "./SignOutButton";
+import Logo from "./Logo";
 
 function NavLink({ href, label }: { href: string; label: string }) {
   const pathname = usePathname();
@@ -35,8 +36,16 @@ export default function Header() {
 
   return (
     <header className="sticky-header">
-      <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-6">
-        <Link href="/" className="font-semibold text-base sm:text-lg">My Year in the Chair</Link>
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-4 py-3">
+        <Link href="/" className="flex items-center gap-3">
+          <Logo className="h-12 w-12" />
+          <span className="flex flex-col leading-tight text-slate-900">
+            <span className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-900">
+              Freemasons
+            </span>
+            <span className="text-xs font-medium text-slate-500">New Zealand</span>
+          </span>
+        </Link>
         <nav className="flex items-center gap-2 sm:gap-3">
           {/* Removed Home. Added explicit Dashboard */}
           <NavLink href="/" label="Dashboard" />
