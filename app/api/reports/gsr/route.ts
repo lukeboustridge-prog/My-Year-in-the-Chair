@@ -129,10 +129,25 @@ async function resolveLogoBuffer() {
 
 function collectPdf(doc: PDFKit.PDFDocument) {
   const stream = doc.pipe(new PassThrough());
-  return new Promise<Buffer>((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    stream.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
-    stream.on("end", () => resolve(Buffer.concat(chunks)));
+  return new Promise<Uint8Array>((resolve, reject) => {
+    const chunks: Uint8Array[] = [];
+    stream.on("data", (chunk: Uint8Array) => {
+      if (chunk instanceof Uint8Array) {
+        chunks.push(chunk);
+      } else {
+        chunks.push(new Uint8Array(chunk));
+      }
+    });
+    stream.on("end", () => {
+      const totalLength = chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0);
+      const merged = new Uint8Array(totalLength);
+      let offset = 0;
+      for (const chunk of chunks) {
+        merged.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      resolve(merged);
+    });
     stream.on("error", reject);
   });
 }
