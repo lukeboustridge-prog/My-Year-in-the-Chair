@@ -138,10 +138,10 @@ export default async function LeaderboardPage() {
         </div>
         <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
           <Link href="/leaderboard/month" className="navlink w-full sm:w-auto text-center">
-            Monthly detail
+            Past Monthly Results
           </Link>
           <Link href="/leaderboard/year" className="navlink w-full sm:w-auto text-center">
-            Yearly detail
+            Past Yearly Results
           </Link>
         </div>
       </div>
