@@ -104,30 +104,32 @@ export default function ProfilePage() {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-slate-900/70"
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70"
       onClick={(event) => {
         if (event.target === event.currentTarget) close();
       }}
     >
       <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
-        <div className="card flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden sm:max-w-xl md:max-w-2xl">
-          <div className="card-body min-h-0 flex-1 space-y-6 overflow-y-auto p-5 sm:p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h1 className="h2">Edit profile</h1>
-                <p className="text-sm text-slate-500">
-                  Update your personal and lodge details.
-                </p>
-              </div>
-              <button type="button" className="btn" onClick={close}>
-                Close
-              </button>
-            </div>
+        <div className="card w-full max-w-lg sm:max-w-xl md:max-w-2xl">
+          <div className="flex max-h-[90vh] flex-col">
+            <div className="card-body min-h-0 flex-1 overflow-y-auto p-0">
+              <div className="space-y-6 p-5 sm:p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h1 className="h2">Edit profile</h1>
+                    <p className="text-sm text-slate-500">
+                      Update your personal and lodge details.
+                    </p>
+                  </div>
+                  <button type="button" className="btn" onClick={close}>
+                    Close
+                  </button>
+                </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="stat md:col-span-2">
-                <span className="label">Name</span>
-                <input
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="stat md:col-span-2">
+                    <span className="label">Name</span>
+                    <input
                   className="card"
                   style={{ padding: ".6rem" }}
                   value={form.name}
@@ -250,20 +252,21 @@ export default function ProfilePage() {
                 />
               </label>
             </div>
-          </div>
 
-          <div className="flex flex-col gap-2 border-t border-slate-200 bg-slate-50 p-4 sm:flex-row sm:justify-end">
-            <button type="button" className="btn" onClick={close}>
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={save}
-              disabled={saving}
-              className="btn-primary"
-            >
-              {saving ? "Saving…" : "Save changes"}
-            </button>
+              <div className="sticky bottom-0 -mx-5 -mb-5 flex flex-col gap-2 border-t border-slate-200 bg-white/95 p-5 backdrop-blur sm:-mx-6 sm:-mb-6 sm:flex-row sm:justify-end sm:p-6">
+                <button type="button" className="btn" onClick={close}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={save}
+                  disabled={saving}
+                  className="btn-primary"
+                >
+                  {saving ? "Saving…" : "Save changes"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
