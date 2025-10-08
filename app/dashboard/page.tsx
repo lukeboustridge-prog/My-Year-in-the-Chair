@@ -86,10 +86,14 @@ function formatListDate(date: Date | null | undefined): string {
   }
 }
 
-function RankCard({ label, summary }: { label: string; summary: RankSummary | null }) {
+function RankSummaryBlock({ label, summary }: { label: string; summary: RankSummary | null }) {
   const details = summary ?? null;
   const hasData = Boolean(details && details.total > 0);
-  const rankLabel = details?.rank ? formatOrdinal(details.rank) : hasData ? "Unranked" : "No visits yet";
+  const rankLabel = details?.rank
+    ? formatOrdinal(details.rank)
+    : hasData
+    ? "Unranked"
+    : "No visits yet";
   const visitCount = details?.count ?? 0;
   const visitText = `${visitCount} visit${visitCount === 1 ? "" : "s"}`;
   const cohortText = hasData
@@ -99,21 +103,19 @@ function RankCard({ label, summary }: { label: string; summary: RankSummary | nu
     : "Record visits to see your rank";
 
   return (
-    <div className="card">
-      <div className="card-body">
-        <p className="text-sm text-slate-500">{label}</p>
-        <p className="mt-2 text-3xl font-semibold text-slate-900">{rankLabel}</p>
-        <p className="mt-2 text-sm text-slate-600">
-          {hasData ? (
-            <>
-              {visitText}
-              {details?.rank ? <span className="ml-1 text-slate-500">{cohortText}</span> : null}
-            </>
-          ) : (
-            cohortText
-          )}
-        </p>
-      </div>
+    <div className="flex min-w-0 flex-col items-center gap-1 rounded-xl border border-slate-200 p-4 text-center">
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-2xl font-semibold text-slate-900 sm:text-3xl">{rankLabel}</p>
+      <p className="text-sm text-slate-600">
+        {hasData ? (
+          <>
+            {visitText}
+            {details?.rank ? <span className="ml-1 text-slate-500">{cohortText}</span> : null}
+          </>
+        ) : (
+          cohortText
+        )}
+      </p>
     </div>
   );
 }
@@ -184,20 +186,17 @@ export default async function DashboardPage() {
     ]);
   }
 
-  const rankCards = [
-    { label: "Rolling 12 months", summary: rollingYearRank },
-    { label: "This month", summary: rollingMonthRank },
-  ];
-
   const welcomeName = user ? displayName(user) : null;
 
   return (
     <div className="space-y-6">
       <section className="card">
         <div className="card-body flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="sm:min-w-0 sm:flex-1">
             <p className="text-sm text-slate-500">Welcome back</p>
-            <h1 className="h1 mt-1">{welcomeName ?? "Master"}</h1>
+            <h1 className="mt-1 text-balance text-2xl font-semibold leading-tight text-slate-900 sm:text-3xl">
+              {welcomeName ?? "Master"}
+            </h1>
             <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
               {user?.rank ? (
                 <span className="badge">
@@ -219,10 +218,14 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2">
-        {rankCards.map((card) => (
-          <RankCard key={card.label} label={`My rank (${card.label})`} summary={card.summary} />
-        ))}
+      <section className="card">
+        <div className="card-body">
+          <h2 className="text-lg font-semibold text-slate-900">My rank</h2>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <RankSummaryBlock label="Rolling 12 months" summary={rollingYearRank} />
+            <RankSummaryBlock label="This month" summary={rollingMonthRank} />
+          </div>
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
