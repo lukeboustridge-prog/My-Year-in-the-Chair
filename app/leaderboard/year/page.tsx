@@ -42,7 +42,7 @@ async function loadYearlyLeaderboards(yearCount: number): Promise<YearSummary[]>
         by: ["userId"],
         where: { date: { gte: range.start, lt: range.end } },
         _count: { _all: true },
-        orderBy: { _count: { _all: "desc" } },
+        orderBy: { _count: { userId: "desc" } },
         take: 15,
       })
     )

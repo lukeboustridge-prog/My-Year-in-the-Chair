@@ -22,7 +22,7 @@ async function getVisitLeaderboard(since: Date, limit = 10): Promise<Leaderboard
     by: ["userId"],
     where: { date: { gte: since } },
     _count: { _all: true },
-    orderBy: { _count: { _all: "desc" } },
+    orderBy: { _count: { userId: "desc" } },
     take: limit,
   });
 

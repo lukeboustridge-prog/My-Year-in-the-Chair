@@ -40,7 +40,7 @@ async function loadMonthlyLeaderboards(monthCount: number): Promise<MonthSummary
         by: ["userId"],
         where: { date: { gte: period.start, lt: period.end } },
         _count: { _all: true },
-        orderBy: { _count: { _all: "desc" } },
+        orderBy: { _count: { userId: "desc" } },
         take: 10,
       })
     )
