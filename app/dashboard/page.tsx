@@ -207,7 +207,7 @@ export default async function DashboardPage() {
               {user?.lodgeName ? (
                 <span>
                   Lodge: {user.lodgeName}
-                  {user.lodgeNumber ? ` (${user.lodgeNumber})` : ""}
+                  {user.lodgeNumber ? ` No. ${user.lodgeNumber}` : ""}
                   {user.region ? ` • ${user.region}` : ""}
                 </span>
               ) : null}
