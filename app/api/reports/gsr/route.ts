@@ -8,6 +8,10 @@ import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 import type { Visit, MyWork } from "@prisma/client";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const WORK_LABELS: Record<string, string> = {
   INITIATION: "First Degree",
   PASSING: "Second Degree",
@@ -57,8 +61,37 @@ function safeDate(value: Date | string | null | undefined) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+const DEFAULT_LOCALE = "en-NZ";
+
+function resolveTimeZone() {
+  const candidates = [process.env.REPORT_TIMEZONE, process.env.USER_TIMEZONE].filter(
+    (value): value is string => typeof value === "string" && value.trim().length > 0
+  );
+
+  for (const candidate of candidates) {
+    try {
+      new Intl.DateTimeFormat(DEFAULT_LOCALE, { timeZone: candidate }).format(new Date());
+      return candidate;
+    } catch (error) {
+      console.warn("REPORT_TZ_INVALID", candidate, error);
+    }
+  }
+
+  try {
+    const fallback = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (fallback) {
+      new Intl.DateTimeFormat(DEFAULT_LOCALE, { timeZone: fallback }).format(new Date());
+      return fallback;
+    }
+  } catch (error) {
+    console.warn("REPORT_TZ_RESOLVE", error);
+  }
+
+  return "UTC";
+}
+
 function asPeriodLabel(date: Date, timeZone: string, includeTime = false) {
-  return new Intl.DateTimeFormat("en-NZ", {
+  return new Intl.DateTimeFormat(DEFAULT_LOCALE, {
     dateStyle: "medium",
     ...(includeTime ? { timeStyle: "short" } : {}),
     timeZone,
@@ -258,7 +291,7 @@ export async function GET(request: Request) {
     ]);
 
     const lodgeLabel = lodgeDisplay(user.lodgeName, user.lodgeNumber);
-    const timezone = process.env.REPORT_TIMEZONE || process.env.USER_TIMEZONE || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const timezone = resolveTimeZone();
     const preparedAt = new Date();
     const periodLabel = `${asPeriodLabel(periodStart, timezone)} – ${asPeriodLabel(periodEnd, timezone)}`;
 
@@ -480,16 +513,14 @@ export async function GET(request: Request) {
       : (user.lodgeName || "lodge").trim().replace(/[^A-Za-z0-9]+/g, "-") || "lodge";
     const filename = `GSR_${lodgeIdentifier}_${formatForFilename(periodStart)}_${formatForFilename(periodEnd)}.pdf`;
 
-    const headers = new Headers({
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+    return new Response(pdfBuffer, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Length": String(pdfBuffer.byteLength),
+      },
     });
-    headers.set("Content-Length", String(pdfBuffer.byteLength));
-
-    const arrayBuffer = new ArrayBuffer(pdfBuffer.byteLength);
-    new Uint8Array(arrayBuffer).set(pdfBuffer);
-
-    return new NextResponse(arrayBuffer as any, { status: 200, headers });
   } catch (error) {
     console.error("REPORT_GSR_FAILURE", error);
     return new NextResponse(
