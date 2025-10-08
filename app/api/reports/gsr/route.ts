@@ -513,7 +513,14 @@ export async function GET(request: Request) {
       : (user.lodgeName || "lodge").trim().replace(/[^A-Za-z0-9]+/g, "-") || "lodge";
     const filename = `GSR_${lodgeIdentifier}_${formatForFilename(periodStart)}_${formatForFilename(periodEnd)}.pdf`;
 
-    return new Response(pdfBuffer, {
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(pdfBuffer);
+        controller.close();
+      },
+    });
+
+    return new Response(stream, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
