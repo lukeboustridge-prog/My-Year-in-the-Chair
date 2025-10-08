@@ -622,10 +622,8 @@ export async function GET(request: NextRequest) {
 
     doc.end();
     const pdfBytes = await pdfPromise;
-    const pdfArrayBuffer =
-      pdfBytes.byteLength > 0
-        ? pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength)
-        : new ArrayBuffer(0);
+    const pdfArrayBuffer = new ArrayBuffer(pdfBytes.byteLength);
+    new Uint8Array(pdfArrayBuffer).set(pdfBytes);
 
     const lodgeIdentifier = user.lodgeNumber?.trim()
       ? user.lodgeNumber.trim().replace(/\s+/g, "-")
