@@ -194,7 +194,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <section className="card">
-        <div className="card-body flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="card-body flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm text-slate-500">Welcome back</p>
             <h1 className="h1 mt-1">{welcomeName ?? "Master"}</h1>
@@ -213,13 +213,13 @@ export default async function DashboardPage() {
               ) : null}
             </div>
           </div>
-          <a className="btn-primary" href="/profile">
+          <a className="btn-primary w-full sm:w-auto" href="/profile">
             Edit profile
           </a>
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2">
+      <section className="grid gap-4 sm:grid-cols-2">
         {rankCards.map((card) => (
           <RankCard key={card.label} label={`My rank (${card.label})`} summary={card.summary} />
         ))}
@@ -228,12 +228,12 @@ export default async function DashboardPage() {
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="card">
           <div className="card-body">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">Recent visits</h2>
                 <p className="text-sm text-slate-500">Your latest five visits at a glance.</p>
               </div>
-              <a className="btn-soft" href="/visits">
+              <a className="btn-soft w-full sm:w-auto" href="/visits">
                 Manage visits
               </a>
             </div>
@@ -272,12 +272,12 @@ export default async function DashboardPage() {
         </div>
         <div className="card">
           <div className="card-body">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">Recent lodge workings</h2>
                 <p className="text-sm text-slate-500">Track the last five workings you recorded.</p>
               </div>
-              <a className="btn-soft" href="/workings">
+              <a className="btn-soft w-full sm:w-auto" href="/workings">
                 Manage workings
               </a>
             </div>

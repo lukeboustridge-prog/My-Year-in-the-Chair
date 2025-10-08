@@ -71,7 +71,7 @@ export default async function Page() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="h1">Yearly leaderboard</h1>
           <p className="subtle">The long view of visiting excellence.</p>
@@ -81,9 +81,9 @@ export default async function Page() {
       <div className="grid gap-4">
         {years.map((year) => (
           <div key={year.label} className="card">
-            <div className="card-body">
-              <h2 className="font-semibold mb-3">{year.label}</h2>
-              <div className="overflow-x-auto">
+            <div className="card-body space-y-4">
+              <h2 className="font-semibold">{year.label}</h2>
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-slate-500">
@@ -117,6 +117,33 @@ export default async function Page() {
                     )}
                   </tbody>
                 </table>
+              </div>
+              <div className="grid gap-3 md:hidden">
+                {year.entries.length === 0 ? (
+                  <p className="text-sm text-slate-500">No recorded visits.</p>
+                ) : (
+                  year.entries.map((entry) => (
+                    <div
+                      key={entry.user?.id ?? entry.rank}
+                      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-slate-500">Rank</p>
+                          <p className="text-2xl font-semibold text-slate-900">{entry.rank}</p>
+                        </div>
+                        <div className="text-right text-sm text-slate-600">
+                          <p className="font-medium text-slate-900">{formatDisplayName(entry.user)}</p>
+                          <p className="text-xs text-slate-500">{formatPostNominals(entry.user)}</p>
+                          <p className="text-xs text-slate-500">{formatLodge(entry.user) || "—"}</p>
+                        </div>
+                      </div>
+                      <div className="mt-3 text-sm text-slate-600">
+                        Visits: <span className="font-semibold">{entry.count}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>

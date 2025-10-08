@@ -38,13 +38,33 @@ async function getVisitLeaderboard(since: Date, limit = 10): Promise<Leaderboard
 }
 
 function LeaderboardTable({ title, entries }: { title: string; entries: LeaderboardEntry[] }) {
+  const mobileEntries = entries.map((entry) => {
+    const user = entry.user;
+    return (
+      <div key={user?.id ?? entry.rank} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-slate-500">Rank</p>
+            <p className="text-2xl font-semibold text-slate-900">{entry.rank}</p>
+          </div>
+          <div className="text-right text-sm text-slate-600">
+            <p className="font-medium text-slate-900">{formatDisplayName(user)}</p>
+            <p className="text-xs text-slate-500">{formatPostNominals(user)}</p>
+            <p className="text-xs text-slate-500">{formatLodge(user) || "—"}</p>
+          </div>
+        </div>
+        <div className="mt-3 text-sm text-slate-600">Visits: <span className="font-semibold">{entry.count}</span></div>
+      </div>
+    );
+  });
+
   return (
     <div className="card">
-      <div className="card-body">
-        <div className="flex items-center justify-between mb-3">
+      <div className="card-body space-y-4">
+        <div className="flex items-center justify-between">
           <h2 className="font-semibold">{title}</h2>
         </div>
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-slate-500">
@@ -82,6 +102,13 @@ function LeaderboardTable({ title, entries }: { title: string; entries: Leaderbo
             </tbody>
           </table>
         </div>
+        <div className="grid gap-3 md:hidden">
+          {entries.length === 0 ? (
+            <p className="text-sm text-slate-500">No qualifying visits yet.</p>
+          ) : (
+            mobileEntries
+          )}
+        </div>
       </div>
     </div>
   );
@@ -104,22 +131,22 @@ export default async function LeaderboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="h1">Leaderboard</h1>
           <p className="subtle">Celebrating the busiest Masters in the Province.</p>
         </div>
-        <div className="flex gap-2 text-sm">
-          <Link href="/leaderboard/month" className="navlink">
+        <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
+          <Link href="/leaderboard/month" className="navlink w-full sm:w-auto text-center">
             Monthly detail
           </Link>
-          <Link href="/leaderboard/year" className="navlink">
+          <Link href="/leaderboard/year" className="navlink w-full sm:w-auto text-center">
             Yearly detail
           </Link>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <LeaderboardTable title="Rolling 12 months" entries={rollingYear} />
         <LeaderboardTable title="This month" entries={rollingMonth} />
       </div>

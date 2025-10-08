@@ -231,7 +231,7 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="h1">Reports</h1>
           <p className="subtle">Export a PDF summary of your year in the chair.</p>
@@ -240,7 +240,7 @@ export default function ReportsPage() {
 
       <div className="card">
         <div className="card-body space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-end">
             <label className="label">
               <span>From</span>
               <input className="input mt-1" type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
@@ -249,17 +249,25 @@ export default function ReportsPage() {
               <span>To</span>
               <input className="input mt-1" type="date" value={to} onChange={(event) => setTo(event.target.value)} />
             </label>
-            <div className="flex gap-2">
-              <button className="btn-soft" onClick={onExportVisits} disabled={busy || !pdfProfile || !pdfVisits.length}>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <button
+                className="btn-soft w-full sm:w-auto"
+                onClick={onExportVisits}
+                disabled={busy || !pdfProfile || !pdfVisits.length}
+              >
                 {busy ? 'Working…' : 'Export Visits PDF'}
               </button>
-              <button className="btn-primary" onClick={onExportFull} disabled={busy || !pdfProfile || !pdfVisits.length}>
+              <button
+                className="btn-primary w-full sm:w-auto"
+                onClick={onExportFull}
+                disabled={busy || !pdfProfile || !pdfVisits.length}
+              >
                 {busy ? 'Working…' : 'Export Full PDF'}
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
               <div className="subtle">Visits in range</div>
               <div className="text-lg font-semibold">{visitSummary}</div>

@@ -201,19 +201,77 @@ export default function VisitsPage() {
             <button className="navlink" onClick={() => deleteVisit(record.id)}>Delete</button>
           </div>
         </td>
-      </tr>
+        </tr>
+      );
+    });
+  }, [records]);
+
+  const mobileRows = useMemo(() => {
+    if (!records) return null;
+    return records.map((record) => {
+      const lodgeDisplay = [
+        record.lodgeName,
+        record.lodgeNumber ? `No. ${record.lodgeNumber}` : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      return (
+        <div
+          key={record.id ?? record.date + record.lodgeName}
+          className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+        >
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
+              <p className="font-medium text-slate-900">{lodgeDisplay || "Visit"}</p>
+              <p className="text-xs text-slate-500">
+                {toDisplayDate(record.date)} • {formatWork(record.workOfEvening)}
+              </p>
+            </div>
+            {record.candidateName ? (
+              <p className="text-sm text-slate-600">
+                Candidate: <span className="font-medium">{record.candidateName}</span>
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-2 text-xs text-slate-600">
+              <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1">
+                Grand Lodge: {record.isGrandLodgeVisit ? "Yes" : "No"}
+              </span>
+              <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1">
+                Tracing boards: {record.hasTracingBoards ? "Yes" : "No"}
+              </span>
+            </div>
+            {record.comments ? (
+              <p className="text-sm text-slate-600">{record.comments}</p>
+            ) : null}
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+              <button type="button" className="btn-soft w-full sm:w-auto" onClick={() => openEdit(record)}>
+                Edit
+              </button>
+              <button
+                type="button"
+                className="btn-soft w-full sm:w-auto"
+                onClick={() => deleteVisit(record.id)}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       );
     });
   }, [records]);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="h1">Visits</h1>
           <p className="subtle">Log every official visit during your year.</p>
         </div>
-        <button className="btn-primary" onClick={openNew}>Add Visit</button>
+        <button className="btn-primary w-full sm:w-auto" onClick={openNew}>
+          Add Visit
+        </button>
       </div>
 
       <div className="card">
@@ -223,23 +281,26 @@ export default function VisitsPage() {
           ) : records.length === 0 ? (
             <div className="subtle">No visits recorded yet.</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-slate-500">
-                    <th className="py-2 pr-3">Date</th>
-                    <th className="py-2 pr-3">Lodge</th>
-                    <th className="py-2 pr-3">Work</th>
-                    <th className="py-2 pr-3">Candidate</th>
-                    <th className="py-2 pr-3">Grand Lodge</th>
-                    <th className="py-2 pr-3">Tracing Boards</th>
-                    <th className="py-2 pr-3">Notes</th>
-                    <th className="py-2 pr-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>{tableRows}</tbody>
-              </table>
-            </div>
+            <>
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-slate-500">
+                      <th className="py-2 pr-3">Date</th>
+                      <th className="py-2 pr-3">Lodge</th>
+                      <th className="py-2 pr-3">Work</th>
+                      <th className="py-2 pr-3">Candidate</th>
+                      <th className="py-2 pr-3">Grand Lodge</th>
+                      <th className="py-2 pr-3">Tracing Boards</th>
+                      <th className="py-2 pr-3">Notes</th>
+                      <th className="py-2 pr-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>{tableRows}</tbody>
+                </table>
+              </div>
+              <div className="grid gap-3 md:hidden">{mobileRows}</div>
+            </>
           )}
           {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
         </div>
@@ -355,11 +416,11 @@ export default function VisitsPage() {
               placeholder="Presentations, honours, tracing boards, etc."
             />
           </label>
-          <div className="flex justify-end gap-2">
-            <button type="button" className="btn-soft" onClick={closeModal}>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button type="button" className="btn-soft w-full sm:w-auto" onClick={closeModal}>
               Cancel
             </button>
-            <button type="submit" className="btn-primary" disabled={busy}>
+            <button type="submit" className="btn-primary w-full sm:w-auto" disabled={busy}>
               {busy ? "Saving…" : "Save"}
             </button>
           </div>

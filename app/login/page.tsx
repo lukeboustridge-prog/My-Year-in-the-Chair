@@ -72,10 +72,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="mx-auto max-w-3xl space-y-6 px-4 sm:px-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="h1">Sign in</h1>
-        <button className="navlink" onClick={onSignOut} disabled={signingOut}>
+        <button className="navlink w-full sm:w-auto text-center" onClick={onSignOut} disabled={signingOut}>
           {signingOut ? 'Signing out…' : 'Sign out'}
         </button>
       </div>
@@ -93,7 +93,9 @@ export default function LoginPage() {
             </label>
           </div>
           <div className="flex justify-end">
-            <button className="btn-primary" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
+            <button className="btn-primary w-full sm:w-auto" disabled={busy}>
+              {busy ? 'Signing in…' : 'Sign in'}
+            </button>
           </div>
         </form>
       </div>

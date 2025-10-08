@@ -4,6 +4,21 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import SignOutButton from "./SignOutButton";
 
+function useAuthed() {
+  const [authed, setAuthed] = useState(false);
+  useEffect(() => {
+    try {
+      const ls = localStorage.getItem('access_token');
+      const ss = sessionStorage.getItem('access_token');
+      const cookieMatch = document.cookie.match(/(?:^|;\s*)(access_token|token|session)=/);
+      setAuthed(Boolean(ls || ss || cookieMatch));
+    } catch {
+      setAuthed(false);
+    }
+  }, []);
+  return authed;
+}
+
 function NavLink({
   href,
   label,
@@ -28,7 +43,9 @@ function NavLink({
 
 export default function AppHeader() {
   const pathname = usePathname();
-  const showSignOut = pathname !== '/login';
+  const authed = useAuthed();
+  const onLoginPage = pathname === '/login';
+  const showSignOut = authed && !onLoginPage;
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -45,6 +62,9 @@ export default function AppHeader() {
     { href: '/reports', label: 'Reports' },
     { href: '/login', label: 'Sign in' },
   ];
+  const visibleLinks = authed
+    ? navLinks.filter((link) => link.href !== '/login')
+    : navLinks;
 
   return (
     <header className="w-full border-b bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 sticky top-0 z-40">
@@ -63,7 +83,7 @@ export default function AppHeader() {
           </svg>
         </button>
         <nav className="hidden items-center gap-2 sm:gap-3 lg:flex">
-          {navLinks.map((link) => (
+          {visibleLinks.map((link) => (
             <NavLink key={link.href} href={link.href} label={link.label} />
           ))}
           {showSignOut && <SignOutButton />}
@@ -77,7 +97,7 @@ export default function AppHeader() {
       >
         <div className="mx-auto max-w-6xl px-4 py-3">
           <div className="flex flex-col gap-2">
-            {navLinks.map((link) => (
+            {visibleLinks.map((link) => (
               <NavLink
                 key={link.href}
                 href={link.href}
