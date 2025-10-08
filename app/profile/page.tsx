@@ -110,8 +110,8 @@ export default function ProfilePage() {
       }}
     >
       <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
-        <div className="card max-h-[90vh] w-full max-w-lg overflow-hidden sm:max-w-xl md:max-w-2xl">
-          <div className="card-body space-y-6 overflow-y-auto p-5 sm:p-6">
+        <div className="card flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden sm:max-w-xl md:max-w-2xl">
+          <div className="card-body min-h-0 flex-1 space-y-6 overflow-y-auto p-5 sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h1 className="h2">Edit profile</h1>
