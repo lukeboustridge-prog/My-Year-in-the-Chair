@@ -10,11 +10,11 @@ type VisitRecord = {
   date: string;
   lodgeName: string;
   lodgeNumber?: string | null;
-  region?: string | null;
   workOfEvening: string;
   candidateName?: string | null;
-  location?: string | null;
   comments?: string | null;
+  isGrandLodgeVisit?: boolean;
+  hasTracingBoards?: boolean;
 };
 
 type WorkingRecord = {
@@ -23,6 +23,9 @@ type WorkingRecord = {
   work: string;
   candidateName?: string | null;
   comments?: string | null;
+  isGrandLodgeVisit?: boolean;
+  isEmergencyMeeting?: boolean;
+  hasTracingBoards?: boolean;
 };
 
 type ProfileRecord = {
@@ -80,11 +83,11 @@ export default function ReportsPage() {
             date: row.date ?? row.dateISO ?? "",
             lodgeName: row.lodgeName ?? "",
             lodgeNumber: row.lodgeNumber ?? null,
-            region: row.region ?? null,
             workOfEvening: row.workOfEvening ?? row.eventType ?? "OTHER",
             candidateName: row.candidateName ?? null,
-            location: row.location ?? null,
             comments: row.comments ?? row.notes ?? null,
+            isGrandLodgeVisit: Boolean(row.isGrandLodgeVisit),
+            hasTracingBoards: Boolean(row.hasTracingBoards),
           }))
         );
 
@@ -96,6 +99,9 @@ export default function ReportsPage() {
             work: row.work ?? row.degree ?? "OTHER",
             candidateName: row.candidateName ?? null,
             comments: row.comments ?? row.notes ?? null,
+            isGrandLodgeVisit: Boolean(row.isGrandLodgeVisit),
+            isEmergencyMeeting: Boolean(row.isEmergencyMeeting),
+            hasTracingBoards: Boolean(row.hasTracingBoards),
           }))
         );
 
@@ -136,8 +142,14 @@ export default function ReportsPage() {
         dateISO: visit.date,
         lodgeName: [visit.lodgeName, visit.lodgeNumber ? `No. ${visit.lodgeNumber}` : ""].filter(Boolean).join(" "),
         eventType: formatWork(visit.workOfEvening),
-        role: visit.location ?? undefined,
-        notes: [visit.candidateName, visit.comments].filter(Boolean).join(" — "),
+        role: visit.isGrandLodgeVisit ? "Grand Lodge" : undefined,
+        notes: [
+          visit.candidateName,
+          visit.hasTracingBoards ? "Tracing boards" : null,
+          visit.comments,
+        ]
+          .filter(Boolean)
+          .join(" — "),
       })),
     [filteredVisits]
   );
@@ -146,9 +158,21 @@ export default function ReportsPage() {
     if (!profile) return [];
     return workings.map((record) => ({
       lodgeName: profile.lodgeName || "My Lodge",
-      office: [formatWork(record.work), record.candidateName].filter(Boolean).join(" – "),
+      office: (() => {
+        const parts: string[] = [];
+        const base = formatWork(record.work);
+        if (base) parts.push(base);
+        if (record.candidateName) parts.push(record.candidateName);
+        const tags = [
+          record.isGrandLodgeVisit ? "Grand Lodge" : null,
+          record.isEmergencyMeeting ? "Emergency meeting" : null,
+          record.hasTracingBoards ? "Tracing boards" : null,
+        ].filter(Boolean);
+        if (tags.length) parts.push(tags.join(" • "));
+        return parts.join(" – ");
+      })(),
       startDateISO: record.date,
-      isGrandLodge: false,
+      isGrandLodge: Boolean(record.isGrandLodgeVisit),
       endDateISO: undefined,
     }));
   }, [workings, profile]);

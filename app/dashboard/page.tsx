@@ -12,14 +12,30 @@ function displayName(user: any) {
   return parts.join(" ");
 }
 
+const WORK_LABELS: Record<string, string> = {
+  INITIATION: "Initiation",
+  PASSING: "Passing",
+  RAISING: "Raising",
+  INSTALLATION: "Installation",
+  PRESENTATION: "Presentation",
+  LECTURE: "Lecture",
+  OTHER: "Other",
+};
+
+function formatWorkLabel(work: string | null | undefined) {
+  if (!work) return "Other";
+  return WORK_LABELS[work as keyof typeof WORK_LABELS] ?? work.replace(/_/g, " ");
+}
+
 export default async function DashboardPage() {
   const uid = getUserId();
   const user = uid ? await db.user.findUnique({ where: { id: uid } }) : null;
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const yearAgo = new Date(now); yearAgo.setFullYear(now.getFullYear() - 1);
-  const termStart = user?.termStart ?? yearAgo;
+  const yearAgo = new Date(now);
+  yearAgo.setFullYear(now.getFullYear() - 1);
+  const termStartDate = user?.termStart ? new Date(user.termStart) : new Date(yearAgo);
 
   const [visits, mywork] = uid
     ? await Promise.all([
@@ -43,69 +59,120 @@ export default async function DashboardPage() {
     myWorkByType.set(k, (myWorkByType.get(k) || 0) + 1);
   }
 
+  const visitByWorkEntries = Array.from(visitByWork.entries());
+  const myWorkEntries = Array.from(myWorkByType.entries());
+
+  const statCards = [
+    {
+      label: "Term start",
+      value: termStartDate.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      }),
+    },
+    {
+      label: "Today",
+      value: now.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      }),
+    },
+    { label: "Visits (rolling 12 months)", value: rolling12.toString() },
+    { label: "Visits (this month)", value: thisMonth.toString() },
+  ];
+
+  const welcomeName = user ? displayName(user) : null;
+
   return (
-    <div className="grid" style={{gap:"1.25rem"}}>
-      <section className="card hero">
-        <div>
-          <h1 className="hero-title">Welcome{user ? `, ${displayName(user)}` : ""}</h1>
-          <div className="muted">
-            {user?.rank ? <span className="pill">{user.isPastGrand && user.rank ? `Past ${user.rank}` : user.rank}</span> : null}
-            {user?.lodgeName ? (
-              <span style={{marginLeft:".5rem"}}>
-                Lodge: {user.lodgeName}{user.lodgeNumber ? ` (${user.lodgeNumber})` : ""}{user.region ? ` • ${user.region}` : ""}
-              </span>
-            ) : null}
+    <div className="space-y-6">
+      <section className="card">
+        <div className="card-body flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm text-slate-500">Welcome back</p>
+            <h1 className="h1 mt-1">{welcomeName ?? "Master"}</h1>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+              {user?.rank ? (
+                <span className="badge">
+                  {user.isPastGrand && user.rank ? `Past ${user.rank}` : user.rank}
+                </span>
+              ) : null}
+              {user?.lodgeName ? (
+                <span>
+                  Lodge: {user.lodgeName}
+                  {user.lodgeNumber ? ` (${user.lodgeNumber})` : ""}
+                  {user.region ? ` • ${user.region}` : ""}
+                </span>
+              ) : null}
+            </div>
+          </div>
+          <a className="btn-primary" href="/profile">
+            Edit profile
+          </a>
+        </div>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {statCards.map((stat) => (
+          <div key={stat.label} className="card">
+            <div className="card-body">
+              <p className="text-sm text-slate-500">{stat.label}</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">{stat.value}</p>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <div className="card">
+          <div className="card-body">
+            <h2 className="text-lg font-semibold text-slate-900">Visits by work of the evening</h2>
+            {visitByWorkEntries.length ? (
+              <ul className="mt-4 space-y-2 text-sm">
+                {visitByWorkEntries.map(([work, count]) => (
+                  <li key={work} className="flex items-center justify-between">
+                    <span>{formatWorkLabel(work)}</span>
+                    <span className="font-semibold text-slate-900">{count}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-4 text-sm text-slate-500">No visits recorded yet.</p>
+            )}
           </div>
         </div>
-        <a className="btn" href="/profile">Edit profile</a>
-      </section>
-
-      <section className="grid cols-4">
-        <div className="card stat">
-          <div className="label">Term start</div>
-          <div className="value">{(user?.termStart ?? termStart).toDateString()}</div>
-        </div>
-        <div className="card stat">
-          <div className="label">Today</div>
-          <div className="value">{new Date().toDateString()}</div>
-        </div>
-        <div className="card stat">
-          <div className="label">Visits (rolling 12 months)</div>
-          <div className="value">{rolling12}</div>
-        </div>
-        <div className="card stat">
-          <div className="label">Visits (this month)</div>
-          <div className="value">{thisMonth}</div>
-        </div>
-      </section>
-
-      <section className="grid cols-2">
         <div className="card">
-          <h2 style={{marginTop:0}}>Visits by work of the evening</h2>
-          <ul style={{margin:0,paddingLeft:"1.1rem"}}>
-            {Array.from(visitByWork.entries()).map(([k,n]) => (
-              <li key={k}><strong>{k}</strong>: {n}</li>
-            ))}
-            {visitByWork.size === 0 && <li className="muted">No data yet.</li>}
-          </ul>
-        </div>
-        <div className="card">
-          <h2 style={{marginTop:0}}>My Lodge Work by type</h2>
-          <ul style={{margin:0,paddingLeft:"1.1rem"}}>
-            {Array.from(myWorkByType.entries()).map(([k,n]) => (
-              <li key={k}><strong>{k}</strong>: {n}</li>
-            ))}
-            {myWorkByType.size === 0 && <li className="muted">No data yet.</li>}
-          </ul>
+          <div className="card-body">
+            <h2 className="text-lg font-semibold text-slate-900">My Lodge Work by type</h2>
+            {myWorkEntries.length ? (
+              <ul className="mt-4 space-y-2 text-sm">
+                {myWorkEntries.map(([work, count]) => (
+                  <li key={work} className="flex items-center justify-between">
+                    <span>{formatWorkLabel(work)}</span>
+                    <span className="font-semibold text-slate-900">{count}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-4 text-sm text-slate-500">No lodge work planned yet.</p>
+            )}
+          </div>
         </div>
       </section>
 
-      <section className="card" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div>
-          <h2 style={{marginTop:0}}>Export</h2>
-          <div className="muted">Download a CSV of your term summary for the Grand Superintendent / Region.</div>
+      <section className="card">
+        <div className="card-body flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Export</h2>
+            <p className="text-sm text-slate-500">
+              Download a CSV summary of your term for the Grand Superintendent or Region.
+            </p>
+          </div>
+          <a className="btn-primary" href="/api/reports/term">
+            Download CSV
+          </a>
         </div>
-        <a className="btn primary" href="/api/reports/term">Download CSV</a>
       </section>
     </div>
   );

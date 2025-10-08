@@ -50,14 +50,15 @@ export async function GET() {
   csv += "Master,Email,Term Start,Term End,Total Visits\n";
   csv += [user.name ?? "", user.email, start.toISOString(), end.toISOString(), totalVisits].map(csvEscape).join(",") + "\n\n";
 
-  csv += "Date,Lodge,Number,Location,Notes\n";
+  csv += "Date,Lodge,Number,Grand Lodge Visit,Tracing Boards,Notes\n";
   for (const v of visits) {
     csv += [
       v.date.toISOString(),
       v.lodgeName,
       v.lodgeNumber,
-      v.location ?? "",
-      (v.notes ?? "").replaceAll("\n", " ")
+      v.isGrandLodgeVisit ? "Yes" : "No",
+      v.hasTracingBoards ? "Yes" : "No",
+      (v.comments ?? v.notes ?? "").replaceAll("\n", " ")
     ].map(csvEscape).join(",") + "\n";
   }
 

@@ -13,17 +13,19 @@ export async function POST(req: Request) {
   const uid = getUserId();
   if (!uid) return new NextResponse("Unauthorized", { status: 401 });
   const body = await req.json();
+  const comments = body.comments ?? body.notes ?? null;
   const created = await db.visit.create({
     data: {
       userId: uid,
       date: new Date(body.date),
       lodgeName: body.lodgeName || null,
       lodgeNumber: body.lodgeNumber || null,
-      region: body.region || null,
       workOfEvening: body.workOfEvening || "OTHER",
       candidateName: body.candidateName || null,
-      comments: body.comments || null,
-      location: body.location || null,
+      comments,
+      notes: body.notes ?? null,
+      isGrandLodgeVisit: Boolean(body.isGrandLodgeVisit),
+      hasTracingBoards: Boolean(body.hasTracingBoards),
     },
   });
   return NextResponse.json(created, { status: 201 });
@@ -44,11 +46,24 @@ export async function PUT(req: Request) {
       date: body.date ? new Date(body.date) : existing.date,
       lodgeName: body.lodgeName ?? existing.lodgeName,
       lodgeNumber: body.lodgeNumber ?? existing.lodgeNumber,
-      region: body.region ?? existing.region,
       workOfEvening: body.workOfEvening ?? existing.workOfEvening,
       candidateName: body.candidateName ?? existing.candidateName,
-      comments: body.comments ?? existing.comments,
-      location: body.location ?? existing.location,
+      comments:
+        body.comments !== undefined || body.notes !== undefined
+          ? body.comments ?? body.notes ?? null
+          : existing.comments,
+      notes:
+        body.notes !== undefined
+          ? body.notes ?? null
+          : existing.notes,
+      isGrandLodgeVisit:
+        typeof body.isGrandLodgeVisit === "boolean"
+          ? body.isGrandLodgeVisit
+          : existing.isGrandLodgeVisit,
+      hasTracingBoards:
+        typeof body.hasTracingBoards === "boolean"
+          ? body.hasTracingBoards
+          : existing.hasTracingBoards,
     },
   });
   return NextResponse.json(updated);

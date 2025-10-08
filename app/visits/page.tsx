@@ -21,22 +21,22 @@ type VisitRecord = {
   date: string;
   lodgeName: string;
   lodgeNumber?: string | null;
-  region?: string | null;
   workOfEvening: (typeof WORK_OPTIONS)[number]["value"];
   candidateName?: string | null;
-  location?: string | null;
   comments?: string | null;
+  isGrandLodgeVisit: boolean;
+  hasTracingBoards: boolean;
 };
 
 const emptyVisit: VisitRecord = {
   date: new Date().toISOString().slice(0, 10),
   lodgeName: "",
   lodgeNumber: "",
-  region: "",
   workOfEvening: "OTHER",
   candidateName: "",
-  location: "",
   comments: "",
+  isGrandLodgeVisit: false,
+  hasTracingBoards: false,
 };
 
 function formatWork(value: VisitRecord["workOfEvening"]): string {
@@ -62,11 +62,11 @@ export default function VisitsPage() {
           date: toISODate(row.date ?? row.dateISO ?? ""),
           lodgeName: row.lodgeName ?? "",
           lodgeNumber: row.lodgeNumber ?? "",
-          region: row.region ?? "",
           workOfEvening: row.workOfEvening ?? "OTHER",
           candidateName: row.candidateName ?? "",
-          location: row.location ?? "",
           comments: row.comments ?? row.notes ?? "",
+          isGrandLodgeVisit: Boolean(row.isGrandLodgeVisit),
+          hasTracingBoards: Boolean(row.hasTracingBoards),
         }));
         setRecords(normalised);
         setError(null);
@@ -103,11 +103,11 @@ export default function VisitsPage() {
         date: toISODate(editing.date),
         lodgeName: editing.lodgeName.trim(),
         lodgeNumber: editing.lodgeNumber?.trim() || null,
-        region: editing.region?.trim() || null,
         workOfEvening: editing.workOfEvening,
         candidateName: editing.candidateName?.trim() || null,
-        location: editing.location?.trim() || null,
         comments: editing.comments?.trim() || null,
+        isGrandLodgeVisit: editing.isGrandLodgeVisit,
+        hasTracingBoards: editing.hasTracingBoards,
       };
       const isNew = !payload.id;
       const { id, ...createPayload } = payload;
@@ -127,11 +127,17 @@ export default function VisitsPage() {
           date: toISODate(saved.date ?? payload.date),
           lodgeName: saved.lodgeName ?? payload.lodgeName,
           lodgeNumber: saved.lodgeNumber ?? payload.lodgeNumber ?? "",
-          region: saved.region ?? payload.region ?? "",
           workOfEvening: saved.workOfEvening ?? payload.workOfEvening,
           candidateName: saved.candidateName ?? payload.candidateName ?? "",
-          location: saved.location ?? payload.location ?? "",
           comments: saved.comments ?? saved.notes ?? payload.comments ?? "",
+          isGrandLodgeVisit:
+            typeof saved.isGrandLodgeVisit === "boolean"
+              ? saved.isGrandLodgeVisit
+              : payload.isGrandLodgeVisit,
+          hasTracingBoards:
+            typeof saved.hasTracingBoards === "boolean"
+              ? saved.hasTracingBoards
+              : payload.hasTracingBoards,
         } as VisitRecord;
         if (isNew) {
           next.unshift(normalised);
@@ -175,13 +181,12 @@ export default function VisitsPage() {
         <td className="py-2 pr-3 whitespace-nowrap">{toDisplayDate(record.date)}</td>
         <td className="py-2 pr-3 min-w-[12rem]">
           <div className="font-medium">{record.lodgeName || "—"}</div>
-          <div className="text-xs text-slate-500">
-            {[record.lodgeNumber, record.region].filter(Boolean).join(" • ") || ""}
-          </div>
+          <div className="text-xs text-slate-500">{record.lodgeNumber || ""}</div>
         </td>
         <td className="py-2 pr-3 whitespace-nowrap">{formatWork(record.workOfEvening)}</td>
         <td className="py-2 pr-3 whitespace-nowrap">{record.candidateName || "—"}</td>
-        <td className="py-2 pr-3 whitespace-nowrap">{record.location || "—"}</td>
+        <td className="py-2 pr-3 whitespace-nowrap">{record.isGrandLodgeVisit ? "Yes" : "No"}</td>
+        <td className="py-2 pr-3 whitespace-nowrap">{record.hasTracingBoards ? "Yes" : "No"}</td>
         <td className="py-2 pr-3 min-w-[12rem]">{record.comments || "—"}</td>
         <td className="py-2 pr-3">
           <div className="flex gap-2">
@@ -218,7 +223,8 @@ export default function VisitsPage() {
                     <th className="py-2 pr-3">Lodge</th>
                     <th className="py-2 pr-3">Work</th>
                     <th className="py-2 pr-3">Candidate</th>
-                    <th className="py-2 pr-3">Location</th>
+                    <th className="py-2 pr-3">Grand Lodge</th>
+                    <th className="py-2 pr-3">Tracing Boards</th>
                     <th className="py-2 pr-3">Notes</th>
                     <th className="py-2 pr-3">Actions</th>
                   </tr>
@@ -270,17 +276,6 @@ export default function VisitsPage() {
               />
             </label>
             <label className="label">
-              <span>Region</span>
-              <input
-                className="input mt-1"
-                type="text"
-                value={editing?.region ?? ""}
-                onChange={(event) =>
-                  setEditing((prev) => ({ ...(prev as VisitRecord), region: event.target.value }))
-                }
-              />
-            </label>
-            <label className="label">
               <span>Work of the evening</span>
               <select
                 className="input mt-1"
@@ -311,16 +306,33 @@ export default function VisitsPage() {
                 placeholder="If applicable"
               />
             </label>
-            <label className="label">
-              <span>Location</span>
+            <label className="label flex items-center gap-2">
               <input
-                className="input mt-1"
-                type="text"
-                value={editing?.location ?? ""}
+                type="checkbox"
+                className="h-4 w-4"
+                checked={editing?.isGrandLodgeVisit ?? false}
                 onChange={(event) =>
-                  setEditing((prev) => ({ ...(prev as VisitRecord), location: event.target.value }))
+                  setEditing((prev) => ({
+                    ...(prev as VisitRecord),
+                    isGrandLodgeVisit: event.target.checked,
+                  }))
                 }
               />
+              <span>Grand Lodge visit</span>
+            </label>
+            <label className="label flex items-center gap-2">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={editing?.hasTracingBoards ?? false}
+                onChange={(event) =>
+                  setEditing((prev) => ({
+                    ...(prev as VisitRecord),
+                    hasTracingBoards: event.target.checked,
+                  }))
+                }
+              />
+              <span>Tracing boards delivered</span>
             </label>
           </div>
           <label className="label">

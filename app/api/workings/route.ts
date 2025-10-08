@@ -9,6 +9,9 @@ const schema = z.object({
   work: z.enum(["INITIATION","PASSING","RAISING","INSTALLATION","PRESENTATION","LECTURE","OTHER"]),
   candidateName: z.string().optional(),
   notes: z.string().optional(),
+  isGrandLodgeVisit: z.boolean().optional(),
+  isEmergencyMeeting: z.boolean().optional(),
+  hasTracingBoards: z.boolean().optional(),
 });
 
 export async function GET() {
@@ -34,6 +37,9 @@ export async function POST(req: Request) {
         work: d.work,
         candidateName: d.candidateName ?? null,
         notes: d.notes ?? null,
+        isGrandLodgeVisit: Boolean(d.isGrandLodgeVisit),
+        isEmergencyMeeting: Boolean(d.isEmergencyMeeting),
+        hasTracingBoards: Boolean(d.hasTracingBoards),
       },
     });
     return NextResponse.json(item, { status: 201 });
