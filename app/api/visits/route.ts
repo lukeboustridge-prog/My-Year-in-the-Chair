@@ -23,6 +23,7 @@ export async function POST(req: Request) {
       workOfEvening: body.workOfEvening || "OTHER",
       candidateName: body.candidateName || null,
       comments: body.comments || null,
+      location: body.location || null,
     },
   });
   return NextResponse.json(created, { status: 201 });
@@ -47,6 +48,7 @@ export async function PUT(req: Request) {
       workOfEvening: body.workOfEvening ?? existing.workOfEvening,
       candidateName: body.candidateName ?? existing.candidateName,
       comments: body.comments ?? existing.comments,
+      location: body.location ?? existing.location,
     },
   });
   return NextResponse.json(updated);

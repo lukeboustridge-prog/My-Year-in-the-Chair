@@ -14,6 +14,7 @@ type Item = {
 
 export default function WorkingsPage() {
   const [items, setItems] = useState<Item[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [month, setMonth] = useState<number>(new Date().getMonth()+1);
   const [year, setYear] = useState<number>(new Date().getFullYear());
   const [work, setWork] = useState<typeof WORKS[number]>("OTHER");
@@ -22,25 +23,38 @@ export default function WorkingsPage() {
   const [loading, setLoading] = useState(false);
 
   async function load() {
-    const res = await fetch("/api/workings");
-    if (res.ok) setItems(await res.json());
+    try {
+      const res = await fetch("/api/workings", { credentials: "include" });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      setItems(Array.isArray(data) ? data : []);
+      setError(null);
+    } catch (err: any) {
+      console.error("WORKINGS_LOAD", err);
+      setError(err?.message || "Failed to load lodge workings");
+      setItems([]);
+    }
   }
   useEffect(() => { load(); }, []);
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const res = await fetch("/api/workings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ month, year, work, candidateName: candidateName || undefined, notes: notes || undefined })
-    });
-    setLoading(false);
-    if (res.ok) {
+    try {
+      const res = await fetch("/api/workings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ month, year, work, candidateName: candidateName || undefined, notes: notes || undefined })
+      });
+      if (!res.ok) throw new Error(await res.text());
       setCandidate(""); setNotes("");
       await load();
-    } else {
-      alert(await res.text());
+    } catch (err: any) {
+      console.error("WORKINGS_SAVE", err);
+      alert(err?.message || "Failed to save plan");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -80,8 +94,8 @@ export default function WorkingsPage() {
           <tbody>
             {items.map(i => (
               <tr key={i.id} className="border-t border-gray-200 dark:border-gray-800">
-                <td className="py-2">{i.month}/{i.year}</td>
-                <td>{i.work}</td>
+                <td className="py-2">{new Date(i.year, i.month - 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}</td>
+                <td>{i.work.replace(/_/g,' ')}</td>
                 <td>{i.candidateName ?? "—"}</td>
                 <td>{i.notes ?? ""}</td>
               </tr>
@@ -89,6 +103,7 @@ export default function WorkingsPage() {
             {items.length === 0 && <tr><td colSpan={4} className="py-4 text-sm text-gray-500">No plans yet.</td></tr>}
           </tbody>
         </table>
+        {error && <p className="px-4 py-3 text-sm text-red-600">{error}</p>}
       </div>
     </div>
   );
