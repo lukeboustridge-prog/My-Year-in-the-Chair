@@ -464,6 +464,10 @@ export async function GET(request: Request) {
 
   doc.end();
   const pdfBuffer = await pdfPromise;
+  const pdfArrayBuffer = pdfBuffer.buffer.slice(
+    pdfBuffer.byteOffset,
+    pdfBuffer.byteOffset + pdfBuffer.byteLength,
+  );
 
   const lodgeIdentifier = (user.lodgeNumber && user.lodgeNumber.trim())
     ? user.lodgeNumber.trim().replace(/\s+/g, "-")
@@ -475,6 +479,6 @@ export async function GET(request: Request) {
     "Content-Disposition": `attachment; filename="${filename}"`,
   });
 
-  return new NextResponse(pdfBuffer, { status: 200, headers });
+  return new NextResponse(pdfArrayBuffer, { status: 200, headers });
 }
 
