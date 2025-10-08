@@ -143,8 +143,6 @@ export default async function DashboardPage() {
     candidateName: string | null;
   };
 
-  let rolling12 = 0;
-  let thisMonth = 0;
   let rollingYearRank: RankSummary | null = null;
   let rollingMonthRank: RankSummary | null = null;
   let recentVisits: VisitSummary[] = [];
@@ -152,15 +150,11 @@ export default async function DashboardPage() {
 
   if (uid) {
     [
-      rolling12,
-      thisMonth,
       rollingYearRank,
       rollingMonthRank,
       recentVisits,
       recentWorkings,
     ] = await Promise.all([
-      db.visit.count({ where: { userId: uid, date: { gte: new Date(yearAgo) } } }),
-      db.visit.count({ where: { userId: uid, date: { gte: startOfMonth } } }),
       getUserRank(uid, new Date(yearAgo)),
       getUserRank(uid, startOfMonth),
       db.visit.findMany({
@@ -189,11 +183,6 @@ export default async function DashboardPage() {
       }),
     ]);
   }
-
-  const statCards = [
-    { label: "Visits (rolling 12 months)", value: rolling12.toString() },
-    { label: "Visits (this month)", value: thisMonth.toString() },
-  ];
 
   const rankCards = [
     { label: "Rolling 12 months", summary: rollingYearRank },
@@ -228,17 +217,6 @@ export default async function DashboardPage() {
             Edit profile
           </a>
         </div>
-      </section>
-
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {statCards.map((stat) => (
-          <div key={stat.label} className="card">
-            <div className="card-body">
-              <p className="text-sm text-slate-500">{stat.label}</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-900">{stat.value}</p>
-            </div>
-          </div>
-        ))}
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">
