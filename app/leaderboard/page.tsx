@@ -45,7 +45,9 @@ function LeaderboardTable({ title, entries }: { title: string; entries: Leaderbo
     const nameWithPostNominals = (
       <div className="flex flex-wrap justify-end gap-x-2 gap-y-1">
         <span className="font-medium text-slate-900">{displayName}</span>
-        {postNominals ? <span className="text-xs text-slate-500">{postNominals}</span> : null}
+        {postNominals ? (
+          <span className="font-medium text-slate-900">{postNominals}</span>
+        ) : null}
       </div>
     );
     return (
@@ -99,7 +101,9 @@ function LeaderboardTable({ title, entries }: { title: string; entries: Leaderbo
                       <td className="py-2 pr-3">
                         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                           <span className="font-medium text-slate-900">{displayName}</span>
-                          {postNominals ? <span className="text-xs text-slate-500">{postNominals}</span> : null}
+                          {postNominals ? (
+                            <span className="font-medium text-slate-900">{postNominals}</span>
+                          ) : null}
                         </div>
                       </td>
                       <td className="py-2 pr-3 text-sm">
