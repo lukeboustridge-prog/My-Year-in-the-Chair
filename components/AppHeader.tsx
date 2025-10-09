@@ -59,7 +59,6 @@ export default function AppHeader() {
     { href: '/visits', label: 'Visits' },
     { href: '/my-work', label: 'My Lodge Workings' },
     { href: '/leaderboard', label: 'Leaderboard' },
-    { href: '/resources', label: 'Resources' },
     { href: '/reports', label: 'Reports' },
     { href: '/login', label: 'Sign in' },
   ];

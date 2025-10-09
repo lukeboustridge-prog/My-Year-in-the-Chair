@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Header from "../components/Header";
+import dynamic from "next/dynamic";
+
+const AddToHomeScreenPrompt = dynamic(
+  () => import("../components/AddToHomeScreenPrompt"),
+  { ssr: false }
+);
 
 const BRAND_ICON_URL = "https://freemasonsnz.org/wp-content/uploads/2024/05/TransparentBlueCompass.png";
 const THEME_COLOR = "#00529B";
@@ -40,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className="mx-auto max-w-6xl px-4 py-8 text-xs text-slate-500">
           © {new Date().getFullYear()} My Year in the Chair
         </footer>
+        <AddToHomeScreenPrompt />
       </body>
     </html>
   );
