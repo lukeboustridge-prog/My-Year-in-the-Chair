@@ -102,7 +102,10 @@ export default function ProfilePage() {
 
       if (!response.ok) {
         alert("Failed to save profile");
+        return;
       }
+
+      close();
     } catch (error) {
       console.error("Failed to save profile", error);
       alert("Failed to save profile");
