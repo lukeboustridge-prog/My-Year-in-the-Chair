@@ -40,6 +40,14 @@ async function getVisitLeaderboard(since: Date, limit = 10): Promise<Leaderboard
 function LeaderboardTable({ title, entries }: { title: string; entries: LeaderboardEntry[] }) {
   const mobileEntries = entries.map((entry) => {
     const user = entry.user;
+    const displayName = formatDisplayName(user);
+    const postNominals = formatPostNominals(user);
+    const nameWithPostNominals = (
+      <div className="flex flex-wrap justify-end gap-x-2 gap-y-1">
+        <span className="font-medium text-slate-900">{displayName}</span>
+        {postNominals ? <span className="text-xs text-slate-500">{postNominals}</span> : null}
+      </div>
+    );
     return (
       <div key={user?.id ?? entry.rank} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-start justify-between gap-3">
@@ -48,8 +56,7 @@ function LeaderboardTable({ title, entries }: { title: string; entries: Leaderbo
             <p className="text-2xl font-semibold text-slate-900">{entry.rank}</p>
           </div>
           <div className="text-right text-sm text-slate-600">
-            <p className="font-medium text-slate-900">{formatDisplayName(user)}</p>
-            <p className="text-xs text-slate-500">{formatPostNominals(user)}</p>
+            {nameWithPostNominals}
             <p className="text-xs text-slate-500">{formatLodge(user) || "—"}</p>
           </div>
         </div>
@@ -84,12 +91,16 @@ function LeaderboardTable({ title, entries }: { title: string; entries: Leaderbo
               ) : (
                 entries.map((entry) => {
                   const user = entry.user;
+                  const displayName = formatDisplayName(user);
+                  const postNominals = formatPostNominals(user);
                   return (
                     <tr key={user?.id ?? entry.rank} className="border-t">
                       <td className="py-2 pr-3">{entry.rank}</td>
                       <td className="py-2 pr-3">
-                        <div className="font-medium">{formatDisplayName(user)}</div>
-                        <div className="text-xs text-slate-500">{formatPostNominals(user)}</div>
+                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                          <span className="font-medium text-slate-900">{displayName}</span>
+                          {postNominals ? <span className="text-xs text-slate-500">{postNominals}</span> : null}
+                        </div>
                       </td>
                       <td className="py-2 pr-3 text-sm">
                         {formatLodge(user) || <span className="text-slate-400">—</span>}
