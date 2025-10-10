@@ -22,6 +22,7 @@ export default function NewVisitPage() {
   const [isGrandLodgeVisit, setGrandLodgeVisit] = useState(false);
   const [hasTracingBoards, setTracingBoards] = useState(false);
   const [grandMasterInAttendance, setGrandMasterInAttendance] = useState(false);
+  const [regionName, setRegionName] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -41,6 +42,7 @@ export default function NewVisitPage() {
         isGrandLodgeVisit,
         hasTracingBoards,
         grandMasterInAttendance,
+        regionName: regionName || undefined,
         notes: notes || undefined,
       }),
     });
@@ -61,6 +63,13 @@ export default function NewVisitPage() {
 
         <label>Lodge number</label>
         <input value={lodgeNumber} onChange={e=>setLodgeNumber(e.target.value)} required />
+
+        <label>Lodge region</label>
+        <input
+          value={regionName}
+          onChange={e=>setRegionName(e.target.value)}
+          placeholder="e.g. Region 2 – Central North Island"
+        />
 
         <label>Work of the evening</label>
         <select value={workOfEvening} onChange={e=>setWork(e.target.value as any)}>

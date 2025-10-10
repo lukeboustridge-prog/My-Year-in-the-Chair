@@ -20,6 +20,7 @@ type VisitRecord = {
   date: string;
   lodgeName: string;
   lodgeNumber?: string | null;
+  regionName?: string | null;
   workOfEvening: (typeof WORK_OPTIONS)[number]["value"];
   candidateName?: string | null;
   comments?: string | null;
@@ -32,6 +33,7 @@ const emptyVisit: VisitRecord = {
   date: new Date().toISOString().slice(0, 10),
   lodgeName: "",
   lodgeNumber: "",
+  regionName: "",
   workOfEvening: "OTHER",
   candidateName: "",
   comments: "",
@@ -51,6 +53,7 @@ function normaliseVisit(row: any, fallback?: VisitRecord): VisitRecord {
     date: toISODate(row?.date ?? row?.dateISO ?? fallback?.date ?? emptyVisit.date),
     lodgeName: row?.lodgeName ?? fallback?.lodgeName ?? "",
     lodgeNumber: row?.lodgeNumber ?? fallback?.lodgeNumber ?? "",
+    regionName: row?.regionName ?? row?.region ?? fallback?.regionName ?? "",
     workOfEvening: row?.workOfEvening ?? fallback?.workOfEvening ?? "OTHER",
     candidateName: row?.candidateName ?? fallback?.candidateName ?? "",
     comments: row?.comments ?? row?.notes ?? fallback?.comments ?? "",
@@ -103,6 +106,7 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
   ]
     .filter(Boolean)
     .join(" ");
+  const regionDisplay = form.regionName?.trim() ? form.regionName.trim() : null;
   const highlightBadges = [
     form.isGrandLodgeVisit ? "Grand Lodge visit" : null,
     form.grandMasterInAttendance ? "Grand Master present" : null,
@@ -148,6 +152,7 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
           <p className="truncate font-medium text-slate-900">{lodgeDisplay || "Visit"}</p>
           <p className="text-xs text-slate-500">
             {toDisplayDate(form.date)} · {formatWork(form.workOfEvening)}
+            {regionDisplay ? ` · ${regionDisplay}` : ""}
             {highlightBadges.length ? ` · ${highlightBadges.join(" · ")}` : ""}
           </p>
         </div>
@@ -205,6 +210,16 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
                 value={form.lodgeNumber ?? ""}
                 onChange={(event) => setForm((prev) => ({ ...prev, lodgeNumber: event.target.value }))}
                 placeholder="Optional"
+              />
+            </label>
+            <label className="label">
+              <span>Lodge region</span>
+              <input
+                className="input mt-1"
+                type="text"
+                value={form.regionName ?? ""}
+                onChange={(event) => setForm((prev) => ({ ...prev, regionName: event.target.value }))}
+                placeholder="e.g. Region 2 – Central North Island"
               />
             </label>
             <label className="label sm:col-span-2">
@@ -374,6 +389,16 @@ function VisitCreateCard({ onClose, onSave, saving }: VisitCreateCardProps) {
               placeholder="Optional"
             />
           </label>
+          <label className="label">
+            <span>Lodge region</span>
+            <input
+              className="input mt-1"
+              type="text"
+              value={form.regionName ?? ""}
+              onChange={(event) => setForm((prev) => ({ ...prev, regionName: event.target.value }))}
+              placeholder="e.g. Region 2 – Central North Island"
+            />
+          </label>
           <label className="label sm:col-span-2">
             <span>Candidate name</span>
             <input
@@ -474,6 +499,7 @@ export default function VisitsPage() {
         date: toISODate(next.date),
         lodgeName: next.lodgeName.trim(),
         lodgeNumber: next.lodgeNumber?.trim() || null,
+        regionName: next.regionName?.trim() || null,
         workOfEvening: next.workOfEvening,
         candidateName: next.candidateName?.trim() || null,
         comments: next.comments?.trim() || null,

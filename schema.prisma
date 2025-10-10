@@ -57,6 +57,7 @@ model Visit {
   date          DateTime
   lodgeName     String?
   lodgeNumber        String?
+  regionName        String?
 
   workOfEvening      WorkType @default(OTHER)
   candidateName      String?

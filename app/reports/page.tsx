@@ -156,7 +156,12 @@ export default function ReportsPage() {
             date: row.date ?? row.dateISO ?? "",
             lodgeName: row.lodgeName ?? "",
             lodgeNumber: row.lodgeNumber ?? null,
-            regionName: row.regionName ?? row.region ?? null,
+            regionName:
+              typeof row.regionName === "string"
+                ? row.regionName.trim() || null
+                : typeof row.region === "string"
+                ? row.region.trim() || null
+                : null,
             workOfEvening: row.workOfEvening ?? row.eventType ?? "OTHER",
             candidateName: row.candidateName ?? null,
             comments: row.comments ?? row.notes ?? null,

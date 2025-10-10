@@ -13,6 +13,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       date: new Date(body.date),
       lodgeName: body.lodgeName ?? null,
       lodgeNumber: body.lodgeNumber ?? null,
+      regionName:
+        body.regionName === undefined
+          ? undefined
+          : typeof body.regionName === "string"
+          ? body.regionName.trim() || null
+          : null,
       workOfEvening: body.workOfEvening ?? null,
       candidateName: body.candidateName ?? null,
       comments: body.comments ?? body.notes ?? null,

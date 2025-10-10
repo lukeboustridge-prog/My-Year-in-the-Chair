@@ -14,12 +14,15 @@ export async function POST(req: Request) {
   if (!uid) return new NextResponse("Unauthorized", { status: 401 });
   const body = await req.json();
   const comments = body.comments ?? body.notes ?? null;
+  const regionName =
+    typeof body.regionName === "string" ? body.regionName.trim() || null : null;
   const created = await db.visit.create({
     data: {
       userId: uid,
       date: new Date(body.date),
       lodgeName: body.lodgeName || null,
       lodgeNumber: body.lodgeNumber || null,
+      regionName,
       workOfEvening: body.workOfEvening || "OTHER",
       candidateName: body.candidateName || null,
       comments,
@@ -47,6 +50,12 @@ export async function PUT(req: Request) {
       date: body.date ? new Date(body.date) : existing.date,
       lodgeName: body.lodgeName ?? existing.lodgeName,
       lodgeNumber: body.lodgeNumber ?? existing.lodgeNumber,
+      regionName:
+        body.regionName !== undefined
+          ? typeof body.regionName === "string"
+            ? body.regionName.trim() || null
+            : null
+          : existing.regionName,
       workOfEvening: body.workOfEvening ?? existing.workOfEvening,
       candidateName: body.candidateName ?? existing.candidateName,
       comments:
