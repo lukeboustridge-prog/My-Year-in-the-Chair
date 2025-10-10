@@ -3,6 +3,7 @@
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 
+import { REGIONS } from "@/lib/regions";
 import { toDisplayDate, toISODate } from "../../lib/date";
 
 const WORK_OPTIONS = [
@@ -214,13 +215,18 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
             </label>
             <label className="label">
               <span>Lodge region</span>
-              <input
+              <select
                 className="input mt-1"
-                type="text"
                 value={form.regionName ?? ""}
                 onChange={(event) => setForm((prev) => ({ ...prev, regionName: event.target.value }))}
-                placeholder="e.g. Region 2 – Central North Island"
-              />
+              >
+                <option value="">Select a region</option>
+                {REGIONS.map((region) => (
+                  <option key={region} value={region}>
+                    {region}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="label sm:col-span-2">
               <span>Candidate name</span>
@@ -391,13 +397,18 @@ function VisitCreateCard({ onClose, onSave, saving }: VisitCreateCardProps) {
           </label>
           <label className="label">
             <span>Lodge region</span>
-            <input
+            <select
               className="input mt-1"
-              type="text"
               value={form.regionName ?? ""}
               onChange={(event) => setForm((prev) => ({ ...prev, regionName: event.target.value }))}
-              placeholder="e.g. Region 2 – Central North Island"
-            />
+            >
+              <option value="">Select a region</option>
+              {REGIONS.map((region) => (
+                <option key={region} value={region}>
+                  {region}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="label sm:col-span-2">
             <span>Candidate name</span>

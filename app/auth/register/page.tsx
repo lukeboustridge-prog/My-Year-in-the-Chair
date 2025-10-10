@@ -3,6 +3,8 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { REGIONS } from "@/lib/regions";
+
 export default function RegisterPage() {
   const router = useRouter();
   const [name, setName] = React.useState("");
@@ -32,7 +34,7 @@ export default function RegisterPage() {
           email,
           password,
           region: region ? region : undefined,
-        })
+        }),
       });
 
       if (!res.ok) {
@@ -91,14 +93,11 @@ export default function RegisterPage() {
                 onChange={(e) => setRegion(e.target.value)}
               >
                 <option value="">Select a region</option>
-                {Array.from({ length: 9 }).map((_, index) => {
-                  const option = `Region ${index + 1}`;
-                  return (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  );
-                })}
+                {REGIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="label">

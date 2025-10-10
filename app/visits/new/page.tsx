@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { REGIONS } from "@/lib/regions";
+
 const WORKS = ["INITIATION","PASSING","RAISING","INSTALLATION","PRESENTATION","LECTURE","OTHER"] as const;
 const WORK_LABELS: Record<(typeof WORKS)[number], string> = {
   INITIATION: "First Degree",
@@ -65,11 +67,14 @@ export default function NewVisitPage() {
         <input value={lodgeNumber} onChange={e=>setLodgeNumber(e.target.value)} required />
 
         <label>Lodge region</label>
-        <input
-          value={regionName}
-          onChange={e=>setRegionName(e.target.value)}
-          placeholder="e.g. Region 2 – Central North Island"
-        />
+        <select value={regionName} onChange={e=>setRegionName(e.target.value)}>
+          <option value="">Select a region</option>
+          {REGIONS.map((region) => (
+            <option key={region} value={region}>
+              {region}
+            </option>
+          ))}
+        </select>
 
         <label>Work of the evening</label>
         <select value={workOfEvening} onChange={e=>setWork(e.target.value as any)}>
