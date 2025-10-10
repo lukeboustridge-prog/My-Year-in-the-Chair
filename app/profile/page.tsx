@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RANK_META, RANK_OPTIONS, deriveTitle, type Rank } from "@/lib/constants";
+import { REGIONS } from "@/lib/regions";
 
 const isRank = (value: string): value is Rank =>
   RANK_OPTIONS.includes(value as Rank);
@@ -102,7 +103,10 @@ export default function ProfilePage() {
 
       if (!response.ok) {
         alert("Failed to save profile");
+        return;
       }
+
+      close();
     } catch (error) {
       console.error("Failed to save profile", error);
       alert("Failed to save profile");
@@ -247,14 +251,11 @@ export default function ProfilePage() {
                     }
                   >
                     <option value="">Select a region</option>
-                    {Array.from({ length: 9 }).map((_, index) => {
-                      const region = `Region ${index + 1}`;
-                      return (
-                        <option key={region} value={region}>
-                          {region}
-                        </option>
-                      );
-                    })}
+                    {REGIONS.map((region) => (
+                      <option key={region} value={region}>
+                        {region}
+                      </option>
+                    ))}
                   </select>
                 </label>
 

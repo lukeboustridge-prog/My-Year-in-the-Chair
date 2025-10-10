@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { REGIONS } from "@/lib/regions";
+
 const WORKS = ["INITIATION","PASSING","RAISING","INSTALLATION","PRESENTATION","LECTURE","OTHER"] as const;
 const WORK_LABELS: Record<(typeof WORKS)[number], string> = {
   INITIATION: "First Degree",
@@ -21,6 +23,8 @@ export default function NewVisitPage() {
   const [candidateName, setCandidate] = useState("");
   const [isGrandLodgeVisit, setGrandLodgeVisit] = useState(false);
   const [hasTracingBoards, setTracingBoards] = useState(false);
+  const [grandMasterInAttendance, setGrandMasterInAttendance] = useState(false);
+  const [regionName, setRegionName] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -39,6 +43,8 @@ export default function NewVisitPage() {
         candidateName: candidateName || undefined,
         isGrandLodgeVisit,
         hasTracingBoards,
+        grandMasterInAttendance,
+        regionName: regionName || undefined,
         notes: notes || undefined,
       }),
     });
@@ -59,6 +65,16 @@ export default function NewVisitPage() {
 
         <label>Lodge number</label>
         <input value={lodgeNumber} onChange={e=>setLodgeNumber(e.target.value)} required />
+
+        <label>Lodge region</label>
+        <select value={regionName} onChange={e=>setRegionName(e.target.value)}>
+          <option value="">Select a region</option>
+          {REGIONS.map((region) => (
+            <option key={region} value={region}>
+              {region}
+            </option>
+          ))}
+        </select>
 
         <label>Work of the evening</label>
         <select value={workOfEvening} onChange={e=>setWork(e.target.value as any)}>
@@ -89,6 +105,15 @@ export default function NewVisitPage() {
             onChange={e=>setTracingBoards(e.target.checked)}
           />
           Tracing boards delivered
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            className="h-4 w-4"
+            checked={grandMasterInAttendance}
+            onChange={e=>setGrandMasterInAttendance(e.target.checked)}
+          />
+          Grand Master in attendance
         </label>
 
         <label>Notes</label>

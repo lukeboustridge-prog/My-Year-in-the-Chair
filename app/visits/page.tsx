@@ -3,6 +3,7 @@
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 
+import { REGIONS } from "@/lib/regions";
 import { toDisplayDate, toISODate } from "../../lib/date";
 
 const WORK_OPTIONS = [
@@ -20,22 +21,26 @@ type VisitRecord = {
   date: string;
   lodgeName: string;
   lodgeNumber?: string | null;
+  regionName?: string | null;
   workOfEvening: (typeof WORK_OPTIONS)[number]["value"];
   candidateName?: string | null;
   comments?: string | null;
   isGrandLodgeVisit: boolean;
   hasTracingBoards: boolean;
+  grandMasterInAttendance: boolean;
 };
 
 const emptyVisit: VisitRecord = {
   date: new Date().toISOString().slice(0, 10),
   lodgeName: "",
   lodgeNumber: "",
+  regionName: "",
   workOfEvening: "OTHER",
   candidateName: "",
   comments: "",
   isGrandLodgeVisit: false,
   hasTracingBoards: false,
+  grandMasterInAttendance: false,
 };
 
 function formatWork(value: VisitRecord["workOfEvening"]): string {
@@ -49,6 +54,7 @@ function normaliseVisit(row: any, fallback?: VisitRecord): VisitRecord {
     date: toISODate(row?.date ?? row?.dateISO ?? fallback?.date ?? emptyVisit.date),
     lodgeName: row?.lodgeName ?? fallback?.lodgeName ?? "",
     lodgeNumber: row?.lodgeNumber ?? fallback?.lodgeNumber ?? "",
+    regionName: row?.regionName ?? row?.region ?? fallback?.regionName ?? "",
     workOfEvening: row?.workOfEvening ?? fallback?.workOfEvening ?? "OTHER",
     candidateName: row?.candidateName ?? fallback?.candidateName ?? "",
     comments: row?.comments ?? row?.notes ?? fallback?.comments ?? "",
@@ -60,6 +66,10 @@ function normaliseVisit(row: any, fallback?: VisitRecord): VisitRecord {
       typeof row?.hasTracingBoards === "boolean"
         ? row.hasTracingBoards
         : fallback?.hasTracingBoards ?? false,
+    grandMasterInAttendance:
+      typeof row?.grandMasterInAttendance === "boolean"
+        ? row.grandMasterInAttendance
+        : fallback?.grandMasterInAttendance ?? false,
   };
 }
 
@@ -97,6 +107,12 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
   ]
     .filter(Boolean)
     .join(" ");
+  const regionDisplay = form.regionName?.trim() ? form.regionName.trim() : null;
+  const highlightBadges = [
+    form.isGrandLodgeVisit ? "Grand Lodge visit" : null,
+    form.grandMasterInAttendance ? "Grand Master present" : null,
+    form.hasTracingBoards ? "Tracing boards" : null,
+  ].filter(Boolean);
 
   const toggle = () => {
     setOpen((prev) => {
@@ -135,7 +151,11 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
       >
         <div className="min-w-0">
           <p className="truncate font-medium text-slate-900">{lodgeDisplay || "Visit"}</p>
-          <p className="text-xs text-slate-500">{toDisplayDate(form.date)} · {formatWork(form.workOfEvening)}</p>
+          <p className="text-xs text-slate-500">
+            {toDisplayDate(form.date)} · {formatWork(form.workOfEvening)}
+            {regionDisplay ? ` · ${regionDisplay}` : ""}
+            {highlightBadges.length ? ` · ${highlightBadges.join(" · ")}` : ""}
+          </p>
         </div>
         <span className={`text-sm text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden>
           ▾
@@ -193,6 +213,21 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
                 placeholder="Optional"
               />
             </label>
+            <label className="label">
+              <span>Lodge region</span>
+              <select
+                className="input mt-1"
+                value={form.regionName ?? ""}
+                onChange={(event) => setForm((prev) => ({ ...prev, regionName: event.target.value }))}
+              >
+                <option value="">Select a region</option>
+                {REGIONS.map((region) => (
+                  <option key={region} value={region}>
+                    {region}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="label sm:col-span-2">
               <span>Candidate name</span>
               <input
@@ -204,7 +239,7 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
               />
             </label>
           </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input
                 type="checkbox"
@@ -226,6 +261,20 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
                 }
               />
               Tracing boards
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={Boolean(form.grandMasterInAttendance)}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    grandMasterInAttendance: event.target.checked,
+                  }))
+                }
+              />
+              Grand Master in attendance
             </label>
           </div>
           <label className="label">
@@ -346,6 +395,21 @@ function VisitCreateCard({ onClose, onSave, saving }: VisitCreateCardProps) {
               placeholder="Optional"
             />
           </label>
+          <label className="label">
+            <span>Lodge region</span>
+            <select
+              className="input mt-1"
+              value={form.regionName ?? ""}
+              onChange={(event) => setForm((prev) => ({ ...prev, regionName: event.target.value }))}
+            >
+              <option value="">Select a region</option>
+              {REGIONS.map((region) => (
+                <option key={region} value={region}>
+                  {region}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="label sm:col-span-2">
             <span>Candidate name</span>
             <input
@@ -357,7 +421,7 @@ function VisitCreateCard({ onClose, onSave, saving }: VisitCreateCardProps) {
             />
           </label>
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
@@ -375,6 +439,20 @@ function VisitCreateCard({ onClose, onSave, saving }: VisitCreateCardProps) {
               onChange={(event) => setForm((prev) => ({ ...prev, hasTracingBoards: event.target.checked }))}
             />
             Tracing boards
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              checked={Boolean(form.grandMasterInAttendance)}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  grandMasterInAttendance: event.target.checked,
+                }))
+              }
+            />
+            Grand Master in attendance
           </label>
         </div>
         <label className="label">
@@ -432,11 +510,13 @@ export default function VisitsPage() {
         date: toISODate(next.date),
         lodgeName: next.lodgeName.trim(),
         lodgeNumber: next.lodgeNumber?.trim() || null,
+        regionName: next.regionName?.trim() || null,
         workOfEvening: next.workOfEvening,
         candidateName: next.candidateName?.trim() || null,
         comments: next.comments?.trim() || null,
         isGrandLodgeVisit: Boolean(next.isGrandLodgeVisit),
         hasTracingBoards: Boolean(next.hasTracingBoards),
+        grandMasterInAttendance: Boolean(next.grandMasterInAttendance),
       };
       const isNew = !payload.id;
       const body = JSON.stringify(isNew ? { ...payload, id: undefined } : payload);
