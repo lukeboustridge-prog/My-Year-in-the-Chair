@@ -95,6 +95,11 @@ function formatLodge(record: GrandOfficerVisitRecord) {
   return [record.lodgeName, number].filter(Boolean).join(" ");
 }
 
+function pluralise(value: number, singular: string, plural?: string) {
+  const resolvedPlural = plural ?? `${singular}s`;
+  return `${value} ${value === 1 ? singular : resolvedPlural}`;
+}
+
 function summariseHighlights(record: GrandOfficerVisitRecord) {
   const highlights = [] as string[];
   if (record.candidateName) {
@@ -134,21 +139,106 @@ export async function downloadGrandOfficerVisitReportPdf(data: GrandOfficerVisit
   const totalVisits = data.visits.length;
   const grandLodgeVisits = data.visits.filter((visit) => visit.isGrandLodgeVisit).length;
   const grandMasterAttendances = data.visits.filter((visit) => visit.grandMasterInAttendance).length;
+  const lodgesSupported = new Set(
+    data.visits
+      .map((visit) => {
+        const lodgeName = typeof visit.lodgeName === "string" ? visit.lodgeName.trim() : "";
+        const lodgeNumberValue = visit.lodgeNumber;
+        const lodgeNumber =
+          typeof lodgeNumberValue === "string"
+            ? lodgeNumberValue.trim()
+            : lodgeNumberValue != null
+            ? String(lodgeNumberValue)
+            : "";
+        return [lodgeName, lodgeNumber ? `No. ${lodgeNumber}` : null]
+          .filter(Boolean)
+          .join(" ");
+      })
+      .filter(Boolean),
+  );
+  const chronologicalVisits = [...data.visits].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+  );
+  const firstVisit = chronologicalVisits[0]?.date;
+  const lastVisit = chronologicalVisits[chronologicalVisits.length - 1]?.date;
 
+  let cursorY = 120;
+
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
-  doc.text(`Total visits recorded: ${totalVisits}`, 48, 120);
-  doc.text(`Grand Lodge visits: ${grandLodgeVisits}`, 48, 138);
-  doc.text(`Grand Master present: ${grandMasterAttendances}`, 48, 156);
+  doc.text("Executive summary", 48, cursorY);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  cursorY += 20;
+
+  const summaryParagraphs: string[] = [];
 
   if (!totalVisits) {
-    doc.setFontSize(11);
-    doc.text("No visits were recorded during this reporting period.", 48, 188);
+    summaryParagraphs.push(
+      `${officerLine} did not record any official visits during this reporting period.`,
+    );
+  } else {
+    const visitSegments = [
+      `${officerLine} supported ${pluralise(totalVisits, "official visit")}`,
+    ];
+    if (lodgesSupported.size) {
+      visitSegments.push(`across ${pluralise(lodgesSupported.size, "lodge")}`);
+    }
+    if (firstVisit && lastVisit) {
+      visitSegments.push(`between ${formatDate(firstVisit)} and ${formatDate(lastVisit)}`);
+    }
+    summaryParagraphs.push(`${visitSegments.join(" ")}.`);
+
+    if (grandLodgeVisits) {
+      const attendanceFragment = grandMasterAttendances
+        ? `, with the Grand Master in attendance for ${pluralise(grandMasterAttendances, "visit")}`
+        : ", with the Grand Master not recorded as attending these engagements";
+      summaryParagraphs.push(
+        `This included ${pluralise(grandLodgeVisits, "Grand Lodge engagement")}${attendanceFragment}.`,
+      );
+    } else {
+      summaryParagraphs.push(
+        "No Grand Lodge engagements were recorded during this period, though routine visits continued in support of the Craft.",
+      );
+    }
+  }
+
+  const paragraphLineHeight = 14;
+  const paragraphWidth = 510;
+  for (const paragraph of summaryParagraphs) {
+    const lines = doc.splitTextToSize(paragraph, paragraphWidth);
+    doc.text(lines, 48, cursorY);
+    cursorY += lines.length * paragraphLineHeight + 8;
+  }
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Key metrics", 48, cursorY);
+  cursorY += 18;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+
+  const metricsLines = [
+    `• Total visits recorded: ${totalVisits}`,
+    `• Lodges supported: ${lodgesSupported.size}`,
+    `• Grand Lodge visits supported: ${grandLodgeVisits}`,
+    `• Grand Master in attendance: ${grandMasterAttendances}${
+      grandLodgeVisits ? ` of ${grandLodgeVisits} Grand Lodge visit${grandLodgeVisits === 1 ? "" : "s"}` : ""
+    }`,
+  ];
+
+  doc.text(metricsLines, 60, cursorY);
+  cursorY += metricsLines.length * 14 + 16;
+
+  if (!totalVisits) {
     doc.save("Grand-Lodge-officer-visit-report.pdf");
     return;
   }
 
   autoTable(doc, {
-    startY: 188,
+    startY: cursorY,
     head: [["Date", "Lodge", "Work", "Grand Lodge", "Grand Master", "Highlights"]],
     body: data.visits.map((visit) => [
       formatTableDate(visit.date),
