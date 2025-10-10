@@ -41,12 +41,11 @@ To enable the workflow:
    - `https://<your-production-domain>/api/auth/google/callback` for the deployed site
 5. Save the client to obtain the **Client ID** and **Client secret**.
 6. Provide the values to your environment:
-   - `GOOGLE_CLIENT_ID` – the client ID from step 5 (server-side usage)
-   - `GOOGLE_CLIENT_SECRET` – the client secret from step 5 (server-side usage)
-   - `NEXT_PUBLIC_GOOGLE_CLIENT_ID` – the same client ID so the frontend knows Google sign-in is
-     available
+   - `GOOGLE_CLIENT_ID` – the client ID from step 5
+   - `GOOGLE_CLIENT_SECRET` – the client secret from step 5
    Set them in `.env.local` for local development and in Vercel Project Settings → Environment
-   Variables for deployments.
+   Variables for deployments. (The UI now reads the server-side flag directly, so no
+   `NEXT_PUBLIC_*` variable is required.)
 7. Redeploy or restart the app so the new environment variables are picked up.
 
 Once the variables are present, users will be able to select **Sign in with Google**, and newly
