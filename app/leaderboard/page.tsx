@@ -18,10 +18,24 @@ type LeaderboardEntry = {
   user: LeaderboardUser | undefined;
 };
 
-async function getVisitLeaderboard(since: Date, limit = 10): Promise<LeaderboardEntry[]> {
+type LeaderboardFilters = {
+  limit?: number;
+  region?: string;
+};
+
+async function getVisitLeaderboard(
+  since: Date,
+  { limit = 10, region }: LeaderboardFilters = {},
+): Promise<LeaderboardEntry[]> {
   const grouped = await db.visit.groupBy({
     by: ["userId"],
-    where: { date: { gte: since }, user: { isApproved: true } },
+    where: {
+      date: { gte: since },
+      user: {
+        isApproved: true,
+        ...(region ? { region } : {}),
+      },
+    },
     _count: { _all: true },
     orderBy: { _count: { userId: "desc" } },
     take: limit,
@@ -130,7 +144,15 @@ function LeaderboardTable({ title, entries }: { title: string; entries: Leaderbo
   );
 }
 
-export default async function LeaderboardPage() {
+type LeaderboardSearchParams = {
+  scope?: string;
+};
+
+export default async function LeaderboardPage({
+  searchParams,
+}: {
+  searchParams?: LeaderboardSearchParams;
+}) {
   const uid = getUserId();
   if (!uid) {
     redirect("/login?redirect=/leaderboard");
@@ -138,7 +160,7 @@ export default async function LeaderboardPage() {
 
   const viewer = await db.user.findUnique({
     where: { id: uid },
-    select: { isApproved: true, role: true },
+    select: { isApproved: true, role: true, region: true },
   });
 
   if (!viewer) {
@@ -150,6 +172,14 @@ export default async function LeaderboardPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const isApprover = viewer.role === "ADMIN" || viewer.role === "DISTRICT";
+
+  const requestedScope = searchParams?.scope === "region" ? "region" : "national";
+  const scope = viewer.region ? requestedScope : "national";
+  const regionFilter = scope === "region" ? viewer.region : undefined;
+
+  const filterLabel = scope === "region" ? viewer.region ?? "My Region" : "National";
+
+  const scopedHeading = scope === "region" ? filterLabel : "National";
 
   if (!viewer.isApproved && !isApprover) {
     return (
@@ -166,8 +196,8 @@ export default async function LeaderboardPage() {
   }
 
   const [rollingYear, rollingMonth] = await Promise.all([
-    getVisitLeaderboard(rollingYearStart),
-    getVisitLeaderboard(monthStart),
+    getVisitLeaderboard(rollingYearStart, { region: regionFilter }),
+    getVisitLeaderboard(monthStart, { region: regionFilter }),
   ]);
 
   return (
@@ -177,19 +207,62 @@ export default async function LeaderboardPage() {
           <h1 className="h1">Leaderboard</h1>
           <p className="subtle">Celebrating the busiest Masters in the Districts.</p>
         </div>
-        <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
-          <Link href="/leaderboard/month" className="navlink w-full sm:w-auto text-center">
-            Past Monthly Results
-          </Link>
-          <Link href="/leaderboard/year" className="navlink w-full sm:w-auto text-center">
-            Past Yearly Results
-          </Link>
+        <div className="flex flex-col gap-3 sm:items-end">
+          <div className="flex w-full items-center justify-between gap-2 text-sm sm:justify-end">
+            <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+              <Link
+                href="/leaderboard"
+                className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                  scope === "national"
+                    ? "bg-slate-900 text-white"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                National
+              </Link>
+              {viewer.region ? (
+                <Link
+                  href="/leaderboard?scope=region"
+                  className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                    scope === "region"
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  My Region
+                </Link>
+              ) : (
+                <span className="cursor-not-allowed rounded-md px-3 py-1.5 font-medium text-slate-300">
+                  My Region
+                </span>
+              )}
+            </div>
+            <div className="hidden sm:block text-xs text-slate-500">
+              Viewing: <span className="font-medium text-slate-700">{filterLabel}</span>
+            </div>
+          </div>
+          <div className="sm:hidden text-xs text-slate-500">
+            Viewing: <span className="font-medium text-slate-700">{filterLabel}</span>
+          </div>
+          {!viewer.region ? (
+            <p className="text-xs text-slate-500">
+              Set your region in your profile to see the regional leaderboard.
+            </p>
+          ) : null}
+          <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-end">
+            <Link href="/leaderboard/month" className="navlink w-full sm:w-auto text-center">
+              Past Monthly Results
+            </Link>
+            <Link href="/leaderboard/year" className="navlink w-full sm:w-auto text-center">
+              Past Yearly Results
+            </Link>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <LeaderboardTable title="Rolling 12 months" entries={rollingYear} />
-        <LeaderboardTable title="This month" entries={rollingMonth} />
+        <LeaderboardTable title={`Rolling 12 months · ${scopedHeading}`} entries={rollingYear} />
+        <LeaderboardTable title={`This month · ${scopedHeading}`} entries={rollingMonth} />
       </div>
     </div>
   );
