@@ -21,6 +21,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         typeof body.isGrandLodgeVisit === "boolean" ? body.isGrandLodgeVisit : undefined,
       hasTracingBoards:
         typeof body.hasTracingBoards === "boolean" ? body.hasTracingBoards : undefined,
+      grandMasterInAttendance:
+        typeof body.grandMasterInAttendance === "boolean"
+          ? body.grandMasterInAttendance
+          : undefined,
     },
   });
   return NextResponse.json({ ok: true });

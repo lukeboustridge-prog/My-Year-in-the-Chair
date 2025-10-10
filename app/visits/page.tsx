@@ -25,6 +25,7 @@ type VisitRecord = {
   comments?: string | null;
   isGrandLodgeVisit: boolean;
   hasTracingBoards: boolean;
+  grandMasterInAttendance: boolean;
 };
 
 const emptyVisit: VisitRecord = {
@@ -36,6 +37,7 @@ const emptyVisit: VisitRecord = {
   comments: "",
   isGrandLodgeVisit: false,
   hasTracingBoards: false,
+  grandMasterInAttendance: false,
 };
 
 function formatWork(value: VisitRecord["workOfEvening"]): string {
@@ -60,6 +62,10 @@ function normaliseVisit(row: any, fallback?: VisitRecord): VisitRecord {
       typeof row?.hasTracingBoards === "boolean"
         ? row.hasTracingBoards
         : fallback?.hasTracingBoards ?? false,
+    grandMasterInAttendance:
+      typeof row?.grandMasterInAttendance === "boolean"
+        ? row.grandMasterInAttendance
+        : fallback?.grandMasterInAttendance ?? false,
   };
 }
 
@@ -97,6 +103,11 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
   ]
     .filter(Boolean)
     .join(" ");
+  const highlightBadges = [
+    form.isGrandLodgeVisit ? "Grand Lodge visit" : null,
+    form.grandMasterInAttendance ? "Grand Master present" : null,
+    form.hasTracingBoards ? "Tracing boards" : null,
+  ].filter(Boolean);
 
   const toggle = () => {
     setOpen((prev) => {
@@ -135,7 +146,10 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
       >
         <div className="min-w-0">
           <p className="truncate font-medium text-slate-900">{lodgeDisplay || "Visit"}</p>
-          <p className="text-xs text-slate-500">{toDisplayDate(form.date)} · {formatWork(form.workOfEvening)}</p>
+          <p className="text-xs text-slate-500">
+            {toDisplayDate(form.date)} · {formatWork(form.workOfEvening)}
+            {highlightBadges.length ? ` · ${highlightBadges.join(" · ")}` : ""}
+          </p>
         </div>
         <span className={`text-sm text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden>
           ▾
@@ -204,7 +218,7 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
               />
             </label>
           </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input
                 type="checkbox"
@@ -226,6 +240,20 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
                 }
               />
               Tracing boards
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={Boolean(form.grandMasterInAttendance)}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    grandMasterInAttendance: event.target.checked,
+                  }))
+                }
+              />
+              Grand Master in attendance
             </label>
           </div>
           <label className="label">
@@ -357,7 +385,7 @@ function VisitCreateCard({ onClose, onSave, saving }: VisitCreateCardProps) {
             />
           </label>
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
@@ -375,6 +403,20 @@ function VisitCreateCard({ onClose, onSave, saving }: VisitCreateCardProps) {
               onChange={(event) => setForm((prev) => ({ ...prev, hasTracingBoards: event.target.checked }))}
             />
             Tracing boards
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              checked={Boolean(form.grandMasterInAttendance)}
+              onChange={(event) =>
+                setForm((prev) => ({
+                  ...prev,
+                  grandMasterInAttendance: event.target.checked,
+                }))
+              }
+            />
+            Grand Master in attendance
           </label>
         </div>
         <label className="label">
@@ -437,6 +479,7 @@ export default function VisitsPage() {
         comments: next.comments?.trim() || null,
         isGrandLodgeVisit: Boolean(next.isGrandLodgeVisit),
         hasTracingBoards: Boolean(next.hasTracingBoards),
+        grandMasterInAttendance: Boolean(next.grandMasterInAttendance),
       };
       const isNew = !payload.id;
       const body = JSON.stringify(isNew ? { ...payload, id: undefined } : payload);

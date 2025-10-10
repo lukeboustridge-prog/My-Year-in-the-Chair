@@ -26,6 +26,7 @@ export async function POST(req: Request) {
       notes: body.notes ?? null,
       isGrandLodgeVisit: Boolean(body.isGrandLodgeVisit),
       hasTracingBoards: Boolean(body.hasTracingBoards),
+      grandMasterInAttendance: Boolean(body.grandMasterInAttendance),
     },
   });
   return NextResponse.json(created, { status: 201 });
@@ -64,6 +65,10 @@ export async function PUT(req: Request) {
         typeof body.hasTracingBoards === "boolean"
           ? body.hasTracingBoards
           : existing.hasTracingBoards,
+      grandMasterInAttendance:
+        typeof body.grandMasterInAttendance === "boolean"
+          ? body.grandMasterInAttendance
+          : existing.grandMasterInAttendance,
     },
   });
   return NextResponse.json(updated);

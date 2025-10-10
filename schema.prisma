@@ -64,6 +64,7 @@ model Visit {
 
   isGrandLodgeVisit  Boolean  @default(false)
   hasTracingBoards   Boolean  @default(false)
+  grandMasterInAttendance Boolean @default(false)
   notes              String?
   createdAt     DateTime @default(now())
 }
