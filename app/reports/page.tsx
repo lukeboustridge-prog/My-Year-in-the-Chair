@@ -20,6 +20,7 @@ type VisitRecord = {
   date: string;
   lodgeName: string;
   lodgeNumber?: string | null;
+  regionName?: string | null;
   workOfEvening: string;
   candidateName?: string | null;
   comments?: string | null;
@@ -155,6 +156,7 @@ export default function ReportsPage() {
             date: row.date ?? row.dateISO ?? "",
             lodgeName: row.lodgeName ?? "",
             lodgeNumber: row.lodgeNumber ?? null,
+            regionName: row.regionName ?? row.region ?? null,
             workOfEvening: row.workOfEvening ?? row.eventType ?? "OTHER",
             candidateName: row.candidateName ?? null,
             comments: row.comments ?? row.notes ?? null,
@@ -330,6 +332,7 @@ export default function ReportsPage() {
             date: visit.date,
             lodgeName: visit.lodgeName,
             lodgeNumber: visit.lodgeNumber,
+            regionName: visit.regionName ?? profile.region ?? null,
             workOfEvening: visit.workOfEvening,
             candidateName: visit.candidateName,
             comments: visit.comments,
@@ -337,6 +340,7 @@ export default function ReportsPage() {
             hasTracingBoards: Boolean(visit.hasTracingBoards),
             grandMasterInAttendance: Boolean(visit.grandMasterInAttendance),
           })),
+          generatedAt: new Date().toISOString(),
         });
         return;
       }
