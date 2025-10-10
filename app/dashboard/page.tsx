@@ -181,9 +181,10 @@ export default async function DashboardPage() {
   let rollingYearRank: RankSummary | null = null;
   let rollingMonthRank: RankSummary | null = null;
   const isAdmin = user.role === "ADMIN";
+  const isSuperintendent = user.role === "GRAND_SUPERINTENDENT";
   const isApproved = Boolean(user.isApproved);
 
-  if (isApproved || isAdmin) {
+  if (isApproved || isAdmin || isSuperintendent) {
     [rollingYearRank, rollingMonthRank] = await Promise.all([
       getUserRank(uid, new Date(yearAgo)),
       getUserRank(uid, startOfMonth),
@@ -222,22 +223,22 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <section className="card">
-        <div className="card-body">
-          <h2 className="text-lg font-semibold text-slate-900">My Leaderboard Ranking</h2>
-          {isApproved || isAdmin ? (
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <RankSummaryBlock label="Rolling 12 months" summary={rollingYearRank} />
-              <RankSummaryBlock label="This month" summary={rollingMonthRank} />
-            </div>
-          ) : (
-            <p className="mt-4 text-sm text-slate-600">
-              An administrator needs to approve your profile before leaderboard rankings are available. You can
-              keep logging visits and lodge workings while you wait.
-            </p>
-          )}
-        </div>
-      </section>
+        <section className="card">
+          <div className="card-body">
+            <h2 className="text-lg font-semibold text-slate-900">My Leaderboard Ranking</h2>
+            {isApproved || isAdmin || isSuperintendent ? (
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <RankSummaryBlock label="Rolling 12 months" summary={rollingYearRank} />
+                <RankSummaryBlock label="This month" summary={rollingMonthRank} />
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-slate-600">
+                An administrator needs to approve your profile before leaderboard rankings are available. You can
+                keep logging visits and lodge workings while you wait.
+              </p>
+            )}
+          </div>
+        </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="card">

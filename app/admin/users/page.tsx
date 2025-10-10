@@ -2,14 +2,14 @@ export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
 
-import { getCurrentAdmin, getCurrentUser } from "@/lib/currentUser";
+import { getCurrentApprover, getCurrentUser } from "@/lib/currentUser";
 import { db } from "@/lib/db";
 
 import UserManagement from "./UserManagement";
 
 export default async function AdminUsersPage() {
-  const admin = await getCurrentAdmin();
-  if (!admin) {
+  const approver = await getCurrentApprover();
+  if (!approver) {
     const user = await getCurrentUser();
     if (!user) {
       redirect(`/login?redirect=${encodeURIComponent("/admin/users")}`);
@@ -17,7 +17,15 @@ export default async function AdminUsersPage() {
     redirect("/");
   }
 
+  const where =
+    approver.role === "ADMIN"
+      ? undefined
+      : approver.region
+      ? { region: approver.region }
+      : { id: approver.id };
+
   const users = await db.user.findMany({
+    where,
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -26,6 +34,7 @@ export default async function AdminUsersPage() {
       role: true,
       isApproved: true,
       createdAt: true,
+      region: true,
     },
   });
 
@@ -38,6 +47,8 @@ export default async function AdminUsersPage() {
         </p>
       </div>
       <UserManagement
+        viewerRole={approver.role}
+        viewerRegion={approver.region ?? null}
         initialUsers={users.map((user) => ({
           ...user,
           createdAt: user.createdAt.toISOString(),

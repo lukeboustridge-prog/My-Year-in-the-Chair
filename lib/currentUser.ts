@@ -3,7 +3,7 @@ import type { User } from "@prisma/client";
 import { getUserId } from "./auth";
 import { db } from "./db";
 
-export type CurrentUser = Pick<User, "id" | "email" | "role" | "isApproved" | "name">;
+export type CurrentUser = Pick<User, "id" | "email" | "role" | "isApproved" | "name" | "region">;
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   const uid = getUserId();
@@ -17,6 +17,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       role: true,
       isApproved: true,
       name: true,
+      region: true,
     },
   });
 
@@ -29,4 +30,13 @@ export async function getCurrentAdmin(): Promise<CurrentUser | null> {
     return null;
   }
   return user;
+}
+
+export async function getCurrentApprover(): Promise<CurrentUser | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  if (user.role === "ADMIN" || user.role === "GRAND_SUPERINTENDENT") {
+    return user;
+  }
+  return null;
 }

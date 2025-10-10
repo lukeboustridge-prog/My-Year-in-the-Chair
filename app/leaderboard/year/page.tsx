@@ -77,7 +77,9 @@ export default async function Page() {
     redirect(`/login?redirect=${encodeURIComponent("/leaderboard/year")}`);
   }
 
-  if (!viewer.isApproved && viewer.role !== "ADMIN") {
+  const isApprover = viewer.role === "ADMIN" || viewer.role === "GRAND_SUPERINTENDENT";
+
+  if (!viewer.isApproved && !isApprover) {
     return (
       <div className="space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

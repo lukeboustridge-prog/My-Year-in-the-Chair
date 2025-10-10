@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentAdmin, getCurrentUser } from "@/lib/currentUser";
+import { getCurrentApprover, getCurrentUser } from "@/lib/currentUser";
 import { db } from "@/lib/db";
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const admin = await getCurrentAdmin();
-  if (!admin) {
+  const approver = await getCurrentApprover();
+  if (!approver) {
     const user = await getCurrentUser();
     if (!user) {
       return new NextResponse("Unauthorized", { status: 401 });
@@ -19,23 +19,79 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 
   const body = await req.json().catch(() => null);
-  const isApproved = body?.isApproved;
-  if (typeof isApproved !== "boolean") {
+  if (!body || typeof body !== "object") {
     return new NextResponse("Invalid payload", { status: 400 });
   }
 
-  const updated = await db.user.update({
+  const target = await db.user.findUnique({
     where: { id },
-    data: { isApproved },
     select: {
-      id: true,
-      email: true,
-      name: true,
+      region: true,
       role: true,
-      isApproved: true,
-      createdAt: true,
     },
-  }).catch(() => null);
+  });
+
+  if (!target) {
+    return new NextResponse("Not found", { status: 404 });
+  }
+
+  if (approver.role === "GRAND_SUPERINTENDENT") {
+    if (!approver.region) {
+      return new NextResponse("Region not configured", { status: 400 });
+    }
+    if (target.region !== approver.region) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+    if (target.role === "ADMIN") {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+    if (target.role && target.role !== "USER" && id !== approver.id) {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+  }
+
+  const data: { isApproved?: boolean; role?: string } = {};
+
+  if (Object.prototype.hasOwnProperty.call(body, "isApproved")) {
+    if (typeof body.isApproved !== "boolean") {
+      return new NextResponse("Invalid approval flag", { status: 400 });
+    }
+    data.isApproved = body.isApproved;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "role")) {
+    if (approver.role !== "ADMIN") {
+      return new NextResponse("Forbidden", { status: 403 });
+    }
+    if (typeof body.role !== "string") {
+      return new NextResponse("Invalid role", { status: 400 });
+    }
+    const allowedRoles = ["USER", "ADMIN", "GRAND_SUPERINTENDENT"];
+    if (!allowedRoles.includes(body.role)) {
+      return new NextResponse("Invalid role", { status: 400 });
+    }
+    data.role = body.role;
+  }
+
+  if (!("isApproved" in data) && !("role" in data)) {
+    return new NextResponse("No changes supplied", { status: 400 });
+  }
+
+  const updated = await db.user
+    .update({
+      where: { id },
+      data,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        isApproved: true,
+        createdAt: true,
+        region: true,
+      },
+    })
+    .catch(() => null);
 
   if (!updated) {
     return new NextResponse("Not found", { status: 404 });

@@ -149,7 +149,9 @@ export default async function LeaderboardPage() {
   const rollingYearStart = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  if (!viewer.isApproved && viewer.role !== "ADMIN") {
+  const isApprover = viewer.role === "ADMIN" || viewer.role === "GRAND_SUPERINTENDENT";
+
+  if (!viewer.isApproved && !isApprover) {
     return (
       <div className="space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

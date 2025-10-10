@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentAdmin, getCurrentUser } from "@/lib/currentUser";
+import { getCurrentApprover, getCurrentUser } from "@/lib/currentUser";
 import { db } from "@/lib/db";
 
 export async function GET() {
-  const admin = await getCurrentAdmin();
-  if (!admin) {
+  const approver = await getCurrentApprover();
+  if (!approver) {
     const user = await getCurrentUser();
     if (!user) {
       return new NextResponse("Unauthorized", { status: 401 });
@@ -13,7 +13,15 @@ export async function GET() {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
+  const where =
+    approver.role === "ADMIN"
+      ? undefined
+      : approver.region
+      ? { region: approver.region }
+      : { id: approver.id };
+
   const users = await db.user.findMany({
+    where,
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -22,6 +30,7 @@ export async function GET() {
       role: true,
       isApproved: true,
       createdAt: true,
+      region: true,
     },
   });
 

@@ -13,6 +13,7 @@ type NavItem = {
   requiresAuth?: boolean;
   requiresApproval?: boolean;
   requiresAdmin?: boolean;
+  requiresSuperintendent?: boolean;
   hideWhenAuthed?: boolean;
 };
 
@@ -40,14 +41,16 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const isAuthed = Boolean(user);
   const isApproved = Boolean(user?.isApproved);
   const isAdmin = user?.role === "ADMIN";
+  const isSuperintendent = user?.role === "GRAND_SUPERINTENDENT";
+  const isApprover = isAdmin || isSuperintendent;
   const onLoginPage = pathname === "/login";
 
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
 
-  const navLinks = useMemo<NavItem[]>(
-    () => [
+  const navLinks = useMemo<NavItem[]>(() => {
+    const items: NavItem[] = [
       { href: "/", label: "Home", requiresAuth: true },
       { href: "/visits", label: "Visits", requiresAuth: true },
       { href: "/my-work", label: "My Lodge Workings", requiresAuth: true },
@@ -58,20 +61,32 @@ export default function AppHeader({ user }: AppHeaderProps) {
         requiresApproval: true,
       },
       { href: "/reports", label: "Reports", requiresAuth: true },
-      {
+    ];
+
+    if (isAdmin) {
+      items.push({
         href: "/admin/users",
         label: "Admin",
         requiresAuth: true,
         requiresAdmin: true,
-      },
-      { href: "/login", label: "Sign in", hideWhenAuthed: true },
-    ],
-    [],
-  );
+      });
+    } else if (isSuperintendent) {
+      items.push({
+        href: "/admin/users",
+        label: "Approvals",
+        requiresAuth: true,
+        requiresSuperintendent: true,
+      });
+    }
+
+    items.push({ href: "/login", label: "Sign in", hideWhenAuthed: true });
+    return items;
+  }, [isAdmin, isSuperintendent]);
 
   const visibleLinks = navLinks.filter((link) => {
     if (link.requiresAdmin && !isAdmin) return false;
-    if (link.requiresApproval && !isApproved && !isAdmin) return false;
+    if (link.requiresSuperintendent && !isSuperintendent) return false;
+    if (link.requiresApproval && !isApproved && !isApprover) return false;
     if (link.requiresAuth && !isAuthed) return false;
     if (link.hideWhenAuthed && isAuthed) return false;
     if (!link.requiresAuth && !link.hideWhenAuthed) return true;
