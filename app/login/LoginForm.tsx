@@ -4,6 +4,8 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import GoogleSignInButton from "@/components/GoogleSignInButton";
+
 function getRedirect(): string {
   if (typeof window === "undefined") return "/";
   try {
@@ -102,14 +104,12 @@ export default function LoginForm({ googleEnabled }: LoginFormProps) {
         <div className="card-body space-y-5">
           {googleEnabled ? (
             <div className="space-y-3">
-              <button
-                type="button"
-                className="btn-soft w-full flex items-center justify-center gap-2"
+              <GoogleSignInButton
                 onClick={startGoogle}
-                disabled={oauthBusy}
-              >
-                {oauthBusy ? "Connecting to Google…" : "Sign in with Google"}
-              </button>
+                busy={oauthBusy}
+                busyLabel="Connecting to Google…"
+                label="Sign in with Google"
+              />
               <div className="relative text-center">
                 <span className="bg-white px-2 text-sm text-slate-500">or sign in with email</span>
                 <div className="absolute inset-x-0 top-1/2 -z-10 h-px -translate-y-1/2 bg-slate-200" aria-hidden />

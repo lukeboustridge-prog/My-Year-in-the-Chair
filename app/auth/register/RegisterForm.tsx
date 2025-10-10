@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import GoogleSignInButton from "@/components/GoogleSignInButton";
 import { REGIONS } from "@/lib/regions";
 
 interface RegisterFormProps {
@@ -77,14 +78,12 @@ export default function RegisterForm({ googleEnabled }: RegisterFormProps) {
         <div className="card-body space-y-5">
           {googleEnabled ? (
             <div className="space-y-3">
-              <button
-                type="button"
-                className="btn-soft w-full flex items-center justify-center gap-2"
+              <GoogleSignInButton
                 onClick={startGoogle}
-                disabled={oauthBusy}
-              >
-                {oauthBusy ? "Connecting to Google…" : "Continue with Google"}
-              </button>
+                busy={oauthBusy}
+                busyLabel="Connecting to Google…"
+                label="Continue with Google"
+              />
               <div className="relative text-center">
                 <span className="bg-white px-2 text-sm text-slate-500">or create an account with email</span>
                 <div className="absolute inset-x-0 top-1/2 -z-10 h-px -translate-y-1/2 bg-slate-200" aria-hidden />
