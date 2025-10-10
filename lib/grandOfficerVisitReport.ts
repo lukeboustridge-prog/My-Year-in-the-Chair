@@ -60,7 +60,7 @@ function formatOfficerLine(officer: OfficerDetails) {
   const nameParts = [officer.prefix, officer.fullName, postNominalText]
     .filter(Boolean)
     .join(" ");
-  return officer.rank ? `${nameParts} ${officer.rank}`.trim() : nameParts;
+  return nameParts;
 }
 
 function formatLodge(record: GrandOfficerVisitRecord) {
@@ -86,16 +86,14 @@ export async function downloadGrandOfficerVisitReportPdf(data: GrandOfficerVisit
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.text("Grand Lodge", 48, 56);
-  doc.setFontSize(16);
-  doc.text("Grand Lodge Visits Report", 48, 78);
+  doc.text("Grand Lodge Visits Report", 48, 56);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
-  doc.text(`Officer: ${officerLine}`, 48, 102);
-  doc.text(`Office held: ${data.officer.rank ?? "Not specified"}`, 48, 118);
-  doc.text(`Term period: ${formatPeriod(data.reportingPeriod)}`, 48, 134);
-  doc.text(`Date generated: ${formatDate(generatedAt)}`, 48, 150);
+  doc.text(`Officer: ${officerLine}`, 48, 90);
+  doc.text(`Office held: ${data.officer.rank ?? "Not specified"}`, 48, 106);
+  doc.text(`Term period: ${formatPeriod(data.reportingPeriod)}`, 48, 122);
+  doc.text(`Date generated: ${formatDate(generatedAt)}`, 48, 138);
 
   const officialVisits = data.visits.filter((visit) => visit.isGrandLodgeVisit);
   const totalVisits = officialVisits.length;
