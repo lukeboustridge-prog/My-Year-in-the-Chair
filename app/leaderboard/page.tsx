@@ -175,7 +175,7 @@ export default async function LeaderboardPage({
 
   const requestedScope = searchParams?.scope === "region" ? "region" : "national";
   const scope = viewer.region ? requestedScope : "national";
-  const regionFilter = scope === "region" ? viewer.region : undefined;
+  const regionFilter = scope === "region" ? viewer.region ?? undefined : undefined;
 
   const filterLabel = scope === "region" ? viewer.region ?? "My Region" : "National";
 
