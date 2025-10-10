@@ -13,7 +13,7 @@ type NavItem = {
   requiresAuth?: boolean;
   requiresApproval?: boolean;
   requiresAdmin?: boolean;
-  requiresSuperintendent?: boolean;
+  requiresDistrictApprover?: boolean;
   hideWhenAuthed?: boolean;
 };
 
@@ -41,8 +41,8 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const isAuthed = Boolean(user);
   const isApproved = Boolean(user?.isApproved);
   const isAdmin = user?.role === "ADMIN";
-  const isSuperintendent = user?.role === "GRAND_SUPERINTENDENT";
-  const isApprover = isAdmin || isSuperintendent;
+  const isDistrictApprover = user?.role === "DISTRICT";
+  const isApprover = isAdmin || isDistrictApprover;
   const onLoginPage = pathname === "/login";
 
   useEffect(() => {
@@ -70,22 +70,22 @@ export default function AppHeader({ user }: AppHeaderProps) {
         requiresAuth: true,
         requiresAdmin: true,
       });
-    } else if (isSuperintendent) {
+    } else if (isDistrictApprover) {
       items.push({
         href: "/admin/users",
         label: "Approvals",
         requiresAuth: true,
-        requiresSuperintendent: true,
+        requiresDistrictApprover: true,
       });
     }
 
     items.push({ href: "/login", label: "Sign in", hideWhenAuthed: true });
     return items;
-  }, [isAdmin, isSuperintendent]);
+  }, [isAdmin, isDistrictApprover]);
 
   const visibleLinks = navLinks.filter((link) => {
     if (link.requiresAdmin && !isAdmin) return false;
-    if (link.requiresSuperintendent && !isSuperintendent) return false;
+    if (link.requiresDistrictApprover && !isDistrictApprover) return false;
     if (link.requiresApproval && !isApproved && !isApprover) return false;
     if (link.requiresAuth && !isAuthed) return false;
     if (link.hideWhenAuthed && isAuthed) return false;

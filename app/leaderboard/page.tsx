@@ -149,7 +149,7 @@ export default async function LeaderboardPage() {
   const rollingYearStart = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const isApprover = viewer.role === "ADMIN" || viewer.role === "GRAND_SUPERINTENDENT";
+  const isApprover = viewer.role === "ADMIN" || viewer.role === "DISTRICT";
 
   if (!viewer.isApproved && !isApprover) {
     return (

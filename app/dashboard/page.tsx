@@ -181,10 +181,10 @@ export default async function DashboardPage() {
   let rollingYearRank: RankSummary | null = null;
   let rollingMonthRank: RankSummary | null = null;
   const isAdmin = user.role === "ADMIN";
-  const isSuperintendent = user.role === "GRAND_SUPERINTENDENT";
+  const isDistrictApprover = user.role === "DISTRICT";
   const isApproved = Boolean(user.isApproved);
 
-  if (isApproved || isAdmin || isSuperintendent) {
+  if (isApproved || isAdmin || isDistrictApprover) {
     [rollingYearRank, rollingMonthRank] = await Promise.all([
       getUserRank(uid, new Date(yearAgo)),
       getUserRank(uid, startOfMonth),
@@ -226,7 +226,7 @@ export default async function DashboardPage() {
         <section className="card">
           <div className="card-body">
             <h2 className="text-lg font-semibold text-slate-900">My Leaderboard Ranking</h2>
-            {isApproved || isAdmin || isSuperintendent ? (
+            {isApproved || isAdmin || isDistrictApprover ? (
               <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <RankSummaryBlock label="Rolling 12 months" summary={rollingYearRank} />
                 <RankSummaryBlock label="This month" summary={rollingMonthRank} />

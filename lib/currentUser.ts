@@ -35,7 +35,7 @@ export async function getCurrentAdmin(): Promise<CurrentUser | null> {
 export async function getCurrentApprover(): Promise<CurrentUser | null> {
   const user = await getCurrentUser();
   if (!user) return null;
-  if (user.role === "ADMIN" || user.role === "GRAND_SUPERINTENDENT") {
+  if (user.role === "ADMIN" || user.role === "DISTRICT") {
     return user;
   }
   return null;

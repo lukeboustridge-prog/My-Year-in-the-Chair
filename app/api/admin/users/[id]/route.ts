@@ -35,7 +35,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return new NextResponse("Not found", { status: 404 });
   }
 
-  if (approver.role === "GRAND_SUPERINTENDENT") {
+  if (approver.role === "DISTRICT") {
     if (!approver.region) {
       return new NextResponse("Region not configured", { status: 400 });
     }
@@ -66,7 +66,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (typeof body.role !== "string") {
       return new NextResponse("Invalid role", { status: 400 });
     }
-    const allowedRoles = ["USER", "ADMIN", "GRAND_SUPERINTENDENT"];
+    const allowedRoles = ["USER", "ADMIN", "DISTRICT"];
     if (!allowedRoles.includes(body.role)) {
       return new NextResponse("Invalid role", { status: 400 });
     }

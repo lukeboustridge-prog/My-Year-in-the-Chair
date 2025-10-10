@@ -31,12 +31,12 @@ function formatDate(iso: string) {
 const ROLE_LABELS: Record<string, string> = {
   USER: "Member",
   ADMIN: "Administrator",
-  GRAND_SUPERINTENDENT: "Grand Superintendent",
+  DISTRICT: "District user",
 };
 
 const ROLE_OPTIONS = [
   { value: "USER", label: ROLE_LABELS.USER },
-  { value: "GRAND_SUPERINTENDENT", label: ROLE_LABELS.GRAND_SUPERINTENDENT },
+  { value: "DISTRICT", label: ROLE_LABELS.DISTRICT },
   { value: "ADMIN", label: ROLE_LABELS.ADMIN },
 ];
 
@@ -45,7 +45,7 @@ export default function UserManagement({ initialUsers, viewerRole, viewerRegion 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const isAdmin = viewerRole === "ADMIN";
-  const approvalsDisabled = viewerRole === "GRAND_SUPERINTENDENT" && !viewerRegion;
+  const approvalsDisabled = viewerRole === "DISTRICT" && !viewerRegion;
 
   const mutateUser = async (userId: string, payload: Partial<Pick<UserRow, "isApproved" | "role">>) => {
     setBusyId(userId);
@@ -88,7 +88,7 @@ export default function UserManagement({ initialUsers, viewerRole, viewerRegion 
           <h2 className="text-lg font-semibold">Registered users</h2>
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
         </div>
-        {viewerRole === "GRAND_SUPERINTENDENT" && !viewerRegion ? (
+        {viewerRole === "DISTRICT" && !viewerRegion ? (
           <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             Your account does not have a district assigned yet. Please contact an administrator to set your
             region before approving members.

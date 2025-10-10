@@ -75,7 +75,7 @@ export default async function Page() {
     redirect(`/login?redirect=${encodeURIComponent("/leaderboard/month")}`);
   }
 
-  const isApprover = viewer.role === "ADMIN" || viewer.role === "GRAND_SUPERINTENDENT";
+  const isApprover = viewer.role === "ADMIN" || viewer.role === "DISTRICT";
 
   if (!viewer.isApproved && !isApprover) {
     return (

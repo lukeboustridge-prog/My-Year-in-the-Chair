@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { notifyApproversOfPendingUser } from "@/lib/notifications";
 import { z } from "zod";
 import { hash } from "bcryptjs";
 import { NextResponse } from "next/server";
@@ -8,6 +9,7 @@ const schema = z.object({
   name: z.string().trim().max(100).optional(),
   email: z.string().email(),
   password: z.string().min(6),
+  region: z.string().trim().max(100).optional(),
 });
 
 export async function POST(req: Request) {
@@ -21,6 +23,7 @@ export async function POST(req: Request) {
     const name = parsed.data.name?.trim() || null;
     const email = parsed.data.email.toLowerCase();
     const password = parsed.data.password;
+    const region = parsed.data.region?.trim() || null;
 
     const existing = await db.user.findUnique({ where: { email } });
     if (existing) {
@@ -29,7 +32,16 @@ export async function POST(req: Request) {
 
     const passwordHash = await hash(password, 10);
     const user = await db.user.create({
-      data: { email, name, passwordHash, role: "USER" },
+      data: { email, name, passwordHash, role: "USER", region },
+    });
+
+    await notifyApproversOfPendingUser({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      region: user.region,
+    }).catch((error) => {
+      console.error("notifyApproversOfPendingUser", error);
     });
 
     const token = signSession({ userId: user.id, email: user.email });

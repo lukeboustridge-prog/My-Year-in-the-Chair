@@ -9,6 +9,7 @@ export default function RegisterPage() {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirm, setConfirm] = React.useState("");
+  const [region, setRegion] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -26,7 +27,12 @@ export default function RegisterPage() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password })
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          region: region ? region : undefined,
+        })
       });
 
       if (!res.ok) {
@@ -78,6 +84,24 @@ export default function RegisterPage() {
               />
             </label>
             <label className="label">
+              <span>Region (optional)</span>
+              <select
+                className="input mt-1"
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+              >
+                <option value="">Select a region</option>
+                {Array.from({ length: 9 }).map((_, index) => {
+                  const option = `Region ${index + 1}`;
+                  return (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+            <label className="label">
               <span>Password</span>
               <input
                 className="input mt-1"
@@ -90,7 +114,7 @@ export default function RegisterPage() {
                 placeholder="••••••••"
               />
             </label>
-            <label className="label">
+            <label className="label sm:col-span-2">
               <span>Confirm password</span>
               <input
                 className="input mt-1"
