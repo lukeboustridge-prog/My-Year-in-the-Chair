@@ -4,6 +4,8 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+const GOOGLE_AUTH_ENABLED = Boolean(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
+
 function getRedirect(): string {
   if (typeof window === 'undefined') return '/';
   try {
@@ -21,6 +23,7 @@ export default function LoginPage() {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [signingOut, setSigningOut] = React.useState(false);
+  const [oauthBusy, setOauthBusy] = React.useState(false);
 
   React.useEffect(() => {
     try {
@@ -72,6 +75,18 @@ export default function LoginPage() {
     }
   }
 
+  const startGoogle = React.useCallback(() => {
+    if (!GOOGLE_AUTH_ENABLED || oauthBusy) return;
+    setOauthBusy(true);
+    try {
+      const redirect = getRedirect();
+      const target = `/api/auth/google?redirect=${encodeURIComponent(redirect)}`;
+      window.location.href = target;
+    } catch {
+      window.location.href = `/api/auth/google`;
+    }
+  }, [oauthBusy]);
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 sm:px-0">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -81,27 +96,45 @@ export default function LoginPage() {
         </button>
       </div>
       <div className="card">
-        <form className="card-body space-y-5" onSubmit={onSubmit}>
-          {error && <div className="rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <label className="label">
-              <span>Email</span>
-              <input className="input mt-1" type="email" value={email} onChange={e=>setEmail(e.target.value)} required autoComplete="email" placeholder="you@example.org" />
-            </label>
+        <div className="card-body space-y-5">
+          {GOOGLE_AUTH_ENABLED ? (
+            <div className="space-y-3">
+              <button
+                type="button"
+                className="btn-soft w-full flex items-center justify-center gap-2"
+                onClick={startGoogle}
+                disabled={oauthBusy}
+              >
+                {oauthBusy ? 'Connecting to Google…' : 'Sign in with Google'}
+              </button>
+              <div className="relative text-center">
+                <span className="bg-white px-2 text-sm text-slate-500">or sign in with email</span>
+                <div className="absolute inset-x-0 top-1/2 -z-10 h-px -translate-y-1/2 bg-slate-200" aria-hidden />
+              </div>
+            </div>
+          ) : null}
+          <form className="space-y-5" onSubmit={onSubmit}>
+            {error && <div className="rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">{error}</div>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label className="label">
+                <span>Email</span>
+                <input className="input mt-1" type="email" value={email} onChange={e=>setEmail(e.target.value)} required autoComplete="email" placeholder="you@example.org" />
+              </label>
             <label className="label">
               <span>Password</span>
               <input className="input mt-1" type="password" value={password} onChange={e=>setPassword(e.target.value)} required autoComplete="current-password" placeholder="••••••••" />
             </label>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-            <button className="btn-primary w-full sm:w-auto" disabled={busy}>
-              {busy ? 'Signing in…' : 'Sign in'}
-            </button>
-            <Link href="/auth/register" className="btn-soft w-full text-center sm:w-auto">
-              Create account
-            </Link>
-          </div>
-        </form>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+              <button className="btn-primary w-full sm:w-auto" disabled={busy}>
+                {busy ? 'Signing in…' : 'Sign in'}
+              </button>
+              <Link href="/auth/register" className="btn-soft w-full text-center sm:w-auto">
+                Create account
+              </Link>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

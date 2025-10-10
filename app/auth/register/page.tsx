@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 
 import { REGIONS } from "@/lib/regions";
 
+const GOOGLE_AUTH_ENABLED = Boolean(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
+
 export default function RegisterPage() {
   const router = useRouter();
   const [name, setName] = React.useState("");
@@ -14,6 +16,7 @@ export default function RegisterPage() {
   const [region, setRegion] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [oauthBusy, setOauthBusy] = React.useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +54,16 @@ export default function RegisterPage() {
     }
   };
 
+  const startGoogle = React.useCallback(() => {
+    if (!GOOGLE_AUTH_ENABLED || oauthBusy) return;
+    setOauthBusy(true);
+    try {
+      window.location.href = `/api/auth/google?redirect=${encodeURIComponent("/dashboard")}`;
+    } catch {
+      window.location.href = `/api/auth/google`;
+    }
+  }, [oauthBusy]);
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 sm:px-0">
       <div>
@@ -58,7 +71,24 @@ export default function RegisterPage() {
         <p className="subtle mt-1">Start tracking your visits with a new account.</p>
       </div>
       <div className="card">
-        <form onSubmit={submit} className="card-body space-y-5">
+        <div className="card-body space-y-5">
+          {GOOGLE_AUTH_ENABLED ? (
+            <div className="space-y-3">
+              <button
+                type="button"
+                className="btn-soft w-full flex items-center justify-center gap-2"
+                onClick={startGoogle}
+                disabled={oauthBusy}
+              >
+                {oauthBusy ? "Connecting to Google…" : "Continue with Google"}
+              </button>
+              <div className="relative text-center">
+                <span className="bg-white px-2 text-sm text-slate-500">or create an account with email</span>
+                <div className="absolute inset-x-0 top-1/2 -z-10 h-px -translate-y-1/2 bg-slate-200" aria-hidden />
+              </div>
+            </div>
+          ) : null}
+          <form onSubmit={submit} className="space-y-5">
           {error ? (
             <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
           ) : null}
@@ -135,7 +165,8 @@ export default function RegisterPage() {
               Back to sign in
             </Link>
           </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );
