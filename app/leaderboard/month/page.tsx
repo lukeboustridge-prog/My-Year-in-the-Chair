@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
 
+import PendingApprovalNotice from "@/components/PendingApprovalNotice";
 import { getUserId } from "@/lib/auth";
 import {
   fetchUsersById,
@@ -38,7 +39,7 @@ async function loadMonthlyLeaderboards(monthCount: number): Promise<MonthSummary
     periods.map((period) =>
       db.visit.groupBy({
         by: ["userId"],
-        where: { date: { gte: period.start, lt: period.end } },
+        where: { date: { gte: period.start, lt: period.end }, user: { isApproved: true } },
         _count: { _all: true },
         orderBy: { _count: { userId: "desc" } },
         take: 10,
@@ -63,6 +64,29 @@ export default async function Page() {
   const uid = getUserId();
   if (!uid) {
     redirect(`/login?redirect=${encodeURIComponent("/leaderboard/month")}`);
+  }
+
+  const viewer = await db.user.findUnique({
+    where: { id: uid },
+    select: { isApproved: true, role: true },
+  });
+
+  if (!viewer) {
+    redirect(`/login?redirect=${encodeURIComponent("/leaderboard/month")}`);
+  }
+
+  if (!viewer.isApproved && viewer.role !== "ADMIN") {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="h1">Monthly leaderboard</h1>
+            <p className="subtle">Track how each month is shaping up across the Districts.</p>
+          </div>
+        </div>
+        <PendingApprovalNotice />
+      </div>
+    );
   }
 
   const months = await loadMonthlyLeaderboards(12);

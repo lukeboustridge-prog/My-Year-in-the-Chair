@@ -42,6 +42,7 @@ model User {
   myWorks       MyWork[]
   awards        Award[]
   role          String   @default("USER")
+  isApproved    Boolean  @default(false)
 
   // Legacy columns (ignored for backward compatibility to avoid data loss)
   grandRank           String?   @ignore

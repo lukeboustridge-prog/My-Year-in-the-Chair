@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { getUserId } from "@/lib/auth";
 import { db } from "@/lib/db";
+import PendingApprovalNotice from "@/components/PendingApprovalNotice";
 import {
   fetchUsersById,
   formatDisplayName,
@@ -20,7 +21,7 @@ type LeaderboardEntry = {
 async function getVisitLeaderboard(since: Date, limit = 10): Promise<LeaderboardEntry[]> {
   const grouped = await db.visit.groupBy({
     by: ["userId"],
-    where: { date: { gte: since } },
+    where: { date: { gte: since }, user: { isApproved: true } },
     _count: { _all: true },
     orderBy: { _count: { userId: "desc" } },
     take: limit,
@@ -135,9 +136,32 @@ export default async function LeaderboardPage() {
     redirect("/login?redirect=/leaderboard");
   }
 
+  const viewer = await db.user.findUnique({
+    where: { id: uid },
+    select: { isApproved: true, role: true },
+  });
+
+  if (!viewer) {
+    redirect("/login?redirect=/leaderboard");
+  }
+
   const now = new Date();
   const rollingYearStart = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  if (!viewer.isApproved && viewer.role !== "ADMIN") {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="h1">Leaderboard</h1>
+            <p className="subtle">Celebrating the busiest Masters in the Districts.</p>
+          </div>
+        </div>
+        <PendingApprovalNotice />
+      </div>
+    );
+  }
 
   const [rollingYear, rollingMonth] = await Promise.all([
     getVisitLeaderboard(rollingYearStart),

@@ -39,7 +39,7 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
 async function getUserRank(userId: string, since: Date): Promise<RankSummary> {
   const grouped = await db.visit.groupBy({
     by: ["userId"],
-    where: { date: { gte: since } },
+    where: { date: { gte: since }, user: { isApproved: true } },
     _count: { _all: true },
     orderBy: { _count: { userId: "desc" } },
   });
@@ -126,6 +126,9 @@ export default async function DashboardPage() {
     redirect("/login");
   }
   const user = await db.user.findUnique({ where: { id: uid } });
+  if (!user) {
+    redirect("/login");
+  }
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -148,19 +151,7 @@ export default async function DashboardPage() {
     candidateName: string | null;
   };
 
-  let rollingYearRank: RankSummary | null = null;
-  let rollingMonthRank: RankSummary | null = null;
-  let recentVisits: VisitSummary[] = [];
-  let recentWorkings: WorkSummary[] = [];
-
-  [
-    rollingYearRank,
-    rollingMonthRank,
-    recentVisits,
-    recentWorkings,
-  ] = await Promise.all([
-    getUserRank(uid, new Date(yearAgo)),
-    getUserRank(uid, startOfMonth),
+  const [recentVisits, recentWorkings] = await Promise.all([
     db.visit.findMany({
       where: { userId: uid },
       orderBy: { date: "desc" },
@@ -186,6 +177,18 @@ export default async function DashboardPage() {
       },
     }),
   ]);
+
+  let rollingYearRank: RankSummary | null = null;
+  let rollingMonthRank: RankSummary | null = null;
+  const isAdmin = user.role === "ADMIN";
+  const isApproved = Boolean(user.isApproved);
+
+  if (isApproved || isAdmin) {
+    [rollingYearRank, rollingMonthRank] = await Promise.all([
+      getUserRank(uid, new Date(yearAgo)),
+      getUserRank(uid, startOfMonth),
+    ]);
+  }
 
   const welcomeName = user ? displayName(user) : null;
 
@@ -222,10 +225,17 @@ export default async function DashboardPage() {
       <section className="card">
         <div className="card-body">
           <h2 className="text-lg font-semibold text-slate-900">My Leaderboard Ranking</h2>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <RankSummaryBlock label="Rolling 12 months" summary={rollingYearRank} />
-            <RankSummaryBlock label="This month" summary={rollingMonthRank} />
-          </div>
+          {isApproved || isAdmin ? (
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <RankSummaryBlock label="Rolling 12 months" summary={rollingYearRank} />
+              <RankSummaryBlock label="This month" summary={rollingMonthRank} />
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-slate-600">
+              An administrator needs to approve your profile before leaderboard rankings are available. You can
+              keep logging visits and lodge workings while you wait.
+            </p>
+          )}
         </div>
       </section>
 

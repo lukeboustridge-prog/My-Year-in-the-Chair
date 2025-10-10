@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
 
+import PendingApprovalNotice from "@/components/PendingApprovalNotice";
 import { getUserId } from "@/lib/auth";
 import {
   fetchUsersById,
@@ -40,7 +41,7 @@ async function loadYearlyLeaderboards(yearCount: number): Promise<YearSummary[]>
     ranges.map((range) =>
       db.visit.groupBy({
         by: ["userId"],
-        where: { date: { gte: range.start, lt: range.end } },
+        where: { date: { gte: range.start, lt: range.end }, user: { isApproved: true } },
         _count: { _all: true },
         orderBy: { _count: { userId: "desc" } },
         take: 15,
@@ -65,6 +66,29 @@ export default async function Page() {
   const uid = getUserId();
   if (!uid) {
     redirect(`/login?redirect=${encodeURIComponent("/leaderboard/year")}`);
+  }
+
+  const viewer = await db.user.findUnique({
+    where: { id: uid },
+    select: { isApproved: true, role: true },
+  });
+
+  if (!viewer) {
+    redirect(`/login?redirect=${encodeURIComponent("/leaderboard/year")}`);
+  }
+
+  if (!viewer.isApproved && viewer.role !== "ADMIN") {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="h1">Yearly leaderboard</h1>
+            <p className="subtle">The long view of visiting excellence.</p>
+          </div>
+        </div>
+        <PendingApprovalNotice />
+      </div>
+    );
   }
 
   const years = await loadYearlyLeaderboards(5);
