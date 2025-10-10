@@ -42,6 +42,7 @@ model User {
   myWorks       MyWork[]
   awards        Award[]
   role          String   @default("USER")
+  isApproved    Boolean  @default(false)
 
   // Legacy columns (ignored for backward compatibility to avoid data loss)
   grandRank           String?   @ignore
@@ -56,6 +57,7 @@ model Visit {
   date          DateTime
   lodgeName     String?
   lodgeNumber        String?
+  regionName        String?
 
   workOfEvening      WorkType @default(OTHER)
   candidateName      String?
@@ -63,6 +65,7 @@ model Visit {
 
   isGrandLodgeVisit  Boolean  @default(false)
   hasTracingBoards   Boolean  @default(false)
+  grandMasterInAttendance Boolean @default(false)
   notes              String?
   createdAt     DateTime @default(now())
 }

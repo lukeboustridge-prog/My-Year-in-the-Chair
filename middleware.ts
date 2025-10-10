@@ -10,6 +10,7 @@ export function middleware(req: NextRequest) {
   if (PUBLIC.some(re => re.test(pathname))) return NextResponse.next();
 
   const authed =
+    req.cookies.has('myyitc_session') ||
     req.cookies.has('access_token') ||
     req.cookies.has('token') ||
     req.cookies.has('session');

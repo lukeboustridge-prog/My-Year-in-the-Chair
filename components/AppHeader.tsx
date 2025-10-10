@@ -1,35 +1,25 @@
 'use client';
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import type { CurrentUser } from "@/lib/currentUser";
+
 import SignOutButton from "./SignOutButton";
 
-function useAuthed() {
-  const [authed, setAuthed] = useState(false);
-  useEffect(() => {
-    try {
-      const ls = localStorage.getItem('access_token');
-      const ss = sessionStorage.getItem('access_token');
-      const cookieMatch = document.cookie.match(/(?:^|;\s*)(access_token|token|session)=/);
-      setAuthed(Boolean(ls || ss || cookieMatch));
-    } catch {
-      setAuthed(false);
-    }
-  }, []);
-  return authed;
-}
-
-function NavLink({
-  href,
-  label,
-  className,
-}: {
+type NavItem = {
   href: string;
   label: string;
-  className?: string;
-}) {
+  requiresAuth?: boolean;
+  requiresApproval?: boolean;
+  requiresAdmin?: boolean;
+  requiresDistrictApprover?: boolean;
+  hideWhenAuthed?: boolean;
+};
+
+function NavLink({ href, label, className }: { href: string; label: string; className?: string }) {
   const pathname = usePathname();
-  const active = pathname === href || (href !== '/' && pathname?.startsWith(href));
+  const active = pathname === href || (href !== "/" && pathname?.startsWith(href));
   const base = "inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors border shadow-sm";
   const activeCls = " bg-blue-600 text-white border-blue-600";
   const idleCls = " bg-white hover:bg-gray-50";
@@ -41,35 +31,75 @@ function NavLink({
   );
 }
 
-export default function AppHeader() {
+export type AppHeaderProps = {
+  user: CurrentUser | null;
+};
+
+export default function AppHeader({ user }: AppHeaderProps) {
   const pathname = usePathname();
-  const authed = useAuthed();
-  const onLoginPage = pathname === '/login';
-  const showSignOut = authed && !onLoginPage;
   const [menuOpen, setMenuOpen] = useState(false);
+  const isAuthed = Boolean(user);
+  const isApproved = Boolean(user?.isApproved);
+  const isAdmin = user?.role === "ADMIN";
+  const isDistrictApprover = user?.role === "DISTRICT";
+  const isApprover = isAdmin || isDistrictApprover;
+  const onLoginPage = pathname === "/login";
 
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
 
+  const navLinks = useMemo<NavItem[]>(() => {
+    const items: NavItem[] = [
+      { href: "/", label: "Home", requiresAuth: true },
+      { href: "/visits", label: "Visits", requiresAuth: true },
+      { href: "/my-work", label: "My Lodge Workings", requiresAuth: true },
+      {
+        href: "/leaderboard",
+        label: "Leaderboard",
+        requiresAuth: true,
+        requiresApproval: true,
+      },
+      { href: "/reports", label: "Reports", requiresAuth: true },
+    ];
+
+    if (isAdmin) {
+      items.push({
+        href: "/admin/users",
+        label: "Admin",
+        requiresAuth: true,
+        requiresAdmin: true,
+      });
+    } else if (isDistrictApprover) {
+      items.push({
+        href: "/admin/users",
+        label: "Approvals",
+        requiresAuth: true,
+        requiresDistrictApprover: true,
+      });
+    }
+
+    items.push({ href: "/login", label: "Sign in", hideWhenAuthed: true });
+    return items;
+  }, [isAdmin, isDistrictApprover]);
+
+  const visibleLinks = navLinks.filter((link) => {
+    if (link.requiresAdmin && !isAdmin) return false;
+    if (link.requiresDistrictApprover && !isDistrictApprover) return false;
+    if (link.requiresApproval && !isApproved && !isApprover) return false;
+    if (link.requiresAuth && !isAuthed) return false;
+    if (link.hideWhenAuthed && isAuthed) return false;
+    if (!link.requiresAuth && !link.hideWhenAuthed) return true;
+    if (link.requiresAuth && isAuthed) return true;
+    return !link.requiresAuth && !isAuthed;
+  });
+
   const toggleMenu = () => setMenuOpen((prev) => !prev);
 
-  const navLinks = [
-    { href: '/', label: 'Home' },
-    { href: '/visits', label: 'Visits' },
-    { href: '/my-work', label: 'My Lodge Workings' },
-    { href: '/leaderboard', label: 'Leaderboard' },
-    { href: '/reports', label: 'Reports' },
-    { href: '/login', label: 'Sign in' },
-  ];
-  const visibleLinks = authed
-    ? navLinks.filter((link) => link.href !== '/login')
-    : navLinks;
-
   return (
-    <header className="w-full border-b bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 sticky top-0 z-40">
-      <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-3">
-        <Link href="/" className="flex items-center gap-2 font-semibold text-base sm:text-lg">
+    <header className="sticky top-0 z-40 w-full border-b bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+        <Link href="/" className="flex items-center gap-2 text-base font-semibold sm:text-lg">
           <img
             src="https://freemasonsnz.org/wp-content/uploads/2024/05/TransparentBlueCompass.png"
             alt="Freemasons New Zealand"
@@ -94,26 +124,21 @@ export default function AppHeader() {
           {visibleLinks.map((link) => (
             <NavLink key={link.href} href={link.href} label={link.label} />
           ))}
-          {showSignOut && <SignOutButton />}
+          {isAuthed && !onLoginPage ? <SignOutButton /> : null}
         </nav>
       </div>
       <div
         id="app-header-menu"
         className={`lg:hidden border-t border-slate-200 bg-white transition-[max-height] duration-200 ease-out ${
-          menuOpen ? 'max-h-96' : 'max-h-0 overflow-hidden'
+          menuOpen ? "max-h-96" : "max-h-0 overflow-hidden"
         }`}
       >
         <div className="mx-auto max-w-6xl px-4 py-3">
           <div className="flex flex-col gap-2">
             {visibleLinks.map((link) => (
-              <NavLink
-                key={link.href}
-                href={link.href}
-                label={link.label}
-                className="w-full justify-center"
-              />
+              <NavLink key={link.href} href={link.href} label={link.label} className="w-full justify-center" />
             ))}
-            {showSignOut ? <SignOutButton className="w-full justify-center" /> : null}
+            {isAuthed && !onLoginPage ? <SignOutButton className="w-full justify-center" /> : null}
           </div>
         </div>
       </div>
