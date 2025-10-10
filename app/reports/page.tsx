@@ -484,8 +484,11 @@ export default function ReportsPage() {
       ];
 
       const reportData: GrandSuperintendentReportData = {
-        lodge: { name: profile.lodgeName, number: profile.lodgeNumber },
-        regionName: profile.region,
+        lodge: {
+          name: profile.lodgeName ?? "",
+          number: profile.lodgeNumber ?? "",
+        },
+        regionName: profile.region ?? "",
         reportingPeriod: {
           from: resolvedStart.toISOString(),
           to: resolvedEnd.toISOString(),
