@@ -431,6 +431,12 @@ export default function MyFreemasonryPage() {
   }, [canFlagSittingMaster, form.isSittingMaster]);
 
   useEffect(() => {
+    if (!RANK_META[form.rank]?.grand && form.isPastGrand) {
+      setForm((previous) => ({ ...previous, isPastGrand: false }));
+    }
+  }, [form.rank, form.isPastGrand]);
+
+  useEffect(() => {
     if (form.rank === "Worshipful Master" && form.currentCraftOffice) {
       setForm((previous) => ({ ...previous, currentCraftOffice: "" }));
     }
@@ -783,23 +789,25 @@ export default function MyFreemasonryPage() {
               </select>
             </label>
 
-            <div className="stat md:col-span-2">
-              <span className="label">Past Grand Rank</span>
-              <label className="card flex items-center gap-3" style={{ padding: ".6rem" }}>
-                <input
-                  type="checkbox"
-                  checked={form.isPastGrand}
-                  disabled={disableInputs}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      isPastGrand: event.target.checked,
-                    }))
-                  }
-                />
-                <span className="muted">Show as Past Grand Rank</span>
-              </label>
-            </div>
+            {RANK_META[form.rank]?.grand ? (
+              <div className="stat md:col-span-2">
+                <span className="label">Past Grand Rank</span>
+                <label className="card flex items-center gap-3" style={{ padding: ".6rem" }}>
+                  <input
+                    type="checkbox"
+                    checked={form.isPastGrand}
+                    disabled={disableInputs}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        isPastGrand: event.target.checked,
+                      }))
+                    }
+                  />
+                  <span className="muted">Show as Past Grand Rank</span>
+                </label>
+              </div>
+            ) : null}
 
             {form.rank !== "Worshipful Master" ? (
               <label className="stat md:col-span-2">
