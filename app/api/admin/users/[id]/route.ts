@@ -66,7 +66,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (typeof body.role !== "string") {
       return new NextResponse("Invalid role", { status: 400 });
     }
-    const allowedRoles = ["USER", "ADMIN", "DISTRICT"];
+    const allowedRoles = ["USER", "MASTER_SECRETARY", "ADMIN", "DISTRICT"];
     if (!allowedRoles.includes(body.role)) {
       return new NextResponse("Invalid role", { status: 400 });
     }

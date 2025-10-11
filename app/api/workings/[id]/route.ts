@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getUserId } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { canManageEventVisibility } from "@/lib/permissions";
 
 const updateSchema = z.object({
   displayOnEventsPage: z.boolean().optional(),
@@ -27,6 +28,14 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     parsedBody = parsed.data;
   } catch {
     return new NextResponse("Invalid input", { status: 400 });
+  }
+
+  const user = await db.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (!user) return new NextResponse("Unauthorized", { status: 401 });
+  const canManage = canManageEventVisibility(user.role);
+
+  if (parsedBody.displayOnEventsPage !== undefined && !canManage) {
+    return new NextResponse("Forbidden", { status: 403 });
   }
 
   try {

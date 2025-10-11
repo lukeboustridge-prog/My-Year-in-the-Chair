@@ -41,6 +41,7 @@ type Item = {
 
 export default function WorkingsPage() {
   const [items, setItems] = useState<Item[]>([]);
+  const [canManageEvents, setCanManageEvents] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [month, setMonth] = useState<number>(new Date().getMonth() + 1);
   const [year, setYear] = useState<number>(new Date().getFullYear());
@@ -61,7 +62,16 @@ export default function WorkingsPage() {
       const res = await fetch("/api/workings", { credentials: "include" });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      const normalised: Item[] = (Array.isArray(data) ? data : []).map((row: any) => ({
+      const payload =
+        data && typeof data === "object" && !Array.isArray(data)
+          ? (data as { items?: unknown; permissions?: { canManageEvents?: unknown } })
+          : { items: Array.isArray(data) ? data : [] };
+
+      const rawItems = Array.isArray(payload.items) ? payload.items : [];
+      const canManage = payload.permissions?.canManageEvents === true;
+      setCanManageEvents(Boolean(canManage));
+
+      const normalised: Item[] = rawItems.map((row: any) => ({
         id: row.id,
         month: row.month,
         year: row.year,
@@ -88,6 +98,7 @@ export default function WorkingsPage() {
       console.error("WORKINGS_LOAD", err);
       setError(err?.message || "Failed to load lodge workings");
       setItems([]);
+      setCanManageEvents(false);
     }
   }
 
@@ -116,7 +127,7 @@ export default function WorkingsPage() {
           hasThirdTracingBoard,
           hasTracingBoards:
             hasFirstTracingBoard || hasSecondTracingBoard || hasThirdTracingBoard || undefined,
-          displayOnEventsPage,
+          displayOnEventsPage: canManageEvents ? displayOnEventsPage : undefined,
         }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -138,6 +149,9 @@ export default function WorkingsPage() {
   }
 
   async function updateDisplay(id: string, nextValue: boolean) {
+    if (!canManageEvents) {
+      return;
+    }
     setUpdatingId(id);
     try {
       const res = await fetch(`/api/workings/${id}`, {
@@ -198,15 +212,23 @@ export default function WorkingsPage() {
           </div>
           {i.notes ? <p className="text-sm text-slate-600">{i.notes}</p> : null}
           <div className="flex flex-col gap-2 text-xs text-slate-600">
-            <span className="font-medium">RSVPs: {i.rsvpCount ?? 0}</span>
-            <button
-              type="button"
-              onClick={() => updateDisplay(i.id, !isVisible)}
-              className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isUpdating}
-            >
-              {isUpdating ? "Updating..." : isVisible ? "Hide from events" : "Show on events"}
-            </button>
+            <span className="inline-flex w-fit items-center rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">
+              RSVPs: {i.rsvpCount ?? 0}
+            </span>
+            {canManageEvents ? (
+              <button
+                type="button"
+                onClick={() => updateDisplay(i.id, !isVisible)}
+                className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isUpdating}
+              >
+                {isUpdating ? "Updating..." : isVisible ? "Hide from events" : "Show on events"}
+              </button>
+            ) : (
+              <span className="text-xs text-slate-500">
+                Event visibility is managed by your Master or Secretary.
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -326,18 +348,26 @@ export default function WorkingsPage() {
               3rd tracing board
             </label>
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="h-4 w-4"
-              checked={displayOnEventsPage}
-              onChange={(event) => setDisplayOnEventsPage(event.target.checked)}
-            />
-            Display on events page
-          </label>
-          <p className="text-xs text-slate-500">
-            Tick to promote this working on the shared Upcoming Events page.
-          </p>
+          {canManageEvents ? (
+            <>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={displayOnEventsPage}
+                  onChange={(event) => setDisplayOnEventsPage(event.target.checked)}
+                />
+                Display on events page
+              </label>
+              <p className="text-xs text-slate-500">
+                Tick to promote this working on the shared Upcoming Events page.
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-slate-500">
+              Ask a Master / Secretary for your lodge to promote workings on the Upcoming Events page.
+            </p>
+          )}
           <button className="btn-primary w-full sm:w-auto sm:self-start" disabled={loading}>
             {loading ? "Saving..." : "Add plan"}
           </button>
@@ -360,7 +390,7 @@ export default function WorkingsPage() {
                   <th>3rd TB</th>
                   <th>Notes</th>
                   <th>RSVPs</th>
-                  <th>Events</th>
+                  {canManageEvents ? <th>Events</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -381,25 +411,30 @@ export default function WorkingsPage() {
                     <td>{i.hasThirdTracingBoard ? "Yes" : "No"}</td>
                     <td>{i.notes ?? ""}</td>
                     <td>{i.rsvpCount ?? 0}</td>
-                    <td>
-                      <button
-                        type="button"
-                        onClick={() => updateDisplay(i.id, !i.displayOnEventsPage)}
-                        disabled={updatingId === i.id}
-                        className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {updatingId === i.id
-                          ? "Updating..."
-                          : i.displayOnEventsPage
-                          ? "Visible"
-                          : "Hidden"}
-                      </button>
-                    </td>
+                    {canManageEvents ? (
+                      <td>
+                        <button
+                          type="button"
+                          onClick={() => updateDisplay(i.id, !i.displayOnEventsPage)}
+                          disabled={updatingId === i.id}
+                          className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {updatingId === i.id
+                            ? "Updating..."
+                            : i.displayOnEventsPage
+                            ? "Visible"
+                            : "Hidden"}
+                        </button>
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
                 {items.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="py-4 text-sm text-slate-500">
+                    <td
+                      colSpan={canManageEvents ? 11 : 10}
+                      className="py-4 text-sm text-slate-500"
+                    >
                       No plans yet.
                     </td>
                   </tr>

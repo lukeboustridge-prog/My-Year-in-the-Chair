@@ -30,12 +30,14 @@ function formatDate(iso: string) {
 
 const ROLE_LABELS: Record<string, string> = {
   USER: "Member",
+  MASTER_SECRETARY: "Master / Secretary",
   ADMIN: "Administrator",
   DISTRICT: "District user",
 };
 
 const ROLE_OPTIONS = [
   { value: "USER", label: ROLE_LABELS.USER },
+  { value: "MASTER_SECRETARY", label: ROLE_LABELS.MASTER_SECRETARY },
   { value: "DISTRICT", label: ROLE_LABELS.DISTRICT },
   { value: "ADMIN", label: ROLE_LABELS.ADMIN },
 ];
