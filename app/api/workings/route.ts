@@ -15,13 +15,23 @@ const schema = z.object({
   hasSecondTracingBoard: z.boolean().optional(),
   hasThirdTracingBoard: z.boolean().optional(),
   hasTracingBoards: z.boolean().optional(),
+  displayOnEventsPage: z.boolean().optional(),
 });
 
 export async function GET() {
   const userId = getUserId();
   if (!userId) return new NextResponse("Unauthorized", { status: 401 });
-  const items = await db.lodgeWork.findMany({ where: { userId }, orderBy: [{ year: "asc" }, { month: "asc" }] });
-  return NextResponse.json(items);
+  const items = await db.lodgeWork.findMany({
+    where: { userId },
+    orderBy: [{ year: "asc" }, { month: "asc" }],
+    include: { _count: { select: { rsvps: true } } },
+  });
+  return NextResponse.json(
+    items.map(({ _count, ...item }) => ({
+      ...item,
+      rsvpCount: _count.rsvps,
+    })),
+  );
 }
 
 export async function POST(req: Request) {
@@ -49,6 +59,7 @@ export async function POST(req: Request) {
           typeof d.hasTracingBoards === "boolean"
             ? d.hasTracingBoards
             : Boolean(d.hasFirstTracingBoard || d.hasSecondTracingBoard || d.hasThirdTracingBoard),
+        displayOnEventsPage: Boolean(d.displayOnEventsPage),
       },
     });
     return NextResponse.json(item, { status: 201 });

@@ -54,6 +54,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
     const items: NavItem[] = [
       { href: "/", label: "Home", requiresAuth: true },
       { href: "/visits", label: "Visits", requiresAuth: true },
+      { href: "/events", label: "Events", requiresAuth: true },
       { href: "/my-work", label: "My Lodge Workings", requiresAuth: true },
       { href: "/my-freemasonry", label: "My Freemasonry", requiresAuth: true },
       {
