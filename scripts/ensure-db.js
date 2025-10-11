@@ -10,7 +10,7 @@ if (!dbUrl) {
   process.exit(0);
 }
 
-const MAX_ATTEMPTS = 3;
+const MAX_ATTEMPTS = 5;
 
 const wait = (ms) => {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
@@ -18,7 +18,20 @@ const wait = (ms) => {
 
 const isTransientDbError = (errorOutput = "") => {
   const normalised = errorOutput.toLowerCase();
-  return normalised.includes("p1017") || normalised.includes("server has closed the connection");
+
+  if (normalised.includes("p1017") || normalised.includes("server has closed the connection")) {
+    return true;
+  }
+
+  if (normalised.includes("p1001") || normalised.includes("can't reach database")) {
+    return true;
+  }
+
+  if (normalised.includes("timeout")) {
+    return true;
+  }
+
+  return false;
 };
 
 for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
@@ -42,7 +55,9 @@ for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
 
     if (shouldRetry) {
       console.warn("⚠️  Transient database push failure detected:", combined);
-      wait(500 * attempt);
+      const delayMs = 1000 * attempt;
+      console.warn(`⏳ Waiting ${delayMs}ms before retrying...`);
+      wait(delayMs);
       continue;
     }
 
