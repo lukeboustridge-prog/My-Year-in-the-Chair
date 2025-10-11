@@ -23,9 +23,11 @@ type WorkingRecord = {
   comments?: string | null;
   isGrandLodgeVisit?: boolean;
   isEmergencyMeeting?: boolean;
+  hasTracingBoards?: boolean;
   hasFirstTracingBoard?: boolean;
   hasSecondTracingBoard?: boolean;
   hasThirdTracingBoard?: boolean;
+  grandMasterInAttendance?: boolean;
 };
 
 const emptyRecord: WorkingRecord = {
@@ -35,9 +37,11 @@ const emptyRecord: WorkingRecord = {
   comments: "",
   isGrandLodgeVisit: false,
   isEmergencyMeeting: false,
+  hasTracingBoards: false,
   hasFirstTracingBoard: false,
   hasSecondTracingBoard: false,
   hasThirdTracingBoard: false,
+  grandMasterInAttendance: false,
 };
 
 function formatWork(value: WorkingRecord["work"]): string {
@@ -59,6 +63,10 @@ function normaliseWorking(row: any, fallback?: WorkingRecord): WorkingRecord {
       typeof row?.isEmergencyMeeting === "boolean"
         ? row.isEmergencyMeeting
         : fallback?.isEmergencyMeeting ?? false,
+    hasTracingBoards:
+      typeof row?.hasTracingBoards === "boolean"
+        ? row.hasTracingBoards
+        : fallback?.hasTracingBoards ?? false,
     hasFirstTracingBoard:
       typeof row?.hasFirstTracingBoard === "boolean"
         ? row.hasFirstTracingBoard
@@ -71,6 +79,10 @@ function normaliseWorking(row: any, fallback?: WorkingRecord): WorkingRecord {
       typeof row?.hasThirdTracingBoard === "boolean"
         ? row.hasThirdTracingBoard
         : fallback?.hasThirdTracingBoard ?? false,
+    grandMasterInAttendance:
+      typeof row?.grandMasterInAttendance === "boolean"
+        ? row.grandMasterInAttendance
+        : fallback?.grandMasterInAttendance ?? false,
   };
 }
 
