@@ -217,7 +217,7 @@ export default async function DashboardPage() {
               ) : null}
             </div>
           </div>
-          <a className="btn-primary w-full sm:w-auto" href="/profile">
+          <a className="btn-primary w-full sm:w-auto" href="/my-freemasonry">
             Edit profile
           </a>
         </div>

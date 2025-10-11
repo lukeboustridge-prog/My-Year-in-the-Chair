@@ -54,6 +54,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
       { href: "/", label: "Home", requiresAuth: true },
       { href: "/visits", label: "Visits", requiresAuth: true },
       { href: "/my-work", label: "My Lodge Workings", requiresAuth: true },
+      { href: "/my-freemasonry", label: "My Freemasonry", requiresAuth: true },
       {
         href: "/leaderboard",
         label: "Leaderboard",

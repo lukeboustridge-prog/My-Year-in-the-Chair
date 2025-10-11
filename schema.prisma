@@ -37,6 +37,13 @@ model User {
   termStart     DateTime?
   termEnd       DateTime?
 
+  initiationDate        DateTime?
+  passingDate           DateTime?
+  raisingDate           DateTime?
+  craftOffices          Json      @default("[]")
+  grandOffices          Json      @default("[]")
+  achievementMilestones Json      @default("{}")
+
   points        Int      @default(0)
   visits        Visit[]
   works         LodgeWork[]
