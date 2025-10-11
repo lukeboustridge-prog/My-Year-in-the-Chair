@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getUserId } from "@/lib/auth";
 import { db } from "@/lib/db";
 import PendingApprovalNotice from "@/components/PendingApprovalNotice";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
 import {
   fetchUsersById,
   formatDisplayName,
@@ -85,7 +86,7 @@ async function getVisitLeaderboard(
   }));
 }
 
-function LeaderboardTable({ title, entries }: { title: string; entries: LeaderboardEntry[] }) {
+function LeaderboardTable({ entries }: { entries: LeaderboardEntry[] }) {
   const mobileEntries = entries.map((entry) => {
     const user = entry.user;
     const displayName = formatDisplayName(user);
@@ -107,6 +108,9 @@ function LeaderboardTable({ title, entries }: { title: string; entries: Leaderbo
           </div>
           <div className="text-right text-sm text-slate-600">
             {nameWithPostNominals}
+            {user?.currentCraftOffice ? (
+              <p className="text-xs text-slate-500">{user.currentCraftOffice}</p>
+            ) : null}
             <p className="text-xs text-slate-500">{formatLodge(user) || "—"}</p>
           </div>
         </div>
@@ -124,70 +128,70 @@ function LeaderboardTable({ title, entries }: { title: string; entries: Leaderbo
   });
 
   return (
-    <div className="card">
-      <div className="card-body space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold">{title}</h2>
-        </div>
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-slate-500">
-                <th className="py-2 pr-3">Rank</th>
-                <th className="py-2 pr-3">Name</th>
-                <th className="py-2 pr-3">Lodge</th>
-                <th className="py-2 pr-3">Points</th>
+    <div className="space-y-4">
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-slate-500">
+              <th className="py-2 pr-3">Rank</th>
+              <th className="py-2 pr-3">Name</th>
+              <th className="py-2 pr-3">Lodge</th>
+              <th className="py-2 pr-3">Points</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.length === 0 ? (
+              <tr className="border-t">
+                <td className="py-3 pr-3" colSpan={4}>
+                  <span className="subtle">No qualifying visits yet.</span>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {entries.length === 0 ? (
-                <tr className="border-t">
-                  <td className="py-3 pr-3" colSpan={4}>
-                    <span className="subtle">No qualifying visits yet.</span>
-                  </td>
-                </tr>
-              ) : (
-                entries.map((entry) => {
-                  const user = entry.user;
-                  const displayName = formatDisplayName(user);
-                  const postNominals = formatPostNominals(user);
-                  return (
-                    <tr key={user?.id ?? entry.rank} className="border-t">
-                      <td className="py-2 pr-3">{entry.rank}</td>
-                      <td className="py-2 pr-3">
-                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                          <span className="font-medium text-slate-900">{displayName}</span>
-                          {postNominals ? (
-                            <span className="font-medium text-slate-900">{postNominals}</span>
-                          ) : null}
-                        </div>
-                      </td>
-                      <td className="py-2 pr-3 text-sm">
-                        {formatLodge(user) || <span className="text-slate-400">—</span>}
-                      </td>
-                      <td className="py-2 pr-3">
-                        <div className="font-semibold text-slate-900">{formatPoints(entry.points)}</div>
-                        <div className="text-xs text-slate-500">
-                          Visits: {entry.visits}
-                          {entry.averageAccompanying
-                            ? ` · Brethren avg: ${formatAverage(entry.averageAccompanying)}`
-                            : ""}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="grid gap-3 md:hidden">
-          {entries.length === 0 ? (
-            <p className="text-sm text-slate-500">No qualifying visits yet.</p>
-          ) : (
-            mobileEntries
-          )}
-        </div>
+            ) : (
+              entries.map((entry) => {
+                const user = entry.user;
+                const displayName = formatDisplayName(user);
+                const postNominals = formatPostNominals(user);
+                return (
+                  <tr key={user?.id ?? entry.rank} className="border-t">
+                    <td className="py-2 pr-3">{entry.rank}</td>
+                    <td className="py-2 pr-3">
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                        <span className="font-medium text-slate-900">{displayName}</span>
+                        {postNominals ? (
+                          <span className="font-medium text-slate-900">{postNominals}</span>
+                        ) : null}
+                        {user?.currentCraftOffice ? (
+                          <span className="basis-full text-xs text-slate-500">
+                            {user.currentCraftOffice}
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="py-2 pr-3 text-sm">
+                      {formatLodge(user) || <span className="text-slate-400">—</span>}
+                    </td>
+                    <td className="py-2 pr-3">
+                      <div className="font-semibold text-slate-900">{formatPoints(entry.points)}</div>
+                      <div className="text-xs text-slate-500">
+                        Visits: {entry.visits}
+                        {entry.averageAccompanying
+                          ? ` · Brethren avg: ${formatAverage(entry.averageAccompanying)}`
+                          : ""}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+      <div className="grid gap-3 md:hidden">
+        {entries.length === 0 ? (
+          <p className="text-sm text-slate-500">No qualifying visits yet.</p>
+        ) : (
+          mobileEntries
+        )}
       </div>
     </div>
   );
@@ -316,8 +320,12 @@ export default async function LeaderboardPage({
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <LeaderboardTable title={`Rolling 12 months · ${scopedHeading}`} entries={rollingYear} />
-        <LeaderboardTable title={`This month · ${scopedHeading}`} entries={rollingMonth} />
+        <CollapsibleCard title={`Rolling 12 months · ${scopedHeading}`}>
+          <LeaderboardTable entries={rollingYear} />
+        </CollapsibleCard>
+        <CollapsibleCard title={`This month · ${scopedHeading}`}>
+          <LeaderboardTable entries={rollingMonth} />
+        </CollapsibleCard>
       </div>
     </div>
   );

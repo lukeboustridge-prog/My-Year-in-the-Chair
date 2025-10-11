@@ -55,6 +55,7 @@ type ProfileRecord = {
   region?: string | null;
   rank?: string | null;
   isPastGrand?: boolean;
+  currentCraftOffice?: string | null;
 };
 
 const WORK_LABELS: Record<string, string> = {

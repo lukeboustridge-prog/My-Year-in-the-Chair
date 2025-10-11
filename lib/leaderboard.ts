@@ -7,6 +7,7 @@ export type LeaderboardUser = {
   postNominals: string[];
   lodgeName: string | null;
   lodgeNumber: string | null;
+  currentCraftOffice: string | null;
 };
 
 export function formatDisplayName(user?: LeaderboardUser): string {
@@ -31,7 +32,15 @@ export async function fetchUsersById(ids: string[]): Promise<Map<string, Leaderb
   const unique = Array.from(new Set(ids));
   const users = await db.user.findMany({
     where: { id: { in: unique } },
-    select: { id: true, prefix: true, name: true, postNominals: true, lodgeName: true, lodgeNumber: true },
+    select: {
+      id: true,
+      prefix: true,
+      name: true,
+      postNominals: true,
+      lodgeName: true,
+      lodgeNumber: true,
+      currentCraftOffice: true,
+    },
   });
   return new Map(users.map((user) => [user.id, user]));
 }
