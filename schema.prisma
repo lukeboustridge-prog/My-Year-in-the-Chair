@@ -29,6 +29,7 @@ model User {
   postNominals  String[]
   rank          String?
   isPastGrand   Boolean    @default(false)
+  isSittingMaster Boolean  @default(false)
   lodgeName     String?
   lodgeNumber   String?
   region        String?
@@ -36,12 +37,21 @@ model User {
   termStart     DateTime?
   termEnd       DateTime?
 
+  initiationDate        DateTime?
+  passingDate           DateTime?
+  raisingDate           DateTime?
+  lodges                Json      @default("[]")
+  craftOffices          Json      @default("[]")
+  grandOffices          Json      @default("[]")
+  achievementMilestones Json      @default("{}")
+
   points        Int      @default(0)
   visits        Visit[]
   works         LodgeWork[]
   myWorks       MyWork[]
   awards        Award[]
   role          String   @default("USER")
+  isApproved    Boolean  @default(false)
 
   // Legacy columns (ignored for backward compatibility to avoid data loss)
   grandRank           String?   @ignore
@@ -56,6 +66,7 @@ model Visit {
   date          DateTime
   lodgeName     String?
   lodgeNumber        String?
+  regionName        String?
 
   workOfEvening      WorkType @default(OTHER)
   candidateName      String?
@@ -63,6 +74,8 @@ model Visit {
 
   isGrandLodgeVisit  Boolean  @default(false)
   hasTracingBoards   Boolean  @default(false)
+  grandMasterInAttendance Boolean @default(false)
+  accompanyingBrethrenCount Int @default(0)
   notes              String?
   createdAt     DateTime @default(now())
 }

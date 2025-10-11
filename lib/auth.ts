@@ -25,6 +25,15 @@ export function setSessionCookie(res: NextResponse, token: string) {
     path: "/",
     maxAge: 60 * 60 * 24 * 30, // 30 days
   });
+  res.cookies.set({
+    name: "access_token",
+    value: token,
+    httpOnly: false,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
 }
 
 export function clearSessionCookie(res: NextResponse) {
@@ -32,6 +41,16 @@ export function clearSessionCookie(res: NextResponse) {
     name: COOKIE,
     value: "",
     path: "/",
+    secure: true,
+    sameSite: "lax",
+    maxAge: 0,
+  });
+  res.cookies.set({
+    name: "access_token",
+    value: "",
+    path: "/",
+    secure: true,
+    sameSite: "lax",
     maxAge: 0,
   });
 }

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { getUserId } from "@/lib/auth";
 import { db } from "@/lib/db";
+import PendingApprovalNotice from "@/components/PendingApprovalNotice";
 import {
   fetchUsersById,
   formatDisplayName,
@@ -11,28 +12,75 @@ import {
   type LeaderboardUser,
 } from "@/lib/leaderboard";
 
+const ACCOMPANYING_WEIGHT = 0.5;
+
+function calculatePoints(visits: number, accompanying: number): number {
+  return visits + accompanying * ACCOMPANYING_WEIGHT;
+}
+
+function formatPoints(value: number): string {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+}
+
+function formatAverage(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return "0";
+  return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+}
+
 type LeaderboardEntry = {
   rank: number;
-  count: number;
+  points: number;
+  visits: number;
+  averageAccompanying: number;
   user: LeaderboardUser | undefined;
 };
 
-async function getVisitLeaderboard(since: Date, limit = 10): Promise<LeaderboardEntry[]> {
+type LeaderboardFilters = {
+  limit?: number;
+  region?: string;
+};
+
+async function getVisitLeaderboard(
+  since: Date,
+  { limit = 10, region }: LeaderboardFilters = {},
+): Promise<LeaderboardEntry[]> {
   const grouped = await db.visit.groupBy({
     by: ["userId"],
-    where: { date: { gte: since } },
+    where: {
+      date: { gte: since },
+      user: {
+        isApproved: true,
+        ...(region ? { region } : {}),
+      },
+    },
     _count: { _all: true },
-    orderBy: { _count: { userId: "desc" } },
-    take: limit,
+    _sum: { accompanyingBrethrenCount: true },
   });
 
   if (!grouped.length) return [];
 
-  const map = await fetchUsersById(grouped.map((row) => row.userId));
+  const scored = grouped
+    .map((row) => {
+      const visits = row._count._all;
+      const accompanyingTotal = row._sum.accompanyingBrethrenCount ?? 0;
+      const averageAccompanying = visits > 0 ? accompanyingTotal / visits : 0;
+      return {
+        userId: row.userId,
+        visits,
+        averageAccompanying,
+        points: calculatePoints(visits, accompanyingTotal),
+      };
+    })
+    .sort((a, b) => b.points - a.points)
+    .slice(0, limit);
 
-  return grouped.map((row, index) => ({
+  const map = await fetchUsersById(scored.map((row) => row.userId));
+
+  return scored.map((row, index) => ({
     rank: index + 1,
-    count: row._count._all,
+    points: row.points,
+    visits: row.visits,
+    averageAccompanying: row.averageAccompanying,
     user: map.get(row.userId),
   }));
 }
@@ -40,6 +88,16 @@ async function getVisitLeaderboard(since: Date, limit = 10): Promise<Leaderboard
 function LeaderboardTable({ title, entries }: { title: string; entries: LeaderboardEntry[] }) {
   const mobileEntries = entries.map((entry) => {
     const user = entry.user;
+    const displayName = formatDisplayName(user);
+    const postNominals = formatPostNominals(user);
+    const nameWithPostNominals = (
+      <div className="flex flex-wrap justify-end gap-x-2 gap-y-1">
+        <span className="font-medium text-slate-900">{displayName}</span>
+        {postNominals ? (
+          <span className="font-medium text-slate-900">{postNominals}</span>
+        ) : null}
+      </div>
+    );
     return (
       <div key={user?.id ?? entry.rank} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-start justify-between gap-3">
@@ -48,12 +106,19 @@ function LeaderboardTable({ title, entries }: { title: string; entries: Leaderbo
             <p className="text-2xl font-semibold text-slate-900">{entry.rank}</p>
           </div>
           <div className="text-right text-sm text-slate-600">
-            <p className="font-medium text-slate-900">{formatDisplayName(user)}</p>
-            <p className="text-xs text-slate-500">{formatPostNominals(user)}</p>
+            {nameWithPostNominals}
             <p className="text-xs text-slate-500">{formatLodge(user) || "—"}</p>
           </div>
         </div>
-        <div className="mt-3 text-sm text-slate-600">Visits: <span className="font-semibold">{entry.count}</span></div>
+        <div className="mt-3 text-sm text-slate-600">
+          Points: <span className="font-semibold">{formatPoints(entry.points)}</span>
+        </div>
+        <div className="text-xs text-slate-500">
+          Visits: {entry.visits}
+          {entry.averageAccompanying
+            ? ` · Brethren avg: ${formatAverage(entry.averageAccompanying)}`
+            : ""}
+        </div>
       </div>
     );
   });
@@ -71,7 +136,7 @@ function LeaderboardTable({ title, entries }: { title: string; entries: Leaderbo
                 <th className="py-2 pr-3">Rank</th>
                 <th className="py-2 pr-3">Name</th>
                 <th className="py-2 pr-3">Lodge</th>
-                <th className="py-2 pr-3">Visits</th>
+                <th className="py-2 pr-3">Points</th>
               </tr>
             </thead>
             <tbody>
@@ -84,17 +149,31 @@ function LeaderboardTable({ title, entries }: { title: string; entries: Leaderbo
               ) : (
                 entries.map((entry) => {
                   const user = entry.user;
+                  const displayName = formatDisplayName(user);
+                  const postNominals = formatPostNominals(user);
                   return (
                     <tr key={user?.id ?? entry.rank} className="border-t">
                       <td className="py-2 pr-3">{entry.rank}</td>
                       <td className="py-2 pr-3">
-                        <div className="font-medium">{formatDisplayName(user)}</div>
-                        <div className="text-xs text-slate-500">{formatPostNominals(user)}</div>
+                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                          <span className="font-medium text-slate-900">{displayName}</span>
+                          {postNominals ? (
+                            <span className="font-medium text-slate-900">{postNominals}</span>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="py-2 pr-3 text-sm">
                         {formatLodge(user) || <span className="text-slate-400">—</span>}
                       </td>
-                      <td className="py-2 pr-3">{entry.count}</td>
+                      <td className="py-2 pr-3">
+                        <div className="font-semibold text-slate-900">{formatPoints(entry.points)}</div>
+                        <div className="text-xs text-slate-500">
+                          Visits: {entry.visits}
+                          {entry.averageAccompanying
+                            ? ` · Brethren avg: ${formatAverage(entry.averageAccompanying)}`
+                            : ""}
+                        </div>
+                      </td>
                     </tr>
                   );
                 })
@@ -114,9 +193,26 @@ function LeaderboardTable({ title, entries }: { title: string; entries: Leaderbo
   );
 }
 
-export default async function LeaderboardPage() {
+type LeaderboardSearchParams = {
+  scope?: string;
+};
+
+export default async function LeaderboardPage({
+  searchParams,
+}: {
+  searchParams?: LeaderboardSearchParams;
+}) {
   const uid = getUserId();
   if (!uid) {
+    redirect("/login?redirect=/leaderboard");
+  }
+
+  const viewer = await db.user.findUnique({
+    where: { id: uid },
+    select: { isApproved: true, role: true, region: true },
+  });
+
+  if (!viewer) {
     redirect("/login?redirect=/leaderboard");
   }
 
@@ -124,9 +220,36 @@ export default async function LeaderboardPage() {
   const rollingYearStart = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
+  const isApprover = viewer.role === "ADMIN" || viewer.role === "DISTRICT";
+
+  const requestedScope = searchParams?.scope === "region" ? "region" : "national";
+  const scope = viewer.region ? requestedScope : "national";
+  const regionFilter = scope === "region" ? viewer.region ?? undefined : undefined;
+
+  const filterLabel = scope === "region" ? viewer.region ?? "My Region" : "National";
+
+  const scopedHeading = scope === "region" ? filterLabel : "National";
+
+  if (!viewer.isApproved && !isApprover) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="h1">Leaderboard</h1>
+            <p className="subtle">Celebrating the busiest Masters across the Regions.</p>
+            <p className="mt-2 text-sm text-slate-600">
+              Points are awarded as 1 per visit plus 0.5 for each accompanying Brother recorded by a Worshipful Master. Brethren figures show the average companions per visit.
+            </p>
+          </div>
+        </div>
+        <PendingApprovalNotice />
+      </div>
+    );
+  }
+
   const [rollingYear, rollingMonth] = await Promise.all([
-    getVisitLeaderboard(rollingYearStart),
-    getVisitLeaderboard(monthStart),
+    getVisitLeaderboard(rollingYearStart, { region: regionFilter }),
+    getVisitLeaderboard(monthStart, { region: regionFilter }),
   ]);
 
   return (
@@ -134,21 +257,67 @@ export default async function LeaderboardPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="h1">Leaderboard</h1>
-          <p className="subtle">Celebrating the busiest Masters in the Districts.</p>
+          <p className="subtle">Celebrating the busiest Masters across the Regions.</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Points are awarded as 1 per visit plus 0.5 for each accompanying Brother recorded by a Worshipful Master. Brethren figures show the average companions per visit.
+          </p>
         </div>
-        <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
-          <Link href="/leaderboard/month" className="navlink w-full sm:w-auto text-center">
-            Past Monthly Results
-          </Link>
-          <Link href="/leaderboard/year" className="navlink w-full sm:w-auto text-center">
-            Past Yearly Results
-          </Link>
+        <div className="flex flex-col gap-3 sm:items-end">
+          <div className="flex w-full items-center justify-between gap-2 text-sm sm:justify-end">
+            <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+              <Link
+                href="/leaderboard"
+                className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                  scope === "national"
+                    ? "bg-slate-900 text-white"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                National
+              </Link>
+              {viewer.region ? (
+                <Link
+                  href="/leaderboard?scope=region"
+                  className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+                    scope === "region"
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  My Region
+                </Link>
+              ) : (
+                <span className="cursor-not-allowed rounded-md px-3 py-1.5 font-medium text-slate-300">
+                  My Region
+                </span>
+              )}
+            </div>
+            <div className="hidden sm:block text-xs text-slate-500">
+              Viewing: <span className="font-medium text-slate-700">{filterLabel}</span>
+            </div>
+          </div>
+          <div className="sm:hidden text-xs text-slate-500">
+            Viewing: <span className="font-medium text-slate-700">{filterLabel}</span>
+          </div>
+          {!viewer.region ? (
+            <p className="text-xs text-slate-500">
+              Set your region in your profile to see the regional leaderboard.
+            </p>
+          ) : null}
+          <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-end">
+            <Link href="/leaderboard/month" className="navlink w-full sm:w-auto text-center">
+              Past Monthly Results
+            </Link>
+            <Link href="/leaderboard/year" className="navlink w-full sm:w-auto text-center">
+              Past Yearly Results
+            </Link>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <LeaderboardTable title="Rolling 12 months" entries={rollingYear} />
-        <LeaderboardTable title="This month" entries={rollingMonth} />
+        <LeaderboardTable title={`Rolling 12 months · ${scopedHeading}`} entries={rollingYear} />
+        <LeaderboardTable title={`This month · ${scopedHeading}`} entries={rollingMonth} />
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 
+import { REGIONS } from "@/lib/regions";
 import { toDisplayDate, toISODate } from "../../lib/date";
 
 const WORK_OPTIONS = [
@@ -15,27 +16,46 @@ const WORK_OPTIONS = [
   { value: "OTHER", label: "Other" },
 ] as const;
 
+function parseAccompanyingCount(value: unknown): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 0;
+  }
+  return Math.max(0, Math.round(parsed));
+}
+
+function formatAccompanyingBadge(count: number): string {
+  if (count <= 0) return "";
+  return count === 1 ? "1 accompanying Brother" : `${count} accompanying Brethren`;
+}
+
 type VisitRecord = {
   id?: string;
   date: string;
   lodgeName: string;
   lodgeNumber?: string | null;
+  regionName?: string | null;
   workOfEvening: (typeof WORK_OPTIONS)[number]["value"];
   candidateName?: string | null;
   comments?: string | null;
   isGrandLodgeVisit: boolean;
   hasTracingBoards: boolean;
+  grandMasterInAttendance: boolean;
+  accompanyingBrethrenCount: number;
 };
 
 const emptyVisit: VisitRecord = {
   date: new Date().toISOString().slice(0, 10),
   lodgeName: "",
   lodgeNumber: "",
+  regionName: "",
   workOfEvening: "OTHER",
   candidateName: "",
   comments: "",
   isGrandLodgeVisit: false,
   hasTracingBoards: false,
+  grandMasterInAttendance: false,
+  accompanyingBrethrenCount: 0,
 };
 
 function formatWork(value: VisitRecord["workOfEvening"]): string {
@@ -49,6 +69,7 @@ function normaliseVisit(row: any, fallback?: VisitRecord): VisitRecord {
     date: toISODate(row?.date ?? row?.dateISO ?? fallback?.date ?? emptyVisit.date),
     lodgeName: row?.lodgeName ?? fallback?.lodgeName ?? "",
     lodgeNumber: row?.lodgeNumber ?? fallback?.lodgeNumber ?? "",
+    regionName: row?.regionName ?? row?.region ?? fallback?.regionName ?? "",
     workOfEvening: row?.workOfEvening ?? fallback?.workOfEvening ?? "OTHER",
     candidateName: row?.candidateName ?? fallback?.candidateName ?? "",
     comments: row?.comments ?? row?.notes ?? fallback?.comments ?? "",
@@ -60,6 +81,13 @@ function normaliseVisit(row: any, fallback?: VisitRecord): VisitRecord {
       typeof row?.hasTracingBoards === "boolean"
         ? row.hasTracingBoards
         : fallback?.hasTracingBoards ?? false,
+    grandMasterInAttendance:
+      typeof row?.grandMasterInAttendance === "boolean"
+        ? row.grandMasterInAttendance
+        : fallback?.grandMasterInAttendance ?? false,
+    accompanyingBrethrenCount: parseAccompanyingCount(
+      row?.accompanyingBrethrenCount ?? fallback?.accompanyingBrethrenCount ?? 0,
+    ),
   };
 }
 
@@ -79,9 +107,10 @@ type VisitItemProps = {
   saving: boolean;
   onSave: (next: VisitRecord) => Promise<boolean>;
   onDelete: (id: string) => Promise<void>;
+  canSeeAccompanying: boolean;
 };
 
-function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
+function VisitItem({ record, onSave, onDelete, saving, canSeeAccompanying }: VisitItemProps) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<VisitRecord>(record);
 
@@ -97,6 +126,15 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
   ]
     .filter(Boolean)
     .join(" ");
+  const regionDisplay = form.regionName?.trim() ? form.regionName.trim() : null;
+  const highlightBadges = [
+    form.isGrandLodgeVisit ? "Grand Lodge visit" : null,
+    form.grandMasterInAttendance ? "Grand Master present" : null,
+    form.hasTracingBoards ? "Tracing boards" : null,
+    canSeeAccompanying && form.accompanyingBrethrenCount > 0
+      ? formatAccompanyingBadge(form.accompanyingBrethrenCount)
+      : null,
+  ].filter(Boolean);
 
   const toggle = () => {
     setOpen((prev) => {
@@ -135,9 +173,13 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
       >
         <div className="min-w-0">
           <p className="truncate font-medium text-slate-900">{lodgeDisplay || "Visit"}</p>
-          <p className="text-xs text-slate-500">{toDisplayDate(form.date)} · {formatWork(form.workOfEvening)}</p>
+          <p className="text-xs text-slate-500">
+            {toDisplayDate(form.date)} · {formatWork(form.workOfEvening)}
+            {regionDisplay ? ` · ${regionDisplay}` : ""}
+            {highlightBadges.length ? ` · ${highlightBadges.join(" · ")}` : ""}
+          </p>
         </div>
-        <span className={`text-sm text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden>
+        <span className={`text-sm text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true">
           ▾
         </span>
       </button>
@@ -193,6 +235,21 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
                 placeholder="Optional"
               />
             </label>
+            <label className="label">
+              <span>Lodge region</span>
+              <select
+                className="input mt-1"
+                value={form.regionName ?? ""}
+                onChange={(event) => setForm((prev) => ({ ...prev, regionName: event.target.value }))}
+              >
+                <option value="">Select a region</option>
+                {REGIONS.map((region) => (
+                  <option key={region} value={region}>
+                    {region}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="label sm:col-span-2">
               <span>Candidate name</span>
               <input
@@ -204,7 +261,7 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
               />
             </label>
           </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input
                 type="checkbox"
@@ -227,7 +284,42 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
               />
               Tracing boards
             </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={Boolean(form.grandMasterInAttendance)}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    grandMasterInAttendance: event.target.checked,
+                  }))
+                }
+              />
+              Grand Master in attendance
+            </label>
           </div>
+          {canSeeAccompanying ? (
+            <label className="label">
+              <span>Brethren accompanying you</span>
+              <input
+                className="input mt-1"
+                type="number"
+                min={0}
+                step={1}
+                value={form.accompanyingBrethrenCount.toString()}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    accompanyingBrethrenCount: parseAccompanyingCount(event.target.value),
+                  }))
+                }
+              />
+              <span className="mt-1 block text-xs text-slate-500">
+                Earn 0.5 points for each accompanying Brother.
+              </span>
+            </label>
+          ) : null}
           <label className="label">
             <span>Notes</span>
             <textarea
@@ -273,9 +365,10 @@ type VisitCreateCardProps = {
   onClose: () => void;
   onSave: (next: VisitRecord) => Promise<boolean>;
   saving: boolean;
+  canSeeAccompanying: boolean;
 };
 
-function VisitCreateCard({ onClose, onSave, saving }: VisitCreateCardProps) {
+function VisitCreateCard({ onClose, onSave, saving, canSeeAccompanying }: VisitCreateCardProps) {
   const [form, setForm] = useState<VisitRecord>({ ...emptyVisit });
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -288,113 +381,216 @@ function VisitCreateCard({ onClose, onSave, saving }: VisitCreateCardProps) {
   };
 
   return (
-    <div className="rounded-xl border border-dashed border-slate-300 bg-white shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3">
-        <h2 className="font-semibold text-slate-800">Add visit</h2>
-        <button type="button" className="navlink" onClick={onClose}>
-          Close
-        </button>
-      </div>
-        <form onSubmit={handleSubmit} className="border-t border-slate-200 px-4 py-4 space-y-4 sm:px-5">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <label className="label">
-            <span>Date</span>
-            <input
-              className="input mt-1"
-              type="date"
-              value={form.date}
-              onChange={(event) => setForm((prev) => ({ ...prev, date: event.target.value }))}
-              required
-            />
-          </label>
-          <label className="label">
-            <span>Work of the evening</span>
-            <select
-              className="input mt-1"
-              value={form.workOfEvening}
-              onChange={(event) =>
-                setForm((prev) => ({
-                  ...prev,
-                  workOfEvening: event.target.value as VisitRecord["workOfEvening"],
-                }))
-              }
+    <div
+      className="fixed inset-0 z-50 overflow-x-hidden overflow-y-auto bg-slate-900/70"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
+        <div
+          className="card w-full max-w-2xl"
+          style={{ maxHeight: "90vh" }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="flex h-full flex-col" style={{ maxHeight: "min(90vh, 720px)" }}>
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
+              <div>
+                <h2 className="h2">Log a visit</h2>
+                <p className="text-sm text-slate-500">
+                  Record official visits and lodge highlights during your term.
+                </p>
+              </div>
+              <button type="button" className="btn" onClick={onClose}>
+                Close
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleSubmit}
+              className="flex-1 space-y-6 overflow-y-auto p-5 pt-4 sm:p-6 sm:pt-5"
             >
-              {WORK_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="label">
-            <span>Lodge name</span>
-            <input
-              className="input mt-1"
-              type="text"
-              value={form.lodgeName}
-              onChange={(event) => setForm((prev) => ({ ...prev, lodgeName: event.target.value }))}
-              required
-            />
-          </label>
-          <label className="label">
-            <span>Lodge number</span>
-            <input
-              className="input mt-1"
-              type="text"
-              value={form.lodgeNumber ?? ""}
-              onChange={(event) => setForm((prev) => ({ ...prev, lodgeNumber: event.target.value }))}
-              placeholder="Optional"
-            />
-          </label>
-          <label className="label sm:col-span-2">
-            <span>Candidate name</span>
-            <input
-              className="input mt-1"
-              type="text"
-              value={form.candidateName ?? ""}
-              onChange={(event) => setForm((prev) => ({ ...prev, candidateName: event.target.value }))}
-              placeholder="If applicable"
-            />
-          </label>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <label className="label">
+                  <span>Date</span>
+                  <input
+                    className="input mt-1"
+                    type="date"
+                    value={form.date}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, date: event.target.value }))
+                    }
+                    required
+                  />
+                </label>
+                <label className="label">
+                  <span>Work of the evening</span>
+                  <select
+                    className="input mt-1"
+                    value={form.workOfEvening}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        workOfEvening: event.target.value as VisitRecord["workOfEvening"],
+                      }))
+                    }
+                  >
+                    {WORK_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="label">
+                  <span>Lodge name</span>
+                  <input
+                    className="input mt-1"
+                    type="text"
+                    value={form.lodgeName}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, lodgeName: event.target.value }))
+                    }
+                    required
+                  />
+                </label>
+                <label className="label">
+                  <span>Lodge number</span>
+                  <input
+                    className="input mt-1"
+                    type="text"
+                    value={form.lodgeNumber ?? ""}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, lodgeNumber: event.target.value }))
+                    }
+                    placeholder="Optional"
+                  />
+                </label>
+                <label className="label">
+                  <span>Lodge region</span>
+                  <select
+                    className="input mt-1"
+                    value={form.regionName ?? ""}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, regionName: event.target.value }))
+                    }
+                  >
+                    <option value="">Select a region</option>
+                    {REGIONS.map((region) => (
+                      <option key={region} value={region}>
+                        {region}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="label md:col-span-2">
+                  <span>Candidate name</span>
+                  <input
+                    className="input mt-1"
+                    type="text"
+                    value={form.candidateName ?? ""}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, candidateName: event.target.value }))
+                    }
+                    placeholder="If applicable"
+                  />
+                </label>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={Boolean(form.isGrandLodgeVisit)}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        isGrandLodgeVisit: event.target.checked,
+                      }))
+                    }
+                  />
+                  Grand Lodge visit
+                </label>
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={Boolean(form.hasTracingBoards)}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        hasTracingBoards: event.target.checked,
+                      }))
+                    }
+                  />
+                  Tracing boards
+                </label>
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={Boolean(form.grandMasterInAttendance)}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        grandMasterInAttendance: event.target.checked,
+                      }))
+                    }
+                />
+                Grand Master in attendance
+              </label>
+            </div>
+            {canSeeAccompanying ? (
+              <label className="label">
+                <span>Brethren accompanying you</span>
+                <input
+                  className="input mt-1"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={form.accompanyingBrethrenCount.toString()}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      accompanyingBrethrenCount: parseAccompanyingCount(event.target.value),
+                    }))
+                  }
+                />
+                <span className="mt-1 block text-xs text-slate-500">
+                  Earn 0.5 points for each accompanying Brother.
+                </span>
+              </label>
+            ) : null}
+            <label className="label">
+              <span>Notes</span>
+              <textarea
+                className="input mt-1 min-h-[6rem]"
+                value={form.comments ?? ""}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, comments: event.target.value }))
+                  }
+                  placeholder="Optional notes"
+                />
+              </label>
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <button type="submit" className="btn-primary w-full sm:w-auto" disabled={saving}>
+                  {saving ? "Saving…" : "Save visit"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-soft w-full sm:w-auto"
+                  onClick={onClose}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              className="h-4 w-4"
-              checked={Boolean(form.isGrandLodgeVisit)}
-              onChange={(event) => setForm((prev) => ({ ...prev, isGrandLodgeVisit: event.target.checked }))}
-            />
-            Grand Lodge visit
-          </label>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              className="h-4 w-4"
-              checked={Boolean(form.hasTracingBoards)}
-              onChange={(event) => setForm((prev) => ({ ...prev, hasTracingBoards: event.target.checked }))}
-            />
-            Tracing boards
-          </label>
-        </div>
-        <label className="label">
-          <span>Notes</span>
-          <textarea
-            className="input mt-1 min-h-[6rem]"
-            value={form.comments ?? ""}
-            onChange={(event) => setForm((prev) => ({ ...prev, comments: event.target.value }))}
-            placeholder="Optional notes"
-          />
-        </label>
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <button type="submit" className="btn-primary w-full sm:w-auto" disabled={saving}>
-            {saving ? "Saving…" : "Save visit"}
-          </button>
-          <button type="button" className="btn-soft w-full sm:w-auto" onClick={onClose} disabled={saving}>
-            Cancel
-          </button>
-        </div>
-      </form>
+      </div>
     </div>
   );
 }
@@ -404,6 +600,24 @@ export default function VisitsPage() {
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [isMaster, setIsMaster] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/profile", { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const rank = typeof data?.rank === "string" ? data.rank : "";
+        const isSittingMaster = Boolean(data?.isSittingMaster);
+        setIsMaster(
+          isSittingMaster || rank.trim().toLowerCase() === "worshipful master",
+        );
+      } catch (err) {
+        console.error("PROFILE_LOAD", err);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -427,17 +641,43 @@ export default function VisitsPage() {
     const key = next.id ?? "new";
     setSavingKey(key);
     try {
-      const payload = {
+      const trimmedLodgeNumber = next.lodgeNumber?.trim() || "";
+      const trimmedRegion = next.regionName?.trim() || "";
+      const trimmedCandidate = next.candidateName?.trim() || "";
+      const trimmedComments = next.comments?.trim() || "";
+      const accompanyingCount = parseAccompanyingCount(next.accompanyingBrethrenCount);
+
+      const fallbackRecord: VisitRecord = {
         id: next.id,
         date: toISODate(next.date),
         lodgeName: next.lodgeName.trim(),
-        lodgeNumber: next.lodgeNumber?.trim() || null,
+        lodgeNumber: trimmedLodgeNumber,
+        regionName: trimmedRegion,
         workOfEvening: next.workOfEvening,
-        candidateName: next.candidateName?.trim() || null,
-        comments: next.comments?.trim() || null,
+        candidateName: trimmedCandidate,
+        comments: trimmedComments,
         isGrandLodgeVisit: Boolean(next.isGrandLodgeVisit),
         hasTracingBoards: Boolean(next.hasTracingBoards),
+        grandMasterInAttendance: Boolean(next.grandMasterInAttendance),
+        accompanyingBrethrenCount: isMaster ? accompanyingCount : 0,
       };
+
+      const payload = {
+        id: next.id,
+        date: fallbackRecord.date,
+        lodgeName: fallbackRecord.lodgeName,
+        lodgeNumber: trimmedLodgeNumber || null,
+        regionName: trimmedRegion || null,
+        workOfEvening: fallbackRecord.workOfEvening,
+        candidateName: trimmedCandidate || null,
+        comments: trimmedComments || null,
+        isGrandLodgeVisit: fallbackRecord.isGrandLodgeVisit,
+        hasTracingBoards: fallbackRecord.hasTracingBoards,
+        grandMasterInAttendance: fallbackRecord.grandMasterInAttendance,
+      };
+      if (isMaster) {
+        (payload as Record<string, unknown>).accompanyingBrethrenCount = accompanyingCount;
+      }
       const isNew = !payload.id;
       const body = JSON.stringify(isNew ? { ...payload, id: undefined } : payload);
       const res = await fetch("/api/visits", {
@@ -447,8 +687,11 @@ export default function VisitsPage() {
         body,
       });
       if (!res.ok) throw new Error(await res.text());
-      const saved = await res.json().catch(() => payload);
-      const normalised = normaliseVisit(saved, payload as VisitRecord);
+      const saved = await res.json().catch(() => ({
+        ...payload,
+        accompanyingBrethrenCount: isMaster ? accompanyingCount : 0,
+      }));
+      const normalised = normaliseVisit(saved, fallbackRecord);
       setRecords((prev) => {
         const list = Array.isArray(prev) ? [...prev] : [];
         if (isNew) {
@@ -515,7 +758,12 @@ export default function VisitsPage() {
 
       <div className="space-y-4">
         {creating ? (
-          <VisitCreateCard onClose={() => setCreating(false)} onSave={saveVisit} saving={savingKey === "new"} />
+          <VisitCreateCard
+            onClose={() => setCreating(false)}
+            onSave={saveVisit}
+            saving={savingKey === "new"}
+            canSeeAccompanying={isMaster}
+          />
         ) : null}
 
         <div className="card">
@@ -531,6 +779,7 @@ export default function VisitsPage() {
                     onSave={saveVisit}
                     onDelete={deleteVisit}
                     saving={savingKey === (record.id ?? "")}
+                    canSeeAccompanying={isMaster}
                   />
                 ))}
               </div>

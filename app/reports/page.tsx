@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { deriveTitle } from "@/lib/constants";
+
 import {
   downloadGrandSuperintendentReportPdf,
   type CandidateCeremonyRecord,
@@ -11,17 +13,21 @@ import {
   type MeetingOverviewRecord,
   type SummaryMetrics,
 } from "@/src/utils/gsrReportPdf";
+import { downloadGrandOfficerVisitReportPdf } from "@/src/utils/grandOfficerVisitReportPdf";
 
 type VisitRecord = {
   id?: string;
   date: string;
   lodgeName: string;
   lodgeNumber?: string | null;
+  regionName?: string | null;
   workOfEvening: string;
   candidateName?: string | null;
   comments?: string | null;
   isGrandLodgeVisit?: boolean;
   hasTracingBoards?: boolean;
+  grandMasterInAttendance?: boolean;
+  accompanyingBrethrenCount?: number;
 };
 
 type WorkingRecord = {
@@ -47,6 +53,8 @@ type ProfileRecord = {
   termStart?: string | null;
   termEnd?: string | null;
   region?: string | null;
+  rank?: string | null;
+  isPastGrand?: boolean;
 };
 
 const WORK_LABELS: Record<string, string> = {
@@ -113,6 +121,9 @@ export default function ReportsPage() {
   const [visits, setVisits] = useState<VisitRecord[]>([]);
   const [workings, setWorkings] = useState<WorkingRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [reportType, setReportType] = useState<"grandSuperintendent" | "grandOfficer">(
+    "grandSuperintendent",
+  );
 
   useEffect(() => {
     (async () => {
@@ -130,6 +141,8 @@ export default function ReportsPage() {
         const profileJson = await profileRes.json();
         setProfile({
           ...profileJson,
+          rank: typeof profileJson.rank === "string" ? profileJson.rank : null,
+          isPastGrand: Boolean(profileJson.isPastGrand),
           postNominals: Array.isArray(profileJson.postNominals)
             ? profileJson.postNominals
             : profileJson.postNominals
@@ -144,11 +157,18 @@ export default function ReportsPage() {
             date: row.date ?? row.dateISO ?? "",
             lodgeName: row.lodgeName ?? "",
             lodgeNumber: row.lodgeNumber ?? null,
+            regionName:
+              typeof row.regionName === "string"
+                ? row.regionName.trim() || null
+                : typeof row.region === "string"
+                ? row.region.trim() || null
+                : null,
             workOfEvening: row.workOfEvening ?? row.eventType ?? "OTHER",
             candidateName: row.candidateName ?? null,
             comments: row.comments ?? row.notes ?? null,
             isGrandLodgeVisit: Boolean(row.isGrandLodgeVisit),
             hasTracingBoards: Boolean(row.hasTracingBoards),
+            grandMasterInAttendance: Boolean(row.grandMasterInAttendance),
           }))
         );
 
@@ -182,6 +202,11 @@ export default function ReportsPage() {
     })();
   }, []);
 
+  useEffect(() => {
+    if (!profile?.rank || profile.rank === "Worshipful Master") return;
+    setReportType((previous) => (previous === "grandOfficer" ? previous : "grandOfficer"));
+  }, [profile?.rank]);
+
   const filteredVisits = useMemo(() => {
     if (!visits.length) return [] as VisitRecord[];
     const fromTime = from ? new Date(from).getTime() : null;
@@ -214,19 +239,29 @@ export default function ReportsPage() {
       return;
     }
 
+    const isGrandOfficerReport = reportType === "grandOfficer";
+    const canUseGrandSuperintendent = profile.rank === "Worshipful Master";
+
+    if (!isGrandOfficerReport && !canUseGrandSuperintendent) {
+      setError("Set your rank to Worshipful Master in your profile to generate this report.");
+      return;
+    }
+
     if (!profile.name) {
       setError("Add your full name in your profile to generate this report.");
       return;
     }
 
-    if (!profile.lodgeName || !profile.lodgeNumber) {
-      setError("Add your lodge name and number in your profile to generate this report.");
-      return;
-    }
+    if (!isGrandOfficerReport) {
+      if (!profile.lodgeName || !profile.lodgeNumber) {
+        setError("Add your lodge name and number in your profile to generate this report.");
+        return;
+      }
 
-    if (!profile.region) {
-      setError("Add your region in your profile to generate this report.");
-      return;
+      if (!profile.region) {
+        setError("Add your region in your profile to generate this report.");
+        return;
+      }
     }
 
     let periodStart: Date | null = null;
@@ -270,8 +305,55 @@ export default function ReportsPage() {
       const resolvedStart = periodStart as Date;
       const resolvedEnd = periodEnd as Date;
 
-      const visitsInPeriod = visits.filter((visit) => isWithinPeriod(visit.date, resolvedStart, resolvedEnd));
-      const workingsInPeriod = workings.filter((working) => isWithinPeriod(working.date, resolvedStart, resolvedEnd));
+      const visitsInPeriod = visits.filter((visit) =>
+        isWithinPeriod(visit.date, resolvedStart, resolvedEnd),
+      );
+      const orderedVisits = [...visitsInPeriod].sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+      );
+
+      if (isGrandOfficerReport) {
+        const derivedTitles = deriveTitle(profile.rank ?? "Master Mason", Boolean(profile.isPastGrand));
+        const existingPostNominals = Array.isArray(profile.postNominals)
+          ? profile.postNominals
+          : [];
+        const officerPostNominals = existingPostNominals.length
+          ? existingPostNominals
+          : derivedTitles.postNominals ?? [];
+        const officerPrefix = profile.prefix ?? derivedTitles.prefix;
+
+        await downloadGrandOfficerVisitReportPdf({
+          officer: {
+            prefix: officerPrefix,
+            fullName: profile.name ?? "",
+            postNominals: officerPostNominals,
+            rank: profile.rank ?? undefined,
+          },
+          reportingPeriod: {
+            from: resolvedStart.toISOString(),
+            to: resolvedEnd.toISOString(),
+            label: periodLabel,
+          },
+          visits: orderedVisits.map((visit) => ({
+            date: visit.date,
+            lodgeName: visit.lodgeName,
+            lodgeNumber: visit.lodgeNumber,
+            regionName: visit.regionName ?? profile.region ?? null,
+            workOfEvening: visit.workOfEvening,
+            candidateName: visit.candidateName,
+            comments: visit.comments,
+            isGrandLodgeVisit: Boolean(visit.isGrandLodgeVisit),
+            hasTracingBoards: Boolean(visit.hasTracingBoards),
+            grandMasterInAttendance: Boolean(visit.grandMasterInAttendance),
+          })),
+          generatedAt: new Date().toISOString(),
+        });
+        return;
+      }
+
+      const workingsInPeriod = workings.filter((working) =>
+        isWithinPeriod(working.date, resolvedStart, resolvedEnd),
+      );
 
       const lodgeDisplay = [profile.lodgeName, profile.lodgeNumber ? `No. ${profile.lodgeNumber}` : null]
         .filter(Boolean)
@@ -351,13 +433,13 @@ export default function ReportsPage() {
         }
       }
 
-      const visitsGrandLodgeCount = visitsInPeriod.filter((visit) => visit.isGrandLodgeVisit).length;
+      const visitsGrandLodgeCount = orderedVisits.filter((visit) => visit.isGrandLodgeVisit).length;
       summaryMetrics.grandLodgeVisits += visitsGrandLodgeCount;
 
       const candidateRecords: CandidateProgressRecord[] = Array.from(candidateEvents.entries()).map(
         ([name, ceremonies]) => {
           const orderedCeremonies = [...ceremonies].sort(
-            (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+            (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
           );
           const milestones = candidateMilestones.get(name) ?? {};
           const latest = orderedCeremonies[orderedCeremonies.length - 1];
@@ -376,7 +458,7 @@ export default function ReportsPage() {
             passedOn: milestones.passedOn,
             raisedOn: milestones.raisedOn,
           } satisfies CandidateProgressRecord;
-        }
+        },
       );
 
       if (!candidateRecords.length) {
@@ -402,18 +484,21 @@ export default function ReportsPage() {
       const summaryParts = [
         `${lodgeDisplay} recorded ${pluralise(
           summaryMetrics.totalWorkings,
-          "working"
+          "working",
         )} between ${formatter.format(resolvedStart)} and ${formatter.format(resolvedEnd)}.`,
         `The lodge hosted ${pluralise(summaryMetrics.initiated, "initiation")}, ${pluralise(
           summaryMetrics.passed,
-          "passing"
+          "passing",
         )}, and ${pluralise(summaryMetrics.raised, "raising")}.`,
         `Emergency meetings: ${summaryMetrics.emergencyMeetings}. Grand Lodge visits: ${summaryMetrics.grandLodgeVisits}.`,
       ];
 
       const reportData: GrandSuperintendentReportData = {
-        lodge: { name: profile.lodgeName, number: profile.lodgeNumber },
-        regionName: profile.region,
+        lodge: {
+          name: profile.lodgeName ?? "",
+          number: profile.lodgeNumber ?? "",
+        },
+        regionName: profile.region ?? "",
         reportingPeriod: {
           from: resolvedStart.toISOString(),
           to: resolvedEnd.toISOString(),
@@ -452,9 +537,36 @@ export default function ReportsPage() {
     }
   }
 
+  const canUseGrandSuperintendent = profile?.rank === "Worshipful Master";
   const visitSummary = filteredVisits.length;
   const workingSummary = filteredWorkings.length;
+  const grandLodgeSummary = filteredVisits.filter((visit) => visit.isGrandLodgeVisit).length;
+  const grandMasterSummary = filteredVisits.filter((visit) => visit.grandMasterInAttendance).length;
   const termReady = Boolean(profile?.termStart && profile?.termEnd);
+  const highlightSummaryLabel =
+    reportType === "grandSuperintendent" ? "Total lodge workings" : "Grand Master attendances";
+  const highlightSummaryValue =
+    reportType === "grandSuperintendent" ? workingSummary : grandMasterSummary;
+
+  const reportOptions: { id: "grandSuperintendent" | "grandOfficer"; label: string; description: string; disabled: boolean }[] = [
+    {
+      id: "grandSuperintendent",
+      label: "Worshipful Master term report",
+      description: "Detailed candidate and meeting summary for your lodge.",
+      disabled: !canUseGrandSuperintendent,
+    },
+    {
+      id: "grandOfficer",
+      label: "Grand Lodge officer visit report",
+      description: "Visit-focused export tailored to Grand Lodge officers.",
+      disabled: false,
+    },
+  ];
+
+  const termButtonDisabled =
+    busy || !profile || (reportType === "grandSuperintendent" && !canUseGrandSuperintendent);
+  const customButtonDisabled =
+    busy || !from || !to || (reportType === "grandSuperintendent" && !canUseGrandSuperintendent);
 
   return (
     <div className="space-y-6">
@@ -467,6 +579,38 @@ export default function ReportsPage() {
 
       <div className="card">
         <div className="card-body space-y-4">
+          <div className="space-y-2">
+            <span className="text-sm font-semibold text-slate-700">Report type</span>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {reportOptions.map((option) => {
+                const isSelected = reportType === option.id;
+                const baseClasses = isSelected
+                  ? "border-blue-500 bg-blue-50 text-slate-900 shadow-sm"
+                  : "border-slate-200 bg-white text-slate-800 hover:border-slate-300";
+                const disabledClasses = option.disabled ? "cursor-not-allowed opacity-60" : "";
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => {
+                      if (option.disabled) return;
+                      setReportType(option.id);
+                    }}
+                    className={`w-full rounded-xl border px-4 py-3 text-left transition ${baseClasses} ${disabledClasses}`}
+                  >
+                    <span className="block font-semibold">{option.label}</span>
+                    <span className="mt-1 block text-sm text-slate-600">{option.description}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {reportType === "grandSuperintendent" && !canUseGrandSuperintendent ? (
+              <p className="text-xs text-red-600">
+                Set your rank to Worshipful Master in your profile to enable this report.
+              </p>
+            ) : null}
+          </div>
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-end">
             <label className="label">
               <span>From</span>
@@ -480,28 +624,32 @@ export default function ReportsPage() {
               <button
                 className="btn-soft w-full sm:w-auto"
                 onClick={() => generateReport("term")}
-                disabled={busy || !profile}
+                disabled={termButtonDisabled}
               >
                 {busy ? 'Working…' : 'Generate for current term'}
               </button>
               <button
                 className="btn-primary w-full sm:w-auto"
                 onClick={() => generateReport("custom")}
-                disabled={busy || !from || !to}
+                disabled={customButtonDisabled}
               >
                 {busy ? 'Working…' : 'Generate custom period'}
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <div className="subtle">Visits in range</div>
               <div className="text-lg font-semibold">{visitSummary}</div>
             </div>
             <div>
-              <div className="subtle">Total lodge workings</div>
-              <div className="text-lg font-semibold">{workingSummary}</div>
+              <div className="subtle">Grand Lodge visits</div>
+              <div className="text-lg font-semibold">{grandLodgeSummary}</div>
+            </div>
+            <div>
+              <div className="subtle">{highlightSummaryLabel}</div>
+              <div className="text-lg font-semibold">{highlightSummaryValue}</div>
             </div>
             <div>
               <div className="subtle">Term configured</div>
@@ -510,8 +658,11 @@ export default function ReportsPage() {
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
-          {!error && !visits.length && !workings.length && (
+          {!error && reportType === "grandSuperintendent" && !visits.length && !workings.length && (
             <p className="text-sm text-slate-500">Add lodge visits and workings to unlock the Grand Superintendent report.</p>
+          )}
+          {!error && reportType === "grandOfficer" && !visits.length && (
+            <p className="text-sm text-slate-500">Add visits to unlock the Grand Lodge officer report.</p>
           )}
         </div>
       </div>
