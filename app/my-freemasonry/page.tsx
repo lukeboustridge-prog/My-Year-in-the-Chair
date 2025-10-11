@@ -189,6 +189,31 @@ const normaliseMilestones = (value: unknown): Record<string, string> => {
   return result;
 };
 
+const formatLodgeDate = (value: string): string => {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  const isoMatch = /^([0-9]{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    return `${day},${month},${year}`;
+  }
+
+  const commaMatch = /^([0-9]{4}),\s*(\d{1,2}),\s*(\d{1,2})$/.exec(trimmed);
+  if (commaMatch) {
+    const [, year, month, day] = commaMatch;
+    return `${day.padStart(2, "0")},${month.padStart(2, "0")},${year}`;
+  }
+
+  const desiredMatch = /^(\d{1,2}),\s*(\d{1,2}),\s*([0-9]{4})$/.exec(trimmed);
+  if (desiredMatch) {
+    const [, day, month, year] = desiredMatch;
+    return `${day.padStart(2, "0")},${month.padStart(2, "0")},${year}`;
+  }
+
+  return trimmed;
+};
+
 const sanitiseLodgesForSave = (rows: LodgeRow[]): LodgeRecord[] =>
   rows
     .map((row) => {
@@ -935,8 +960,12 @@ export default function MyFreemasonryPage() {
           <div className="space-y-3">
             {form.lodges.length ? (
               form.lodges.map((lodge) => {
-                const joinedSummary = lodge.joinDate ? `Joined ${lodge.joinDate}` : "";
-                const resignedSummary = lodge.resignDate ? `Resigned ${lodge.resignDate}` : "";
+                const joinedSummary = lodge.joinDate
+                  ? `Joined ${formatLodgeDate(lodge.joinDate)}`
+                  : "";
+                const resignedSummary = lodge.resignDate
+                  ? `Resigned ${formatLodgeDate(lodge.resignDate)}`
+                  : "";
                 const summaryParts = [joinedSummary, resignedSummary].filter(Boolean);
                 const summaryText = summaryParts.length
                   ? summaryParts.join(" • ")

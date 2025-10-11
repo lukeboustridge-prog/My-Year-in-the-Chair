@@ -6,7 +6,8 @@
 // ---------------- Ranks ----------------
 export const RANK_OPTIONS = [
   // Craft
-  "Brother",
+  "Entered Apprentice",
+  "Fellow Craft",
   "Master Mason",
   "Worshipful Master",
   "Past Master",
@@ -50,10 +51,13 @@ export type Rank = typeof RANK_OPTIONS[number];
 
 export const RANK_META: Record<string, { prefix: string; postNominals: string[]; grand?: boolean }> = {
   // Craft
-  "Brother":                { prefix: "Bro.",  postNominals: [] },
-  "Master Mason":           { prefix: "Bro.",  postNominals: [] },
-  "Worshipful Master":      { prefix: "WBro.", postNominals: [] },
+  "Entered Apprentice":     { prefix: "Bro.",  postNominals: ["EA"] },
+  "Fellow Craft":           { prefix: "Bro.",  postNominals: ["FC"] },
+  "Master Mason":           { prefix: "Bro.",  postNominals: ["MM"] },
+  "Worshipful Master":      { prefix: "WBro.", postNominals: ["WM"] },
   "Past Master":            { prefix: "WBro.", postNominals: ["PM"] },
+  // Legacy craft ranks kept for backwards compatibility with stored data
+  "Brother":                { prefix: "Bro.",  postNominals: [] },
 
   // Grand Lodge (WBro.)
   "Grand Tyler":            { prefix: "WBro.", postNominals: ["G Tyr"],   grand: true },
