@@ -606,7 +606,7 @@ export default function MyFreemasonryPage() {
           initiationDate: form.initiationDate,
           passingDate: form.passingDate,
           raisingDate: form.raisingDate,
-          lodges,
+          lodges: lodgesForSave,
           craftOffices,
           grandOffices,
           achievementMilestones,
