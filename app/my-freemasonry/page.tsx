@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import { RANK_META, RANK_OPTIONS, deriveTitle, type Rank } from "@/lib/constants";
@@ -37,6 +38,15 @@ type FormState = {
   grandOffices: OfficeRow[];
   achievementMilestones: Record<string, string>;
 };
+
+const MILESTONE_YEARS: Record<string, number> = {
+  "25_YEAR_BADGE": 25,
+  "50_YEAR_BADGE": 50,
+  "60_YEAR_BADGE": 60,
+  "70_YEAR_BADGE": 70,
+};
+
+const AUTO_MILESTONE_KEYS = Object.keys(MILESTONE_YEARS);
 
 const createDefaultForm = (): FormState => ({
   name: "",
@@ -101,6 +111,37 @@ const normaliseMilestones = (value: unknown): Record<string, string> => {
   }
   return result;
 };
+
+type CollapsibleSectionProps = {
+  title: string;
+  description?: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+};
+
+function CollapsibleSection({ title, description, children, defaultOpen = true }: CollapsibleSectionProps) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <section className="card overflow-hidden">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+        onClick={() => setOpen((previous) => !previous)}
+        aria-expanded={open}
+      >
+        <div className="space-y-1">
+          <h2 className="text-xl font-semibold text-slate-900">{title}</h2>
+          {description ? <p className="text-sm text-slate-600">{description}</p> : null}
+        </div>
+        <span className="text-2xl font-semibold leading-none text-slate-500" aria-hidden>
+          {open ? "−" : "+"}
+        </span>
+      </button>
+      <div className={`card-body space-y-6${open ? "" : " hidden"}`}>{children}</div>
+    </section>
+  );
+}
 
 export default function MyFreemasonryPage() {
   const [form, setForm] = useState<FormState>(() => createDefaultForm());
@@ -190,6 +231,50 @@ export default function MyFreemasonryPage() {
       setForm((previous) => ({ ...previous, isSittingMaster: false }));
     }
   }, [canFlagSittingMaster, form.isSittingMaster]);
+
+  useEffect(() => {
+    if (!form.initiationDate) {
+      setForm((previous) => {
+        let changed = false;
+        const nextMilestones = { ...previous.achievementMilestones };
+        for (const key of AUTO_MILESTONE_KEYS) {
+          if (nextMilestones[key]) {
+            nextMilestones[key] = "";
+            changed = true;
+          }
+        }
+        return changed ? { ...previous, achievementMilestones: nextMilestones } : previous;
+      });
+      return;
+    }
+
+    const match = form.initiationDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return;
+
+    const [, yearRaw, monthRaw, dayRaw] = match;
+    const year = Number(yearRaw);
+    const month = Number(monthRaw);
+    const day = Number(dayRaw);
+    if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) return;
+
+    const computed: Record<string, string> = {};
+    for (const [key, increment] of Object.entries(MILESTONE_YEARS)) {
+      const target = new Date(Date.UTC(year + increment, month - 1, day));
+      computed[key] = target.toISOString().slice(0, 10);
+    }
+
+    setForm((previous) => {
+      let changed = false;
+      const nextMilestones = { ...previous.achievementMilestones };
+      for (const [key, value] of Object.entries(computed)) {
+        if (nextMilestones[key] !== value) {
+          nextMilestones[key] = value;
+          changed = true;
+        }
+      }
+      return changed ? { ...previous, achievementMilestones: nextMilestones } : previous;
+    });
+  }, [form.initiationDate]);
 
   const updateOffice = (key: "craftOffices" | "grandOffices", id: string, field: "office" | "years", value: string) => {
     setForm((previous) => ({
@@ -316,16 +401,11 @@ export default function MyFreemasonryPage() {
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
       ) : null}
 
-      <section className="card">
-        <div className="card-body space-y-6">
-          <div className="space-y-1">
-            <h2 className="text-xl font-semibold text-slate-900">Profile basics</h2>
-            <p className="text-sm text-slate-600">
-              Update the core information that appears on leaderboards, reports, and approvals.
-            </p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
+      <CollapsibleSection
+        title="Profile basics"
+        description="Update the core information that appears on leaderboards, reports, and approvals."
+      >
+        <div className="grid gap-4 md:grid-cols-2">
             <label className="stat md:col-span-2">
               <span className="label">Name</span>
               <input
@@ -498,20 +578,14 @@ export default function MyFreemasonryPage() {
                 }
               />
             </label>
-          </div>
         </div>
-      </section>
+      </CollapsibleSection>
 
-      <section className="card">
-        <div className="card-body space-y-6">
-          <div className="space-y-1">
-            <h2 className="text-xl font-semibold text-slate-900">Masonic journey</h2>
-            <p className="text-sm text-slate-600">
-              Record the dates you were initiated, passed, and raised to help with milestone planning.
-            </p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-3">
+      <CollapsibleSection
+        title="Masonic journey"
+        description="Record the dates you were initiated, passed, and raised to help with milestone planning."
+      >
+        <div className="grid gap-4 md:grid-cols-3">
             <label className="stat">
               <span className="label">Initiated on</span>
               <input
@@ -562,20 +636,14 @@ export default function MyFreemasonryPage() {
                 }
               />
             </label>
-          </div>
         </div>
-      </section>
+      </CollapsibleSection>
 
-      <section className="card">
-        <div className="card-body space-y-6">
-          <div className="space-y-1">
-            <h2 className="text-xl font-semibold text-slate-900">Past offices</h2>
-            <p className="text-sm text-slate-600">
-              Capture the Craft Lodge and Grand Lodge offices you have held. Include years or ranges where helpful.
-            </p>
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-2">
+      <CollapsibleSection
+        title="Past offices"
+        description="Capture the Craft Lodge and Grand Lodge offices you have held. Include years or ranges where helpful."
+      >
+        <div className="grid gap-6 lg:grid-cols-2">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-slate-900">Craft Lodge offices</h3>
@@ -699,20 +767,14 @@ export default function MyFreemasonryPage() {
                 )}
               </div>
             </div>
-          </div>
         </div>
-      </section>
+      </CollapsibleSection>
 
-      <section className="card">
-        <div className="card-body space-y-6">
-          <div className="space-y-1">
-            <h2 className="text-xl font-semibold text-slate-900">Achievements</h2>
-            <p className="text-sm text-slate-600">
-              Mark the service milestones you have reached. Add the date when each badge or honour was presented.
-            </p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <CollapsibleSection
+        title="Achievements"
+        description="Mark the service milestones you have reached. Add the date when each badge or honour was presented."
+      >
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {ACHIEVEMENT_MILESTONES.map((milestone) => (
               <label key={milestone.key} className="stat">
                 <span className="label">{milestone.label}</span>
@@ -734,9 +796,8 @@ export default function MyFreemasonryPage() {
                 />
               </label>
             ))}
-          </div>
         </div>
-      </section>
+      </CollapsibleSection>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
         <button
