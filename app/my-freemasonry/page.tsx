@@ -196,19 +196,19 @@ const formatLodgeDate = (value: string): string => {
   const isoMatch = /^([0-9]{4})-(\d{2})-(\d{2})$/.exec(trimmed);
   if (isoMatch) {
     const [, year, month, day] = isoMatch;
-    return `${day},${month},${year}`;
+    return `${day}-${month}-${year}`;
   }
 
   const commaMatch = /^([0-9]{4}),\s*(\d{1,2}),\s*(\d{1,2})$/.exec(trimmed);
   if (commaMatch) {
     const [, year, month, day] = commaMatch;
-    return `${day.padStart(2, "0")},${month.padStart(2, "0")},${year}`;
+    return `${day.padStart(2, "0")}-${month.padStart(2, "0")}-${year}`;
   }
 
-  const desiredMatch = /^(\d{1,2}),\s*(\d{1,2}),\s*([0-9]{4})$/.exec(trimmed);
+  const desiredMatch = /^(\d{1,2})[,-]\s*(\d{1,2})[,-]\s*([0-9]{4})$/.exec(trimmed);
   if (desiredMatch) {
     const [, day, month, year] = desiredMatch;
-    return `${day.padStart(2, "0")},${month.padStart(2, "0")},${year}`;
+    return `${day.padStart(2, "0")}-${month.padStart(2, "0")}-${year}`;
   }
 
   return trimmed;
