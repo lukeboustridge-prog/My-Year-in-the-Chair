@@ -15,6 +15,26 @@ import {
 
 const MILESTONE_KEYS = ACHIEVEMENT_MILESTONES.map((milestone) => milestone.key);
 
+const CRAFT_OFFICE_OPTIONS = [
+  "Inner Guard",
+  "Tyler",
+  "Steward",
+  "Junior Deacon",
+  "Senior Deacon",
+  "Junior Warden",
+  "Senior Warden",
+  "Deputy Master",
+  "Worshipful Master",
+  "Immediate Past Master",
+  "Assistant Director of Ceremonies",
+  "Director of Ceremonies",
+  "Chaplain",
+  "Organist",
+  "Almoner",
+  "Treasurer",
+  "Secretary",
+] as const;
+
 const randomId = () =>
   typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
     ? crypto.randomUUID()
@@ -541,6 +561,18 @@ export default function MyFreemasonryPage() {
   };
 
   const disableInputs = saving || loading;
+  const renderSectionSaveButton = () => (
+    <div className="flex justify-end">
+      <button
+        type="button"
+        className="btn-primary"
+        disabled={saving || loading}
+        onClick={handleSave}
+      >
+        {saving ? "Saving…" : "Save changes"}
+      </button>
+    </div>
+  );
 
   const handleCancel = () => {
     if (typeof window === "undefined") return;
@@ -820,6 +852,7 @@ export default function MyFreemasonryPage() {
               />
             </label>
         </div>
+        {renderSectionSaveButton()}
       </CollapsibleSection>
 
       <CollapsibleSection
@@ -976,6 +1009,7 @@ export default function MyFreemasonryPage() {
             )}
           </div>
         </div>
+        {renderSectionSaveButton()}
       </CollapsibleSection>
 
       <CollapsibleSection
@@ -1034,6 +1068,7 @@ export default function MyFreemasonryPage() {
               />
             </label>
         </div>
+        {renderSectionSaveButton()}
       </CollapsibleSection>
 
       <CollapsibleSection
@@ -1098,7 +1133,7 @@ export default function MyFreemasonryPage() {
                         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,160px)_minmax(0,220px)]">
                           <label className="stat sm:col-span-1">
                             <span className="label">Office</span>
-                            <input
+                            <select
                               className="card"
                               style={{ padding: ".6rem" }}
                               value={entry.office}
@@ -1106,8 +1141,20 @@ export default function MyFreemasonryPage() {
                               onChange={(event) =>
                                 updateOffice("craftOffices", entry.id, "office", event.target.value)
                               }
-                              placeholder="e.g., Senior Warden"
-                            />
+                            >
+                              <option value="">Select office</option>
+                              {trimmedOffice &&
+                              !CRAFT_OFFICE_OPTIONS.includes(
+                                trimmedOffice as (typeof CRAFT_OFFICE_OPTIONS)[number],
+                              ) ? (
+                                <option value={entry.office}>{trimmedOffice}</option>
+                              ) : null}
+                              {CRAFT_OFFICE_OPTIONS.map((option) => (
+                                <option key={option} value={option}>
+                                  {option}
+                                </option>
+                              ))}
+                            </select>
                           </label>
                           <label className="stat sm:col-span-1">
                             <span className="label">Years</span>
@@ -1279,6 +1326,7 @@ export default function MyFreemasonryPage() {
               </div>
             </div>
         </div>
+        {renderSectionSaveButton()}
       </CollapsibleSection>
 
       <CollapsibleSection
@@ -1308,6 +1356,7 @@ export default function MyFreemasonryPage() {
               </label>
             ))}
         </div>
+        {renderSectionSaveButton()}
       </CollapsibleSection>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
