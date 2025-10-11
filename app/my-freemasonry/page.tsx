@@ -42,6 +42,7 @@ type FormState = {
   isSittingMaster: boolean;
   lodgeName: string;
   lodgeNumber: string;
+  featuredLodgeId: string | null;
   region: string;
   termStart: string;
   termEnd: string;
@@ -70,6 +71,7 @@ const createDefaultForm = (): FormState => ({
   isSittingMaster: false,
   lodgeName: "",
   lodgeNumber: "",
+  featuredLodgeId: null,
   region: "",
   termStart: "",
   termEnd: "",
@@ -191,7 +193,19 @@ type CollapsibleSectionProps = {
   defaultOpen?: boolean;
 };
 
-function CollapsibleSection({ title, description, children, defaultOpen = true }: CollapsibleSectionProps) {
+type EditableCardProps = {
+  title: string;
+  summary?: string;
+  isOpen: boolean;
+  disabled?: boolean;
+  onToggle: () => void;
+  onRemove?: () => void;
+  removeDisabled?: boolean;
+  status?: ReactNode;
+  children: ReactNode;
+};
+
+function CollapsibleSection({ title, description, children, defaultOpen = false }: CollapsibleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
@@ -215,12 +229,60 @@ function CollapsibleSection({ title, description, children, defaultOpen = true }
   );
 }
 
+function EditableCard({
+  title,
+  summary,
+  isOpen,
+  disabled = false,
+  onToggle,
+  onRemove,
+  removeDisabled = false,
+  status,
+  children,
+}: EditableCardProps) {
+  return (
+    <div className="card overflow-hidden">
+      <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <p className="font-semibold text-slate-900">{title}</p>
+          {summary ? <p className="text-sm text-slate-600">{summary}</p> : null}
+          {status ? <div className="text-xs font-medium text-slate-500">{status}</div> : null}
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={disabled ? undefined : onToggle}
+            disabled={disabled}
+          >
+            {isOpen ? "Hide" : "Edit"}
+          </button>
+          {onRemove ? (
+            <button
+              type="button"
+              className="text-sm text-red-600 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={removeDisabled ? undefined : onRemove}
+              disabled={removeDisabled}
+            >
+              Remove
+            </button>
+          ) : null}
+        </div>
+      </div>
+      {isOpen ? <div className="space-y-4 p-4">{children}</div> : null}
+    </div>
+  );
+}
+
 export default function MyFreemasonryPage() {
   const [form, setForm] = useState<FormState>(() => createDefaultForm());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [openLodgeId, setOpenLodgeId] = useState<string | null>(null);
+  const [openCraftOfficeId, setOpenCraftOfficeId] = useState<string | null>(null);
+  const [openGrandOfficeId, setOpenGrandOfficeId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -232,6 +294,30 @@ export default function MyFreemasonryPage() {
         }
         const data = await response.json();
         if (!active) return;
+        const profileLodgeName =
+          typeof data.lodgeName === "string" ? data.lodgeName.trim() : "";
+        const profileLodgeNumber =
+          typeof data.lodgeNumber === "string" ? data.lodgeNumber.trim() : "";
+        let lodges = normaliseLodges(data.lodges);
+        let featuredLodgeId: string | null = null;
+        if (profileLodgeName) {
+          const matched = lodges.find((lodge) => {
+            const name = lodge.name.trim();
+            const number = lodge.number?.trim() ?? "";
+            return name === profileLodgeName && number === profileLodgeNumber;
+          });
+          if (matched) {
+            featuredLodgeId = matched.id;
+          } else {
+            const derivedLodge = createLodgeRow({
+              name: profileLodgeName,
+              number: profileLodgeNumber,
+            });
+            lodges = [...lodges, derivedLodge];
+            featuredLodgeId = derivedLodge.id;
+          }
+        }
+
         setForm({
           name: data.name ?? "",
           rank:
@@ -240,8 +326,9 @@ export default function MyFreemasonryPage() {
               : "Master Mason",
           isPastGrand: Boolean(data.isPastGrand),
           isSittingMaster: Boolean(data.isSittingMaster),
-          lodgeName: data.lodgeName ?? "",
-          lodgeNumber: data.lodgeNumber ?? "",
+          lodgeName: profileLodgeName,
+          lodgeNumber: profileLodgeNumber,
+          featuredLodgeId,
           region: data.region ?? "",
           termStart: typeof data.termStart === "string" ? data.termStart.slice(0, 10) : "",
           termEnd: typeof data.termEnd === "string" ? data.termEnd.slice(0, 10) : "",
@@ -249,7 +336,7 @@ export default function MyFreemasonryPage() {
             typeof data.initiationDate === "string" ? data.initiationDate.slice(0, 10) : "",
           passingDate: typeof data.passingDate === "string" ? data.passingDate.slice(0, 10) : "",
           raisingDate: typeof data.raisingDate === "string" ? data.raisingDate.slice(0, 10) : "",
-          lodges: normaliseLodges(data.lodges),
+          lodges,
           craftOffices: normaliseOffices(data.craftOffices),
           grandOffices: normaliseOffices(data.grandOffices),
           achievementMilestones: normaliseMilestones(data.achievementMilestones),
@@ -373,47 +460,84 @@ export default function MyFreemasonryPage() {
       ...previous,
       [key]: previous[key].filter((entry) => entry.id !== id),
     }));
+    if (key === "craftOffices") {
+      setOpenCraftOfficeId((previousOpen) => (previousOpen === id ? null : previousOpen));
+    } else {
+      setOpenGrandOfficeId((previousOpen) => (previousOpen === id ? null : previousOpen));
+    }
   };
 
   const addOffice = (key: "craftOffices" | "grandOffices") => {
+    const newOffice = createOfficeRow();
     setForm((previous) => ({
       ...previous,
-      [key]: [...previous[key], createOfficeRow()],
+      [key]: [...previous[key], newOffice],
     }));
+    if (key === "craftOffices") {
+      setOpenCraftOfficeId(newOffice.id);
+    } else {
+      setOpenGrandOfficeId(newOffice.id);
+    }
   };
 
   const updateLodge = (id: string, field: "name" | "number" | "joinDate" | "resignDate", value: string) => {
-    setForm((previous) => ({
-      ...previous,
-      lodges: previous.lodges.map((entry) =>
+    setForm((previous) => {
+      const nextLodges = previous.lodges.map((entry) =>
         entry.id === id
           ? {
               ...entry,
               [field]: value,
             }
           : entry,
-      ),
-    }));
+      );
+      if (previous.featuredLodgeId !== id) {
+        return { ...previous, lodges: nextLodges };
+      }
+      let nextLodgeName = previous.lodgeName;
+      let nextLodgeNumber = previous.lodgeNumber;
+      if (field === "name") {
+        nextLodgeName = value;
+      } else if (field === "number") {
+        nextLodgeNumber = value;
+      }
+      return {
+        ...previous,
+        lodges: nextLodges,
+        lodgeName: nextLodgeName,
+        lodgeNumber: nextLodgeNumber,
+      };
+    });
   };
 
   const removeLodge = (id: string) => {
-    setForm((previous) => ({
-      ...previous,
-      lodges: previous.lodges.filter((entry) => entry.id !== id),
-      craftOffices: previous.craftOffices.map((entry) =>
-        entry.lodgeId === id ? { ...entry, lodgeId: "" } : entry,
-      ),
-      grandOffices: previous.grandOffices.map((entry) =>
-        entry.lodgeId === id ? { ...entry, lodgeId: "" } : entry,
-      ),
-    }));
+    setForm((previous) => {
+      const next: FormState = {
+        ...previous,
+        lodges: previous.lodges.filter((entry) => entry.id !== id),
+        craftOffices: previous.craftOffices.map((entry) =>
+          entry.lodgeId === id ? { ...entry, lodgeId: "" } : entry,
+        ),
+        grandOffices: previous.grandOffices.map((entry) =>
+          entry.lodgeId === id ? { ...entry, lodgeId: "" } : entry,
+        ),
+      };
+      if (previous.featuredLodgeId === id) {
+        next.featuredLodgeId = null;
+        next.lodgeName = "";
+        next.lodgeNumber = "";
+      }
+      return next;
+    });
+    setOpenLodgeId((previousOpen) => (previousOpen === id ? null : previousOpen));
   };
 
   const addLodge = () => {
+    const newLodge = createLodgeRow();
     setForm((previous) => ({
       ...previous,
-      lodges: [...previous.lodges, createLodgeRow()],
+      lodges: [...previous.lodges, newLodge],
     }));
+    setOpenLodgeId(newLodge.id);
   };
 
   const disableInputs = saving || loading;
@@ -433,8 +557,13 @@ export default function MyFreemasonryPage() {
     setFeedback(null);
     setError(null);
 
-    const lodges = sanitiseLodgesForSave(form.lodges);
-    const lodgeIds = new Set(lodges.map((lodge) => lodge.id));
+    const lodgesForSave = sanitiseLodgesForSave(form.lodges);
+    const lodgeIds = new Set(lodgesForSave.map((lodge) => lodge.id));
+    const selectedLodgeRecord = form.featuredLodgeId
+      ? lodgesForSave.find((lodge) => lodge.id === form.featuredLodgeId)
+      : null;
+    const lodgeNameForSave = selectedLodgeRecord?.name ?? "";
+    const lodgeNumberForSave = selectedLodgeRecord?.number ?? "";
 
     const sanitiseOffices = (rows: OfficeRow[]): OfficeRecord[] =>
       rows
@@ -469,8 +598,8 @@ export default function MyFreemasonryPage() {
           rank: form.rank,
           isPastGrand: form.isPastGrand,
           isSittingMaster: form.isSittingMaster,
-          lodgeName: form.lodgeName.trim(),
-          lodgeNumber: form.lodgeNumber.trim(),
+          lodgeName: lodgeNameForSave,
+          lodgeNumber: lodgeNumberForSave,
           region: form.region.trim(),
           termStart: form.termStart,
           termEnd: form.termEnd,
@@ -498,7 +627,7 @@ export default function MyFreemasonryPage() {
       }, {});
       setForm((previous) => ({
         ...previous,
-        lodges: lodges.map((lodge) =>
+        lodges: lodgesForSave.map((lodge) =>
           createLodgeRow({
             id: lodge.id,
             name: lodge.name,
@@ -510,6 +639,9 @@ export default function MyFreemasonryPage() {
         craftOffices: craftOffices.map((office) => createOfficeRow(office)),
         grandOffices: grandOffices.map((office) => createOfficeRow(office)),
         achievementMilestones: nextAchievementMilestones,
+        featuredLodgeId: selectedLodgeRecord ? selectedLodgeRecord.id : null,
+        lodgeName: lodgeNameForSave,
+        lodgeNumber: lodgeNumberForSave ?? "",
       }));
     } catch (err) {
       console.error(err);
@@ -580,7 +712,7 @@ export default function MyFreemasonryPage() {
                     }))
                   }
                 />
-                <span className="muted">Show only Grand ranks (as Past)</span>
+                <span className="muted">Show as Past Grand Rank</span>
               </label>
             </div>
 
@@ -630,40 +762,6 @@ export default function MyFreemasonryPage() {
                 </label>
               </label>
             ) : null}
-
-            <label className="stat">
-              <span className="label">Lodge Name</span>
-              <input
-                className="card"
-                style={{ padding: ".6rem" }}
-                value={form.lodgeName}
-                disabled={disableInputs}
-                onChange={(event) =>
-                  setForm((previous) => ({
-                    ...previous,
-                    lodgeName: event.target.value,
-                  }))
-                }
-                placeholder="e.g., Lodge Example"
-              />
-            </label>
-
-            <label className="stat">
-              <span className="label">Lodge Number</span>
-              <input
-                className="card"
-                style={{ padding: ".6rem" }}
-                value={form.lodgeNumber}
-                disabled={disableInputs}
-                onChange={(event) =>
-                  setForm((previous) => ({
-                    ...previous,
-                    lodgeNumber: event.target.value,
-                  }))
-                }
-                placeholder="e.g., No. 123"
-              />
-            </label>
 
             <label className="stat">
               <span className="label">Region</span>
@@ -745,10 +843,40 @@ export default function MyFreemasonryPage() {
               form.lodges.map((lodge) => {
                 const joinedSummary = lodge.joinDate ? `Joined ${lodge.joinDate}` : "";
                 const resignedSummary = lodge.resignDate ? `Resigned ${lodge.resignDate}` : "";
-                const lodgeSummary = [joinedSummary, resignedSummary].filter(Boolean).join(" • ");
+                const summaryParts = [joinedSummary, resignedSummary].filter(Boolean);
+                const summaryText = summaryParts.length
+                  ? summaryParts.join(" • ")
+                  : "Add the dates you joined and, if applicable, resigned for a complete record.";
+                const trimmedName = lodge.name.trim();
+                const trimmedNumber = lodge.number.trim();
+                const titleParts = [
+                  trimmedName || "",
+                  trimmedNumber ? `No. ${trimmedNumber}` : "",
+                ].filter(Boolean);
+                const title = titleParts.length ? titleParts.join(" • ") : "New lodge";
+                const isFeatured = form.featuredLodgeId === lodge.id;
+                const isOpen = openLodgeId === lodge.id;
 
                 return (
-                  <div key={lodge.id} className="card space-y-4 p-4">
+                  <EditableCard
+                    key={lodge.id}
+                    title={title}
+                    summary={summaryText}
+                    status={
+                      isFeatured ? (
+                        <span className="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">
+                          Showing on Leader board
+                        </span>
+                      ) : null
+                    }
+                    isOpen={isOpen}
+                    onToggle={() =>
+                      setOpenLodgeId((previous) => (previous === lodge.id ? null : lodge.id))
+                    }
+                    onRemove={() => removeLodge(lodge.id)}
+                    disabled={disableInputs}
+                    removeDisabled={disableInputs}
+                  >
                     <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
                       <label className="stat md:col-span-2">
                         <span className="label">Lodge name</span>
@@ -803,22 +931,42 @@ export default function MyFreemasonryPage() {
                         />
                       </label>
                     </div>
-                    <div className="flex justify-between text-sm text-slate-600">
-                      <p>
-                        {lodgeSummary
-                          ? lodgeSummary
-                          : "Add the dates you joined and, if applicable, resigned for a complete record."}
-                      </p>
-                      <button
-                        type="button"
-                        className="text-sm text-red-600 hover:text-red-700"
-                        disabled={disableInputs}
-                        onClick={() => removeLodge(lodge.id)}
-                      >
-                        Remove
-                      </button>
+                    <div className="flex flex-col gap-3 border-t border-slate-200 pt-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+                      <p>{summaryText}</p>
+                      <label className="card flex items-center gap-3" style={{ padding: ".6rem" }}>
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4"
+                          checked={isFeatured}
+                          disabled={disableInputs}
+                          onChange={(event) => {
+                            const checked = event.target.checked;
+                            setForm((previous) => {
+                              if (checked) {
+                                const selected = previous.lodges.find((entry) => entry.id === lodge.id);
+                                return {
+                                  ...previous,
+                                  featuredLodgeId: lodge.id,
+                                  lodgeName: selected?.name ?? "",
+                                  lodgeNumber: selected?.number ?? "",
+                                };
+                              }
+                              if (previous.featuredLodgeId !== lodge.id) {
+                                return previous;
+                              }
+                              return {
+                                ...previous,
+                                featuredLodgeId: null,
+                                lodgeName: "",
+                                lodgeNumber: "",
+                              };
+                            });
+                          }}
+                        />
+                        <span className="muted">Show this Lodge on Leader board</span>
+                      </label>
                     </div>
-                  </div>
+                  </EditableCard>
                 );
               })
             ) : (
@@ -907,76 +1055,105 @@ export default function MyFreemasonryPage() {
               </div>
               <div className="space-y-3">
                 {form.craftOffices.length ? (
-                  form.craftOffices.map((entry) => (
-                    <div key={entry.id} className="card space-y-3 p-4">
-                      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,160px)_minmax(0,220px)]">
-                        <label className="stat sm:col-span-1">
-                          <span className="label">Office</span>
-                          <input
-                            className="card"
-                            style={{ padding: ".6rem" }}
-                            value={entry.office}
-                            disabled={disableInputs}
-                            onChange={(event) =>
-                              updateOffice("craftOffices", entry.id, "office", event.target.value)
-                            }
-                            placeholder="e.g., Senior Warden"
-                          />
-                        </label>
-                        <label className="stat sm:col-span-1">
-                          <span className="label">Years</span>
-                          <input
-                            className="card"
-                            style={{ padding: ".6rem" }}
-                            value={entry.years}
-                            disabled={disableInputs}
-                            onChange={(event) =>
-                              updateOffice("craftOffices", entry.id, "years", event.target.value)
-                            }
-                            placeholder="e.g., 2021"
-                          />
-                        </label>
-                        <label className="stat md:col-span-2 lg:col-span-1">
-                          <span className="label">Lodge</span>
-                          <select
-                            className="card"
-                            style={{ padding: ".6rem" }}
-                            value={entry.lodgeId}
-                            disabled={disableInputs || form.lodges.length === 0}
-                            onChange={(event) =>
-                              updateOffice("craftOffices", entry.id, "lodgeId", event.target.value)
-                            }
-                          >
-                            <option value="">Select lodge</option>
-                            {!form.lodges.some((lodge) => lodge.id === entry.lodgeId) && entry.lodgeId ? (
-                              <option value={entry.lodgeId}>Previously selected lodge</option>
+                  form.craftOffices.map((entry) => {
+                    const trimmedOffice = entry.office.trim();
+                    const trimmedYears = entry.years.trim();
+                    const linkedLodge = entry.lodgeId
+                      ? form.lodges.find((lodge) => lodge.id === entry.lodgeId)
+                      : null;
+                    const lodgeDisplay = linkedLodge
+                      ? [
+                          linkedLodge.name.trim(),
+                          linkedLodge.number.trim()
+                            ? `No. ${linkedLodge.number.trim()}`
+                            : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" • ")
+                      : "";
+                    const summaryPieces = [
+                      trimmedYears ? `Years: ${trimmedYears}` : "",
+                      lodgeDisplay ? `Lodge: ${lodgeDisplay}` : "",
+                    ].filter(Boolean);
+                    const summaryText = summaryPieces.length
+                      ? summaryPieces.join(" • ")
+                      : "Add the office title, years served, and lodge where it was held.";
+                    const isOpen = openCraftOfficeId === entry.id;
+
+                    return (
+                      <EditableCard
+                        key={entry.id}
+                        title={trimmedOffice || "New office"}
+                        summary={summaryText}
+                        isOpen={isOpen}
+                        onToggle={() =>
+                          setOpenCraftOfficeId((previous) =>
+                            previous === entry.id ? null : entry.id,
+                          )
+                        }
+                        onRemove={() => removeOffice("craftOffices", entry.id)}
+                        disabled={disableInputs}
+                        removeDisabled={disableInputs}
+                      >
+                        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,160px)_minmax(0,220px)]">
+                          <label className="stat sm:col-span-1">
+                            <span className="label">Office</span>
+                            <input
+                              className="card"
+                              style={{ padding: ".6rem" }}
+                              value={entry.office}
+                              disabled={disableInputs}
+                              onChange={(event) =>
+                                updateOffice("craftOffices", entry.id, "office", event.target.value)
+                              }
+                              placeholder="e.g., Senior Warden"
+                            />
+                          </label>
+                          <label className="stat sm:col-span-1">
+                            <span className="label">Years</span>
+                            <input
+                              className="card"
+                              style={{ padding: ".6rem" }}
+                              value={entry.years}
+                              disabled={disableInputs}
+                              onChange={(event) =>
+                                updateOffice("craftOffices", entry.id, "years", event.target.value)
+                              }
+                              placeholder="e.g., 2021"
+                            />
+                          </label>
+                          <label className="stat md:col-span-2 lg:col-span-1">
+                            <span className="label">Lodge</span>
+                            <select
+                              className="card"
+                              style={{ padding: ".6rem" }}
+                              value={entry.lodgeId}
+                              disabled={disableInputs || form.lodges.length === 0}
+                              onChange={(event) =>
+                                updateOffice("craftOffices", entry.id, "lodgeId", event.target.value)
+                              }
+                            >
+                              <option value="">Select lodge</option>
+                              {!form.lodges.some((lodge) => lodge.id === entry.lodgeId) && entry.lodgeId ? (
+                                <option value={entry.lodgeId}>Previously selected lodge</option>
+                              ) : null}
+                              {form.lodges.map((lodge) => (
+                                <option key={lodge.id} value={lodge.id}>
+                                  {lodge.name}
+                                  {lodge.number ? ` (No. ${lodge.number})` : ""}
+                                </option>
+                              ))}
+                            </select>
+                            {form.lodges.length === 0 ? (
+                              <p className="mt-2 text-xs text-slate-500">
+                                Add your lodges above to tag where this office was held.
+                              </p>
                             ) : null}
-                            {form.lodges.map((lodge) => (
-                              <option key={lodge.id} value={lodge.id}>
-                                {lodge.name}
-                                {lodge.number ? ` (No. ${lodge.number})` : ""}
-                              </option>
-                            ))}
-                          </select>
-                          {form.lodges.length === 0 ? (
-                            <p className="mt-2 text-xs text-slate-500">
-                              Add your lodges above to tag where this office was held.
-                            </p>
-                          ) : null}
-                        </label>
-                      </div>
-                      <div className="flex justify-end">
-                        <button
-                          type="button"
-                          className="text-sm text-red-600 hover:text-red-700"
-                          disabled={disableInputs}
-                          onClick={() => removeOffice("craftOffices", entry.id)}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))
+                          </label>
+                        </div>
+                      </EditableCard>
+                    );
+                  })
                 ) : (
                   <p className="text-sm text-slate-500">No Craft Lodge offices recorded yet.</p>
                 )}
@@ -997,76 +1174,105 @@ export default function MyFreemasonryPage() {
               </div>
               <div className="space-y-3">
                 {form.grandOffices.length ? (
-                  form.grandOffices.map((entry) => (
-                    <div key={entry.id} className="card space-y-3 p-4">
-                      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,200px)_minmax(0,220px)]">
-                        <label className="stat sm:col-span-1">
-                          <span className="label">Office</span>
-                          <input
-                            className="card"
-                            style={{ padding: ".6rem" }}
-                            value={entry.office}
-                            disabled={disableInputs}
-                            onChange={(event) =>
-                              updateOffice("grandOffices", entry.id, "office", event.target.value)
-                            }
-                            placeholder="e.g., Grand Steward"
-                          />
-                        </label>
-                        <label className="stat sm:col-span-1">
-                          <span className="label">Years</span>
-                          <input
-                            className="card"
-                            style={{ padding: ".6rem" }}
-                            value={entry.years}
-                            disabled={disableInputs}
-                            onChange={(event) =>
-                              updateOffice("grandOffices", entry.id, "years", event.target.value)
-                            }
-                            placeholder="e.g., 2019-2020"
-                          />
-                        </label>
-                        <label className="stat md:col-span-2 lg:col-span-1">
-                          <span className="label">Lodge (optional)</span>
-                          <select
-                            className="card"
-                            style={{ padding: ".6rem" }}
-                            value={entry.lodgeId}
-                            disabled={disableInputs || form.lodges.length === 0}
-                            onChange={(event) =>
-                              updateOffice("grandOffices", entry.id, "lodgeId", event.target.value)
-                            }
-                          >
-                            <option value="">Select lodge</option>
-                            {!form.lodges.some((lodge) => lodge.id === entry.lodgeId) && entry.lodgeId ? (
-                              <option value={entry.lodgeId}>Previously selected lodge</option>
+                  form.grandOffices.map((entry) => {
+                    const trimmedOffice = entry.office.trim();
+                    const trimmedYears = entry.years.trim();
+                    const linkedLodge = entry.lodgeId
+                      ? form.lodges.find((lodge) => lodge.id === entry.lodgeId)
+                      : null;
+                    const lodgeDisplay = linkedLodge
+                      ? [
+                          linkedLodge.name.trim(),
+                          linkedLodge.number.trim()
+                            ? `No. ${linkedLodge.number.trim()}`
+                            : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" • ")
+                      : "";
+                    const summaryPieces = [
+                      trimmedYears ? `Years: ${trimmedYears}` : "",
+                      lodgeDisplay ? `Lodge: ${lodgeDisplay}` : "",
+                    ].filter(Boolean);
+                    const summaryText = summaryPieces.length
+                      ? summaryPieces.join(" • ")
+                      : "Add the office title, years served, and lodge where it was held.";
+                    const isOpen = openGrandOfficeId === entry.id;
+
+                    return (
+                      <EditableCard
+                        key={entry.id}
+                        title={trimmedOffice || "New office"}
+                        summary={summaryText}
+                        isOpen={isOpen}
+                        onToggle={() =>
+                          setOpenGrandOfficeId((previous) =>
+                            previous === entry.id ? null : entry.id,
+                          )
+                        }
+                        onRemove={() => removeOffice("grandOffices", entry.id)}
+                        disabled={disableInputs}
+                        removeDisabled={disableInputs}
+                      >
+                        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,200px)_minmax(0,220px)]">
+                          <label className="stat sm:col-span-1">
+                            <span className="label">Office</span>
+                            <input
+                              className="card"
+                              style={{ padding: ".6rem" }}
+                              value={entry.office}
+                              disabled={disableInputs}
+                              onChange={(event) =>
+                                updateOffice("grandOffices", entry.id, "office", event.target.value)
+                              }
+                              placeholder="e.g., Grand Steward"
+                            />
+                          </label>
+                          <label className="stat sm:col-span-1">
+                            <span className="label">Years</span>
+                            <input
+                              className="card"
+                              style={{ padding: ".6rem" }}
+                              value={entry.years}
+                              disabled={disableInputs}
+                              onChange={(event) =>
+                                updateOffice("grandOffices", entry.id, "years", event.target.value)
+                              }
+                              placeholder="e.g., 2019-2020"
+                            />
+                          </label>
+                          <label className="stat md:col-span-2 lg:col-span-1">
+                            <span className="label">Lodge (optional)</span>
+                            <select
+                              className="card"
+                              style={{ padding: ".6rem" }}
+                              value={entry.lodgeId}
+                              disabled={disableInputs || form.lodges.length === 0}
+                              onChange={(event) =>
+                                updateOffice("grandOffices", entry.id, "lodgeId", event.target.value)
+                              }
+                            >
+                              <option value="">Select lodge</option>
+                              {!form.lodges.some((lodge) => lodge.id === entry.lodgeId) && entry.lodgeId ? (
+                                <option value={entry.lodgeId}>Previously selected lodge</option>
+                              ) : null}
+                              {form.lodges.map((lodge) => (
+                                <option key={lodge.id} value={lodge.id}>
+                                  {lodge.name}
+                                  {lodge.number ? ` (No. ${lodge.number})` : ""}
+                                </option>
+                              ))}
+                            </select>
+                            {form.lodges.length === 0 ? (
+                              <p className="mt-2 text-xs text-slate-500">
+                                Add lodges above to link this Grand Lodge office to a specific lodge if desired.
+                              </p>
                             ) : null}
-                            {form.lodges.map((lodge) => (
-                              <option key={lodge.id} value={lodge.id}>
-                                {lodge.name}
-                                {lodge.number ? ` (No. ${lodge.number})` : ""}
-                              </option>
-                            ))}
-                          </select>
-                          {form.lodges.length === 0 ? (
-                            <p className="mt-2 text-xs text-slate-500">
-                              Add lodges above to link this Grand Lodge office to a specific lodge if desired.
-                            </p>
-                          ) : null}
-                        </label>
-                      </div>
-                      <div className="flex justify-end">
-                        <button
-                          type="button"
-                          className="text-sm text-red-600 hover:text-red-700"
-                          disabled={disableInputs}
-                          onClick={() => removeOffice("grandOffices", entry.id)}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))
+                          </label>
+                        </div>
+                      </EditableCard>
+                    );
+                  })
                 ) : (
                   <p className="text-sm text-slate-500">No Grand Lodge offices recorded yet.</p>
                 )}
