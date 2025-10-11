@@ -27,6 +27,7 @@ type VisitRecord = {
   isGrandLodgeVisit?: boolean;
   hasTracingBoards?: boolean;
   grandMasterInAttendance?: boolean;
+  accompanyingBrethrenCount?: number;
 };
 
 type WorkingRecord = {

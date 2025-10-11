@@ -12,9 +12,21 @@ import {
   type LeaderboardUser,
 } from "@/lib/leaderboard";
 
+const ACCOMPANYING_WEIGHT = 0.5;
+
+function calculatePoints(visits: number, accompanying: number): number {
+  return visits + accompanying * ACCOMPANYING_WEIGHT;
+}
+
+function formatPoints(value: number): string {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+}
+
 type LeaderboardEntry = {
   rank: number;
-  count: number;
+  points: number;
+  visits: number;
+  accompanying: number;
   user: LeaderboardUser | undefined;
 };
 
@@ -37,17 +49,32 @@ async function getVisitLeaderboard(
       },
     },
     _count: { _all: true },
-    orderBy: { _count: { userId: "desc" } },
-    take: limit,
+    _sum: { accompanyingBrethrenCount: true },
   });
 
   if (!grouped.length) return [];
 
-  const map = await fetchUsersById(grouped.map((row) => row.userId));
+  const scored = grouped
+    .map((row) => {
+      const visits = row._count._all;
+      const accompanying = row._sum.accompanyingBrethrenCount ?? 0;
+      return {
+        userId: row.userId,
+        visits,
+        accompanying,
+        points: calculatePoints(visits, accompanying),
+      };
+    })
+    .sort((a, b) => b.points - a.points)
+    .slice(0, limit);
 
-  return grouped.map((row, index) => ({
+  const map = await fetchUsersById(scored.map((row) => row.userId));
+
+  return scored.map((row, index) => ({
     rank: index + 1,
-    count: row._count._all,
+    points: row.points,
+    visits: row.visits,
+    accompanying: row.accompanying,
     user: map.get(row.userId),
   }));
 }
@@ -77,7 +104,13 @@ function LeaderboardTable({ title, entries }: { title: string; entries: Leaderbo
             <p className="text-xs text-slate-500">{formatLodge(user) || "—"}</p>
           </div>
         </div>
-        <div className="mt-3 text-sm text-slate-600">Visits: <span className="font-semibold">{entry.count}</span></div>
+        <div className="mt-3 text-sm text-slate-600">
+          Points: <span className="font-semibold">{formatPoints(entry.points)}</span>
+        </div>
+        <div className="text-xs text-slate-500">
+          Visits: {entry.visits}
+          {entry.accompanying ? ` · Brethren: ${entry.accompanying}` : ""}
+        </div>
       </div>
     );
   });
@@ -95,7 +128,7 @@ function LeaderboardTable({ title, entries }: { title: string; entries: Leaderbo
                 <th className="py-2 pr-3">Rank</th>
                 <th className="py-2 pr-3">Name</th>
                 <th className="py-2 pr-3">Lodge</th>
-                <th className="py-2 pr-3">Visits</th>
+                <th className="py-2 pr-3">Points</th>
               </tr>
             </thead>
             <tbody>
@@ -124,7 +157,13 @@ function LeaderboardTable({ title, entries }: { title: string; entries: Leaderbo
                       <td className="py-2 pr-3 text-sm">
                         {formatLodge(user) || <span className="text-slate-400">—</span>}
                       </td>
-                      <td className="py-2 pr-3">{entry.count}</td>
+                      <td className="py-2 pr-3">
+                        <div className="font-semibold text-slate-900">{formatPoints(entry.points)}</div>
+                        <div className="text-xs text-slate-500">
+                          Visits: {entry.visits}
+                          {entry.accompanying ? ` · Brethren: ${entry.accompanying}` : ""}
+                        </div>
+                      </td>
                     </tr>
                   );
                 })
@@ -187,7 +226,10 @@ export default async function LeaderboardPage({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="h1">Leaderboard</h1>
-            <p className="subtle">Celebrating the busiest Masters in the Districts.</p>
+            <p className="subtle">Celebrating the busiest Masters across the Regions.</p>
+            <p className="mt-2 text-sm text-slate-600">
+              Points are awarded as 1 per visit plus 0.5 for each accompanying Brother recorded by a Worshipful Master.
+            </p>
           </div>
         </div>
         <PendingApprovalNotice />
@@ -205,7 +247,10 @@ export default async function LeaderboardPage({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="h1">Leaderboard</h1>
-          <p className="subtle">Celebrating the busiest Masters in the Districts.</p>
+          <p className="subtle">Celebrating the busiest Masters across the Regions.</p>
+          <p className="mt-2 text-sm text-slate-600">
+            Points are awarded as 1 per visit plus 0.5 for each accompanying Brother recorded by a Worshipful Master.
+          </p>
         </div>
         <div className="flex flex-col gap-3 sm:items-end">
           <div className="flex w-full items-center justify-between gap-2 text-sm sm:justify-end">

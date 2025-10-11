@@ -13,9 +13,25 @@ import {
 } from "@/lib/leaderboard";
 import { db } from "@/lib/db";
 
+const ACCOMPANYING_WEIGHT = 0.5;
+
+function calculatePoints(visits: number, accompanying: number): number {
+  return visits + accompanying * ACCOMPANYING_WEIGHT;
+}
+
+function formatPoints(value: number): string {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+}
+
 type YearSummary = {
   label: string;
-  entries: { rank: number; count: number; user: LeaderboardUser | undefined }[];
+  entries: {
+    rank: number;
+    points: number;
+    visits: number;
+    accompanying: number;
+    user: LeaderboardUser | undefined;
+  }[];
 };
 
 function buildYearRanges(yearCount: number): { label: string; start: Date; end: Date }[] {
@@ -43,20 +59,37 @@ async function loadYearlyLeaderboards(yearCount: number): Promise<YearSummary[]>
         by: ["userId"],
         where: { date: { gte: range.start, lt: range.end }, user: { isApproved: true } },
         _count: { _all: true },
-        orderBy: { _count: { userId: "desc" } },
-        take: 15,
+        _sum: { accompanyingBrethrenCount: true },
       })
     )
   );
 
-  const allIds = grouped.flatMap((rows) => rows.map((row) => row.userId));
+  const scored = grouped.map((rows) =>
+    rows
+      .map((row) => {
+        const visits = row._count._all;
+        const accompanying = row._sum.accompanyingBrethrenCount ?? 0;
+        return {
+          userId: row.userId,
+          visits,
+          accompanying,
+          points: calculatePoints(visits, accompanying),
+        };
+      })
+      .sort((a, b) => b.points - a.points)
+      .slice(0, 15)
+  );
+
+  const allIds = scored.flatMap((rows) => rows.map((row) => row.userId));
   const users = await fetchUsersById(allIds);
 
-  return grouped.map((rows, index) => ({
+  return scored.map((rows, index) => ({
     label: ranges[index]?.label ?? "",
     entries: rows.map((row, idx) => ({
       rank: idx + 1,
-      count: row._count._all,
+      points: row.points,
+      visits: row.visits,
+      accompanying: row.accompanying,
       user: users.get(row.userId),
     })),
   }));
@@ -116,7 +149,7 @@ export default async function Page() {
                       <th className="py-2 pr-3">Rank</th>
                       <th className="py-2 pr-3">Name</th>
                       <th className="py-2 pr-3">Lodge</th>
-                      <th className="py-2 pr-3">Visits</th>
+                      <th className="py-2 pr-3">Points</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -137,7 +170,13 @@ export default async function Page() {
                           <td className="py-2 pr-3 text-sm">
                             {formatLodge(entry.user) || <span className="text-slate-400">—</span>}
                           </td>
-                          <td className="py-2 pr-3">{entry.count}</td>
+                          <td className="py-2 pr-3">
+                            <div className="font-semibold text-slate-900">{formatPoints(entry.points)}</div>
+                            <div className="text-xs text-slate-500">
+                              Visits: {entry.visits}
+                              {entry.accompanying ? ` · Brethren: ${entry.accompanying}` : ""}
+                            </div>
+                          </td>
                         </tr>
                       ))
                     )}
@@ -165,7 +204,11 @@ export default async function Page() {
                         </div>
                       </div>
                       <div className="mt-3 text-sm text-slate-600">
-                        Visits: <span className="font-semibold">{entry.count}</span>
+                        Points: <span className="font-semibold">{formatPoints(entry.points)}</span>
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        Visits: {entry.visits}
+                        {entry.accompanying ? ` · Brethren: ${entry.accompanying}` : ""}
                       </div>
                     </div>
                   ))

@@ -13,9 +13,25 @@ import {
 } from "@/lib/leaderboard";
 import { db } from "@/lib/db";
 
+const ACCOMPANYING_WEIGHT = 0.5;
+
+function calculatePoints(visits: number, accompanying: number): number {
+  return visits + accompanying * ACCOMPANYING_WEIGHT;
+}
+
+function formatPoints(value: number): string {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+}
+
 type MonthSummary = {
   label: string;
-  entries: { rank: number; count: number; user: LeaderboardUser | undefined }[];
+  entries: {
+    rank: number;
+    points: number;
+    visits: number;
+    accompanying: number;
+    user: LeaderboardUser | undefined;
+  }[];
 };
 
 function buildPeriods(months: number): { label: string; start: Date; end: Date }[] {
@@ -41,20 +57,37 @@ async function loadMonthlyLeaderboards(monthCount: number): Promise<MonthSummary
         by: ["userId"],
         where: { date: { gte: period.start, lt: period.end }, user: { isApproved: true } },
         _count: { _all: true },
-        orderBy: { _count: { userId: "desc" } },
-        take: 10,
+        _sum: { accompanyingBrethrenCount: true },
       })
     )
   );
 
-  const allUserIds = groupedResults.flatMap((rows) => rows.map((row) => row.userId));
+  const scoredResults = groupedResults.map((rows) =>
+    rows
+      .map((row) => {
+        const visits = row._count._all;
+        const accompanying = row._sum.accompanyingBrethrenCount ?? 0;
+        return {
+          userId: row.userId,
+          visits,
+          accompanying,
+          points: calculatePoints(visits, accompanying),
+        };
+      })
+      .sort((a, b) => b.points - a.points)
+      .slice(0, 10)
+  );
+
+  const allUserIds = scoredResults.flatMap((rows) => rows.map((row) => row.userId));
   const users = await fetchUsersById(allUserIds);
 
-  return groupedResults.map((rows, index) => ({
+  return scoredResults.map((rows, index) => ({
     label: periods[index]?.label ?? "",
     entries: rows.map((row, idx) => ({
       rank: idx + 1,
-      count: row._count._all,
+      points: row.points,
+      visits: row.visits,
+      accompanying: row.accompanying,
       user: users.get(row.userId),
     })),
   }));
@@ -83,7 +116,7 @@ export default async function Page() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="h1">Monthly leaderboard</h1>
-            <p className="subtle">Track how each month is shaping up across the Districts.</p>
+            <p className="subtle">Track how each month is shaping up across the Regions.</p>
           </div>
         </div>
         <PendingApprovalNotice />
@@ -98,7 +131,7 @@ export default async function Page() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="h1">Monthly leaderboard</h1>
-          <p className="subtle">Track how each month is shaping up across the Districts.</p>
+          <p className="subtle">Track how each month is shaping up across the Regions.</p>
         </div>
       </div>
 
@@ -114,7 +147,7 @@ export default async function Page() {
                       <th className="py-2 pr-3">Rank</th>
                       <th className="py-2 pr-3">Name</th>
                       <th className="py-2 pr-3">Lodge</th>
-                      <th className="py-2 pr-3">Visits</th>
+                      <th className="py-2 pr-3">Points</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -135,7 +168,13 @@ export default async function Page() {
                           <td className="py-2 pr-3 text-sm">
                             {formatLodge(entry.user) || <span className="text-slate-400">—</span>}
                           </td>
-                          <td className="py-2 pr-3">{entry.count}</td>
+                          <td className="py-2 pr-3">
+                            <div className="font-semibold text-slate-900">{formatPoints(entry.points)}</div>
+                            <div className="text-xs text-slate-500">
+                              Visits: {entry.visits}
+                              {entry.accompanying ? ` · Brethren: ${entry.accompanying}` : ""}
+                            </div>
+                          </td>
                         </tr>
                       ))
                     )}
@@ -163,7 +202,11 @@ export default async function Page() {
                         </div>
                       </div>
                       <div className="mt-3 text-sm text-slate-600">
-                        Visits: <span className="font-semibold">{entry.count}</span>
+                        Points: <span className="font-semibold">{formatPoints(entry.points)}</span>
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        Visits: {entry.visits}
+                        {entry.accompanying ? ` · Brethren: ${entry.accompanying}` : ""}
                       </div>
                     </div>
                   ))

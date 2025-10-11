@@ -16,6 +16,19 @@ const WORK_OPTIONS = [
   { value: "OTHER", label: "Other" },
 ] as const;
 
+function parseAccompanyingCount(value: unknown): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 0;
+  }
+  return Math.max(0, Math.round(parsed));
+}
+
+function formatAccompanyingBadge(count: number): string {
+  if (count <= 0) return "";
+  return count === 1 ? "1 accompanying Brother" : `${count} accompanying Brethren`;
+}
+
 type VisitRecord = {
   id?: string;
   date: string;
@@ -28,6 +41,7 @@ type VisitRecord = {
   isGrandLodgeVisit: boolean;
   hasTracingBoards: boolean;
   grandMasterInAttendance: boolean;
+  accompanyingBrethrenCount: number;
 };
 
 const emptyVisit: VisitRecord = {
@@ -41,6 +55,7 @@ const emptyVisit: VisitRecord = {
   isGrandLodgeVisit: false,
   hasTracingBoards: false,
   grandMasterInAttendance: false,
+  accompanyingBrethrenCount: 0,
 };
 
 function formatWork(value: VisitRecord["workOfEvening"]): string {
@@ -70,6 +85,9 @@ function normaliseVisit(row: any, fallback?: VisitRecord): VisitRecord {
       typeof row?.grandMasterInAttendance === "boolean"
         ? row.grandMasterInAttendance
         : fallback?.grandMasterInAttendance ?? false,
+    accompanyingBrethrenCount: parseAccompanyingCount(
+      row?.accompanyingBrethrenCount ?? fallback?.accompanyingBrethrenCount ?? 0,
+    ),
   };
 }
 
@@ -89,9 +107,10 @@ type VisitItemProps = {
   saving: boolean;
   onSave: (next: VisitRecord) => Promise<boolean>;
   onDelete: (id: string) => Promise<void>;
+  canSeeAccompanying: boolean;
 };
 
-function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
+function VisitItem({ record, onSave, onDelete, saving, canSeeAccompanying }: VisitItemProps) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<VisitRecord>(record);
 
@@ -112,6 +131,9 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
     form.isGrandLodgeVisit ? "Grand Lodge visit" : null,
     form.grandMasterInAttendance ? "Grand Master present" : null,
     form.hasTracingBoards ? "Tracing boards" : null,
+    canSeeAccompanying && form.accompanyingBrethrenCount > 0
+      ? formatAccompanyingBadge(form.accompanyingBrethrenCount)
+      : null,
   ].filter(Boolean);
 
   const toggle = () => {
@@ -157,7 +179,7 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
             {highlightBadges.length ? ` · ${highlightBadges.join(" · ")}` : ""}
           </p>
         </div>
-        <span className={`text-sm text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden>
+        <span className={`text-sm text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true">
           ▾
         </span>
       </button>
@@ -277,6 +299,27 @@ function VisitItem({ record, onSave, onDelete, saving }: VisitItemProps) {
               Grand Master in attendance
             </label>
           </div>
+          {canSeeAccompanying ? (
+            <label className="label">
+              <span>Brethren accompanying you</span>
+              <input
+                className="input mt-1"
+                type="number"
+                min={0}
+                step={1}
+                value={form.accompanyingBrethrenCount.toString()}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    accompanyingBrethrenCount: parseAccompanyingCount(event.target.value),
+                  }))
+                }
+              />
+              <span className="mt-1 block text-xs text-slate-500">
+                Earn 0.5 points for each accompanying Brother.
+              </span>
+            </label>
+          ) : null}
           <label className="label">
             <span>Notes</span>
             <textarea
@@ -322,9 +365,10 @@ type VisitCreateCardProps = {
   onClose: () => void;
   onSave: (next: VisitRecord) => Promise<boolean>;
   saving: boolean;
+  canSeeAccompanying: boolean;
 };
 
-function VisitCreateCard({ onClose, onSave, saving }: VisitCreateCardProps) {
+function VisitCreateCard({ onClose, onSave, saving, canSeeAccompanying }: VisitCreateCardProps) {
   const [form, setForm] = useState<VisitRecord>({ ...emptyVisit });
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -494,15 +538,36 @@ function VisitCreateCard({ onClose, onSave, saving }: VisitCreateCardProps) {
                         grandMasterInAttendance: event.target.checked,
                       }))
                     }
-                  />
-                  Grand Master in attendance
-                </label>
-              </div>
+                />
+                Grand Master in attendance
+              </label>
+            </div>
+            {canSeeAccompanying ? (
               <label className="label">
-                <span>Notes</span>
-                <textarea
-                  className="input mt-1 min-h-[6rem]"
-                  value={form.comments ?? ""}
+                <span>Brethren accompanying you</span>
+                <input
+                  className="input mt-1"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={form.accompanyingBrethrenCount.toString()}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      accompanyingBrethrenCount: parseAccompanyingCount(event.target.value),
+                    }))
+                  }
+                />
+                <span className="mt-1 block text-xs text-slate-500">
+                  Earn 0.5 points for each accompanying Brother.
+                </span>
+              </label>
+            ) : null}
+            <label className="label">
+              <span>Notes</span>
+              <textarea
+                className="input mt-1 min-h-[6rem]"
+                value={form.comments ?? ""}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, comments: event.target.value }))
                   }
@@ -535,6 +600,21 @@ export default function VisitsPage() {
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [isMaster, setIsMaster] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/profile", { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const rank = typeof data?.rank === "string" ? data.rank : "";
+        setIsMaster(rank.trim().toLowerCase() === "worshipful master");
+      } catch (err) {
+        console.error("PROFILE_LOAD", err);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -558,19 +638,43 @@ export default function VisitsPage() {
     const key = next.id ?? "new";
     setSavingKey(key);
     try {
-      const payload = {
+      const trimmedLodgeNumber = next.lodgeNumber?.trim() || "";
+      const trimmedRegion = next.regionName?.trim() || "";
+      const trimmedCandidate = next.candidateName?.trim() || "";
+      const trimmedComments = next.comments?.trim() || "";
+      const accompanyingCount = parseAccompanyingCount(next.accompanyingBrethrenCount);
+
+      const fallbackRecord: VisitRecord = {
         id: next.id,
         date: toISODate(next.date),
         lodgeName: next.lodgeName.trim(),
-        lodgeNumber: next.lodgeNumber?.trim() || null,
-        regionName: next.regionName?.trim() || null,
+        lodgeNumber: trimmedLodgeNumber,
+        regionName: trimmedRegion,
         workOfEvening: next.workOfEvening,
-        candidateName: next.candidateName?.trim() || null,
-        comments: next.comments?.trim() || null,
+        candidateName: trimmedCandidate,
+        comments: trimmedComments,
         isGrandLodgeVisit: Boolean(next.isGrandLodgeVisit),
         hasTracingBoards: Boolean(next.hasTracingBoards),
         grandMasterInAttendance: Boolean(next.grandMasterInAttendance),
+        accompanyingBrethrenCount: isMaster ? accompanyingCount : 0,
       };
+
+      const payload = {
+        id: next.id,
+        date: fallbackRecord.date,
+        lodgeName: fallbackRecord.lodgeName,
+        lodgeNumber: trimmedLodgeNumber || null,
+        regionName: trimmedRegion || null,
+        workOfEvening: fallbackRecord.workOfEvening,
+        candidateName: trimmedCandidate || null,
+        comments: trimmedComments || null,
+        isGrandLodgeVisit: fallbackRecord.isGrandLodgeVisit,
+        hasTracingBoards: fallbackRecord.hasTracingBoards,
+        grandMasterInAttendance: fallbackRecord.grandMasterInAttendance,
+      };
+      if (isMaster) {
+        (payload as Record<string, unknown>).accompanyingBrethrenCount = accompanyingCount;
+      }
       const isNew = !payload.id;
       const body = JSON.stringify(isNew ? { ...payload, id: undefined } : payload);
       const res = await fetch("/api/visits", {
@@ -580,8 +684,11 @@ export default function VisitsPage() {
         body,
       });
       if (!res.ok) throw new Error(await res.text());
-      const saved = await res.json().catch(() => payload);
-      const normalised = normaliseVisit(saved, payload as VisitRecord);
+      const saved = await res.json().catch(() => ({
+        ...payload,
+        accompanyingBrethrenCount: isMaster ? accompanyingCount : 0,
+      }));
+      const normalised = normaliseVisit(saved, fallbackRecord);
       setRecords((prev) => {
         const list = Array.isArray(prev) ? [...prev] : [];
         if (isNew) {
@@ -648,7 +755,12 @@ export default function VisitsPage() {
 
       <div className="space-y-4">
         {creating ? (
-          <VisitCreateCard onClose={() => setCreating(false)} onSave={saveVisit} saving={savingKey === "new"} />
+          <VisitCreateCard
+            onClose={() => setCreating(false)}
+            onSave={saveVisit}
+            saving={savingKey === "new"}
+            canSeeAccompanying={isMaster}
+          />
         ) : null}
 
         <div className="card">
@@ -664,6 +776,7 @@ export default function VisitsPage() {
                     onSave={saveVisit}
                     onDelete={deleteVisit}
                     saving={savingKey === (record.id ?? "")}
+                    canSeeAccompanying={isMaster}
                   />
                 ))}
               </div>

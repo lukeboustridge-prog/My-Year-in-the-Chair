@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { REGIONS } from "@/lib/regions";
@@ -25,9 +25,25 @@ export default function NewVisitPage() {
   const [hasTracingBoards, setTracingBoards] = useState(false);
   const [grandMasterInAttendance, setGrandMasterInAttendance] = useState(false);
   const [regionName, setRegionName] = useState("");
+  const [accompanyingBrethrenCount, setAccompanyingBrethrenCount] = useState(0);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isMaster, setIsMaster] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/profile", { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const rank = typeof data?.rank === "string" ? data.rank : "";
+        setIsMaster(rank.trim().toLowerCase() === "worshipful master");
+      } catch (err) {
+        console.error("PROFILE_LOAD", err);
+      }
+    })();
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -46,6 +62,7 @@ export default function NewVisitPage() {
         grandMasterInAttendance,
         regionName: regionName || undefined,
         notes: notes || undefined,
+        accompanyingBrethrenCount: isMaster ? Math.max(0, Math.round(accompanyingBrethrenCount)) : undefined,
       }),
     });
     setLoading(false);
@@ -115,6 +132,29 @@ export default function NewVisitPage() {
           />
           Grand Master in attendance
         </label>
+
+        {isMaster ? (
+          <label>
+            Brethren accompanying you
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={accompanyingBrethrenCount}
+              onChange={e => {
+                const parsed = Number(e.target.value);
+                if (!Number.isFinite(parsed) || parsed < 0) {
+                  setAccompanyingBrethrenCount(0);
+                } else {
+                  setAccompanyingBrethrenCount(Math.round(parsed));
+                }
+              }}
+            />
+            <span className="text-xs text-slate-500">
+              Earn 0.5 points for each accompanying Brother.
+            </span>
+          </label>
+        ) : null}
 
         <label>Notes</label>
         <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3} />
