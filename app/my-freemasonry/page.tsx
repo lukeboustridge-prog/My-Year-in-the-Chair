@@ -9,6 +9,7 @@ import {
   ACHIEVEMENT_MILESTONES,
   createEmptyMilestones,
   type AchievementMilestoneRecord,
+  type LodgeRecord,
   type OfficeRecord,
 } from "@/lib/myFreemasonry";
 
@@ -19,7 +20,20 @@ const randomId = () =>
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2, 10);
 
-type OfficeRow = OfficeRecord & { id: string };
+type LodgeRow = {
+  id: string;
+  name: string;
+  number: string;
+  joinDate: string;
+  resignDate: string;
+};
+
+type OfficeRow = {
+  id: string;
+  office: string;
+  years: string;
+  lodgeId: string;
+};
 
 type FormState = {
   name: string;
@@ -34,6 +48,7 @@ type FormState = {
   initiationDate: string;
   passingDate: string;
   raisingDate: string;
+  lodges: LodgeRow[];
   craftOffices: OfficeRow[];
   grandOffices: OfficeRow[];
   achievementMilestones: Record<string, string>;
@@ -61,6 +76,7 @@ const createDefaultForm = (): FormState => ({
   initiationDate: "",
   passingDate: "",
   raisingDate: "",
+  lodges: [],
   craftOffices: [],
   grandOffices: [],
   achievementMilestones: MILESTONE_KEYS.reduce<Record<string, string>>((acc, key) => {
@@ -69,10 +85,21 @@ const createDefaultForm = (): FormState => ({
   }, {}),
 });
 
-const createOfficeRow = (initial?: Partial<OfficeRecord>): OfficeRow => ({
-  id: randomId(),
+const createOfficeRow = (
+  initial?: Partial<OfficeRecord & { id?: string | null }>,
+): OfficeRow => ({
+  id: initial?.id && typeof initial.id === "string" ? initial.id : randomId(),
   office: initial?.office ?? "",
   years: initial?.years ?? "",
+  lodgeId: typeof initial?.lodgeId === "string" ? initial.lodgeId : "",
+});
+
+const createLodgeRow = (initial?: Partial<LodgeRow>): LodgeRow => ({
+  id: initial?.id && typeof initial.id === "string" ? initial.id : randomId(),
+  name: initial?.name ?? "",
+  number: initial?.number ?? "",
+  joinDate: initial?.joinDate ?? "",
+  resignDate: initial?.resignDate ?? "",
 });
 
 const normaliseOffices = (value: unknown): OfficeRow[] => {
@@ -82,12 +109,38 @@ const normaliseOffices = (value: unknown): OfficeRow[] => {
       if (!entry || typeof entry !== "object") return null;
       const officeRaw = (entry as { office?: unknown }).office;
       const yearsRaw = (entry as { years?: unknown }).years;
-      const office = typeof officeRaw === "string" ? officeRaw : "";
-      const years = typeof yearsRaw === "string" ? yearsRaw : "";
-      if (!office && !years) return null;
-      return createOfficeRow({ office, years });
+      const lodgeIdRaw = (entry as { lodgeId?: unknown }).lodgeId;
+      const office = typeof officeRaw === "string" ? officeRaw.trim() : "";
+      const years = typeof yearsRaw === "string" ? yearsRaw.trim() : "";
+      const lodgeId = typeof lodgeIdRaw === "string" ? lodgeIdRaw : "";
+      if (!office && !years && !lodgeId) return null;
+      return createOfficeRow({ office, years, lodgeId });
     })
     .filter((entry): entry is OfficeRow => Boolean(entry));
+};
+
+const normaliseLodges = (value: unknown): LodgeRow[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const idRaw = (entry as { id?: unknown }).id;
+      const nameRaw = (entry as { name?: unknown }).name;
+      const numberRaw = (entry as { number?: unknown }).number;
+      const joinDateRaw = (entry as { joinDate?: unknown }).joinDate;
+      const resignDateRaw = (entry as { resignDate?: unknown }).resignDate;
+
+      const id = typeof idRaw === "string" && idRaw ? idRaw : randomId();
+      const name = typeof nameRaw === "string" ? nameRaw.trim() : "";
+      const number = typeof numberRaw === "string" ? numberRaw.trim() : "";
+      const joinDate = typeof joinDateRaw === "string" ? joinDateRaw.trim() : "";
+      const resignDate = typeof resignDateRaw === "string" ? resignDateRaw.trim() : "";
+
+      if (!name && !number && !joinDate && !resignDate) return null;
+
+      return createLodgeRow({ id, name, number, joinDate, resignDate });
+    })
+    .filter((entry): entry is LodgeRow => Boolean(entry));
 };
 
 const normaliseMilestones = (value: unknown): Record<string, string> => {
@@ -111,6 +164,25 @@ const normaliseMilestones = (value: unknown): Record<string, string> => {
   }
   return result;
 };
+
+const sanitiseLodgesForSave = (rows: LodgeRow[]): LodgeRecord[] =>
+  rows
+    .map((row) => {
+      const name = row.name.trim();
+      const number = row.number.trim();
+      const joinDate = row.joinDate.trim();
+      const resignDate = row.resignDate.trim();
+      if (!name) return null;
+      const record: LodgeRecord = {
+        id: row.id,
+        name,
+        number: number || null,
+      };
+      if (joinDate) record.joinDate = joinDate;
+      if (resignDate) record.resignDate = resignDate;
+      return record;
+    })
+    .filter((entry): entry is LodgeRecord => Boolean(entry));
 
 type CollapsibleSectionProps = {
   title: string;
@@ -177,6 +249,7 @@ export default function MyFreemasonryPage() {
             typeof data.initiationDate === "string" ? data.initiationDate.slice(0, 10) : "",
           passingDate: typeof data.passingDate === "string" ? data.passingDate.slice(0, 10) : "",
           raisingDate: typeof data.raisingDate === "string" ? data.raisingDate.slice(0, 10) : "",
+          lodges: normaliseLodges(data.lodges),
           craftOffices: normaliseOffices(data.craftOffices),
           grandOffices: normaliseOffices(data.grandOffices),
           achievementMilestones: normaliseMilestones(data.achievementMilestones),
@@ -276,7 +349,12 @@ export default function MyFreemasonryPage() {
     });
   }, [form.initiationDate]);
 
-  const updateOffice = (key: "craftOffices" | "grandOffices", id: string, field: "office" | "years", value: string) => {
+  const updateOffice = (
+    key: "craftOffices" | "grandOffices",
+    id: string,
+    field: "office" | "years" | "lodgeId",
+    value: string,
+  ) => {
     setForm((previous) => ({
       ...previous,
       [key]: previous[key].map((entry) =>
@@ -304,6 +382,40 @@ export default function MyFreemasonryPage() {
     }));
   };
 
+  const updateLodge = (id: string, field: "name" | "number" | "joinDate" | "resignDate", value: string) => {
+    setForm((previous) => ({
+      ...previous,
+      lodges: previous.lodges.map((entry) =>
+        entry.id === id
+          ? {
+              ...entry,
+              [field]: value,
+            }
+          : entry,
+      ),
+    }));
+  };
+
+  const removeLodge = (id: string) => {
+    setForm((previous) => ({
+      ...previous,
+      lodges: previous.lodges.filter((entry) => entry.id !== id),
+      craftOffices: previous.craftOffices.map((entry) =>
+        entry.lodgeId === id ? { ...entry, lodgeId: "" } : entry,
+      ),
+      grandOffices: previous.grandOffices.map((entry) =>
+        entry.lodgeId === id ? { ...entry, lodgeId: "" } : entry,
+      ),
+    }));
+  };
+
+  const addLodge = () => {
+    setForm((previous) => ({
+      ...previous,
+      lodges: [...previous.lodges, createLodgeRow()],
+    }));
+  };
+
   const disableInputs = saving || loading;
 
   const handleCancel = () => {
@@ -321,14 +433,24 @@ export default function MyFreemasonryPage() {
     setFeedback(null);
     setError(null);
 
+    const lodges = sanitiseLodgesForSave(form.lodges);
+    const lodgeIds = new Set(lodges.map((lodge) => lodge.id));
+
     const sanitiseOffices = (rows: OfficeRow[]): OfficeRecord[] =>
       rows
-        .map((row) => ({
-          office: row.office.trim(),
-          years: row.years?.trim() ?? "",
-        }))
+        .map((row) => {
+          const office = row.office.trim();
+          const years = row.years.trim();
+          const lodgeId = row.lodgeId && lodgeIds.has(row.lodgeId) ? row.lodgeId : "";
+          return { office, years, lodgeId };
+        })
         .filter((row) => row.office || row.years)
-        .map((row) => (row.years ? row : { office: row.office }));
+        .map((row) => {
+          const record: OfficeRecord = { office: row.office };
+          if (row.years) record.years = row.years;
+          if (row.lodgeId) record.lodgeId = row.lodgeId;
+          return record;
+        });
 
     const craftOffices = sanitiseOffices(form.craftOffices);
     const grandOffices = sanitiseOffices(form.grandOffices);
@@ -343,12 +465,24 @@ export default function MyFreemasonryPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...form,
-          prefix: derivedTitles.prefix,
-          postNominals: derivedTitles.postNominals,
+          name: form.name.trim(),
+          rank: form.rank,
+          isPastGrand: form.isPastGrand,
+          isSittingMaster: form.isSittingMaster,
+          lodgeName: form.lodgeName.trim(),
+          lodgeNumber: form.lodgeNumber.trim(),
+          region: form.region.trim(),
+          termStart: form.termStart,
+          termEnd: form.termEnd,
+          initiationDate: form.initiationDate,
+          passingDate: form.passingDate,
+          raisingDate: form.raisingDate,
+          lodges,
           craftOffices,
           grandOffices,
           achievementMilestones,
+          prefix: derivedTitles.prefix,
+          postNominals: derivedTitles.postNominals,
         }),
       });
 
@@ -364,6 +498,15 @@ export default function MyFreemasonryPage() {
       }, {});
       setForm((previous) => ({
         ...previous,
+        lodges: lodges.map((lodge) =>
+          createLodgeRow({
+            id: lodge.id,
+            name: lodge.name,
+            number: lodge.number ?? "",
+            joinDate: lodge.joinDate ?? "",
+            resignDate: lodge.resignDate ?? "",
+          }),
+        ),
         craftOffices: craftOffices.map((office) => createOfficeRow(office)),
         grandOffices: grandOffices.map((office) => createOfficeRow(office)),
         achievementMilestones: nextAchievementMilestones,
@@ -582,6 +725,112 @@ export default function MyFreemasonryPage() {
       </CollapsibleSection>
 
       <CollapsibleSection
+        title="My lodges"
+        description="Keep track of the lodges you belong to or have belonged to. These details power lodge selections elsewhere on this page."
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-slate-900">Lodge memberships</h3>
+            <button
+              type="button"
+              className="btn-soft"
+              disabled={disableInputs}
+              onClick={addLodge}
+            >
+              Add lodge
+            </button>
+          </div>
+          <div className="space-y-3">
+            {form.lodges.length ? (
+              form.lodges.map((lodge) => {
+                const joinedSummary = lodge.joinDate ? `Joined ${lodge.joinDate}` : "";
+                const resignedSummary = lodge.resignDate ? `Resigned ${lodge.resignDate}` : "";
+                const lodgeSummary = [joinedSummary, resignedSummary].filter(Boolean).join(" • ");
+
+                return (
+                  <div key={lodge.id} className="card space-y-4 p-4">
+                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                      <label className="stat md:col-span-2">
+                        <span className="label">Lodge name</span>
+                        <input
+                          className="card"
+                          style={{ padding: ".6rem" }}
+                          value={lodge.name}
+                          disabled={disableInputs}
+                          onChange={(event) =>
+                            updateLodge(lodge.id, "name", event.target.value)
+                          }
+                          placeholder="e.g., Lodge Example"
+                        />
+                      </label>
+                      <label className="stat">
+                        <span className="label">Lodge number</span>
+                        <input
+                          className="card"
+                          style={{ padding: ".6rem" }}
+                          value={lodge.number}
+                          disabled={disableInputs}
+                          onChange={(event) =>
+                            updateLodge(lodge.id, "number", event.target.value)
+                          }
+                          placeholder="e.g., No. 123"
+                        />
+                      </label>
+                      <label className="stat">
+                        <span className="label">Joined on</span>
+                        <input
+                          type="date"
+                          className="card"
+                          style={{ padding: ".6rem" }}
+                          value={lodge.joinDate}
+                          disabled={disableInputs}
+                          onChange={(event) =>
+                            updateLodge(lodge.id, "joinDate", event.target.value)
+                          }
+                        />
+                      </label>
+                      <label className="stat">
+                        <span className="label">Resigned on</span>
+                        <input
+                          type="date"
+                          className="card"
+                          style={{ padding: ".6rem" }}
+                          value={lodge.resignDate}
+                          disabled={disableInputs}
+                          onChange={(event) =>
+                            updateLodge(lodge.id, "resignDate", event.target.value)
+                          }
+                        />
+                      </label>
+                    </div>
+                    <div className="flex justify-between text-sm text-slate-600">
+                      <p>
+                        {lodgeSummary
+                          ? lodgeSummary
+                          : "Add the dates you joined and, if applicable, resigned for a complete record."}
+                      </p>
+                      <button
+                        type="button"
+                        className="text-sm text-red-600 hover:text-red-700"
+                        disabled={disableInputs}
+                        onClick={() => removeLodge(lodge.id)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-sm text-slate-500">
+                No lodge memberships recorded yet. Add your lodges to unlock location selections for past offices.
+              </p>
+            )}
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection
         title="Masonic journey"
         description="Record the dates you were initiated, passed, and raised to help with milestone planning."
       >
@@ -660,7 +909,7 @@ export default function MyFreemasonryPage() {
                 {form.craftOffices.length ? (
                   form.craftOffices.map((entry) => (
                     <div key={entry.id} className="card space-y-3 p-4">
-                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,140px)]">
+                      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,160px)_minmax(0,220px)]">
                         <label className="stat sm:col-span-1">
                           <span className="label">Office</span>
                           <input
@@ -679,13 +928,41 @@ export default function MyFreemasonryPage() {
                           <input
                             className="card"
                             style={{ padding: ".6rem" }}
-                            value={entry.years ?? ""}
+                            value={entry.years}
                             disabled={disableInputs}
                             onChange={(event) =>
                               updateOffice("craftOffices", entry.id, "years", event.target.value)
                             }
                             placeholder="e.g., 2021"
                           />
+                        </label>
+                        <label className="stat md:col-span-2 lg:col-span-1">
+                          <span className="label">Lodge</span>
+                          <select
+                            className="card"
+                            style={{ padding: ".6rem" }}
+                            value={entry.lodgeId}
+                            disabled={disableInputs || form.lodges.length === 0}
+                            onChange={(event) =>
+                              updateOffice("craftOffices", entry.id, "lodgeId", event.target.value)
+                            }
+                          >
+                            <option value="">Select lodge</option>
+                            {!form.lodges.some((lodge) => lodge.id === entry.lodgeId) && entry.lodgeId ? (
+                              <option value={entry.lodgeId}>Previously selected lodge</option>
+                            ) : null}
+                            {form.lodges.map((lodge) => (
+                              <option key={lodge.id} value={lodge.id}>
+                                {lodge.name}
+                                {lodge.number ? ` (No. ${lodge.number})` : ""}
+                              </option>
+                            ))}
+                          </select>
+                          {form.lodges.length === 0 ? (
+                            <p className="mt-2 text-xs text-slate-500">
+                              Add your lodges above to tag where this office was held.
+                            </p>
+                          ) : null}
                         </label>
                       </div>
                       <div className="flex justify-end">
@@ -722,7 +999,7 @@ export default function MyFreemasonryPage() {
                 {form.grandOffices.length ? (
                   form.grandOffices.map((entry) => (
                     <div key={entry.id} className="card space-y-3 p-4">
-                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,140px)]">
+                      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,200px)_minmax(0,220px)]">
                         <label className="stat sm:col-span-1">
                           <span className="label">Office</span>
                           <input
@@ -741,13 +1018,41 @@ export default function MyFreemasonryPage() {
                           <input
                             className="card"
                             style={{ padding: ".6rem" }}
-                            value={entry.years ?? ""}
+                            value={entry.years}
                             disabled={disableInputs}
                             onChange={(event) =>
                               updateOffice("grandOffices", entry.id, "years", event.target.value)
                             }
                             placeholder="e.g., 2019-2020"
                           />
+                        </label>
+                        <label className="stat md:col-span-2 lg:col-span-1">
+                          <span className="label">Lodge (optional)</span>
+                          <select
+                            className="card"
+                            style={{ padding: ".6rem" }}
+                            value={entry.lodgeId}
+                            disabled={disableInputs || form.lodges.length === 0}
+                            onChange={(event) =>
+                              updateOffice("grandOffices", entry.id, "lodgeId", event.target.value)
+                            }
+                          >
+                            <option value="">Select lodge</option>
+                            {!form.lodges.some((lodge) => lodge.id === entry.lodgeId) && entry.lodgeId ? (
+                              <option value={entry.lodgeId}>Previously selected lodge</option>
+                            ) : null}
+                            {form.lodges.map((lodge) => (
+                              <option key={lodge.id} value={lodge.id}>
+                                {lodge.name}
+                                {lodge.number ? ` (No. ${lodge.number})` : ""}
+                              </option>
+                            ))}
+                          </select>
+                          {form.lodges.length === 0 ? (
+                            <p className="mt-2 text-xs text-slate-500">
+                              Add lodges above to link this Grand Lodge office to a specific lodge if desired.
+                            </p>
+                          ) : null}
                         </label>
                       </div>
                       <div className="flex justify-end">

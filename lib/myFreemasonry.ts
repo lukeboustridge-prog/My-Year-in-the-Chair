@@ -1,6 +1,15 @@
 export type OfficeRecord = {
   office: string;
   years?: string;
+  lodgeId?: string | null;
+};
+
+export type LodgeRecord = {
+  id: string;
+  name: string;
+  number?: string | null;
+  joinDate?: string | null;
+  resignDate?: string | null;
 };
 
 export type AchievementMilestoneRecord = Record<string, string | null>;
