@@ -336,7 +336,7 @@ export default function MyFreemasonryPage() {
             typeof data.initiationDate === "string" ? data.initiationDate.slice(0, 10) : "",
           passingDate: typeof data.passingDate === "string" ? data.passingDate.slice(0, 10) : "",
           raisingDate: typeof data.raisingDate === "string" ? data.raisingDate.slice(0, 10) : "",
-          lodges,
+          lodges: lodgesForSave,
           craftOffices: normaliseOffices(data.craftOffices),
           grandOffices: normaliseOffices(data.grandOffices),
           achievementMilestones: normaliseMilestones(data.achievementMilestones),
