@@ -29,7 +29,7 @@ export default function AuthPage() {
         <button className="btn btn-primary w-full" disabled={loading}>{loading ? "Signing in..." : "Sign in"}</button>
       </form>
       <div className="text-sm mt-4">
-        <span>Don't have an account? </span>
+        <span>Don&apos;t have an account? </span>
         <Link className="link" href="/auth/register">Create one</Link>
       </div>
     </div>

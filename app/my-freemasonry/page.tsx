@@ -562,8 +562,8 @@ export default function MyFreemasonryPage() {
     const selectedLodgeRecord = form.featuredLodgeId
       ? lodgesForSave.find((lodge) => lodge.id === form.featuredLodgeId)
       : null;
-    const lodgeNameForSave = selectedLodgeRecord?.name ?? "";
-    const lodgeNumberForSave = selectedLodgeRecord?.number ?? "";
+    const lodgeNameForSave = selectedLodgeRecord?.name ?? null;
+    const lodgeNumberForSave = selectedLodgeRecord?.number ?? null;
 
     const sanitiseOffices = (rows: OfficeRow[]): OfficeRecord[] =>
       rows
@@ -640,7 +640,7 @@ export default function MyFreemasonryPage() {
         grandOffices: grandOffices.map((office) => createOfficeRow(office)),
         achievementMilestones: nextAchievementMilestones,
         featuredLodgeId: selectedLodgeRecord ? selectedLodgeRecord.id : null,
-        lodgeName: lodgeNameForSave,
+        lodgeName: lodgeNameForSave ?? "",
         lodgeNumber: lodgeNumberForSave ?? "",
       }));
     } catch (err) {
