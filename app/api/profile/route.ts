@@ -90,6 +90,7 @@ export async function GET() {
     rank: u.rank,
     isPastGrand: u.isPastGrand,
     isSittingMaster: u.isSittingMaster,
+    currentCraftOffice: u.currentCraftOffice,
     prefix: u.prefix,
     postNominals: u.postNominals,
     lodgeName: u.lodgeName,
@@ -121,6 +122,10 @@ export async function PUT(req: Request) {
   const craftOffices = parseOffices(body.craftOffices);
   const grandOffices = parseOffices(body.grandOffices);
   const achievementMilestones = parseAchievementMilestones(body.achievementMilestones);
+  const currentCraftOfficeRaw =
+    typeof body.currentCraftOffice === "string" ? body.currentCraftOffice.trim() : "";
+  const currentCraftOffice =
+    body.rank === "Worshipful Master" ? null : currentCraftOfficeRaw || null;
 
   await db.user.update({
     where: { id: uid },
@@ -129,6 +134,7 @@ export async function PUT(req: Request) {
       rank: body.rank ?? null,
       isPastGrand: Boolean(body.isPastGrand),
       isSittingMaster: Boolean(body.isSittingMaster),
+      currentCraftOffice,
       prefix: body.prefix ?? null,
       postNominals: Array.isArray(body.postNominals) ? body.postNominals : [],
       lodgeName: body.lodgeName ?? null,

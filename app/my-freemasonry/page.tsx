@@ -60,6 +60,7 @@ type FormState = {
   rank: Rank;
   isPastGrand: boolean;
   isSittingMaster: boolean;
+  currentCraftOffice: string;
   lodgeName: string;
   lodgeNumber: string;
   featuredLodgeId: string | null;
@@ -89,6 +90,7 @@ const createDefaultForm = (): FormState => ({
   rank: "Master Mason",
   isPastGrand: false,
   isSittingMaster: false,
+  currentCraftOffice: "",
   lodgeName: "",
   lodgeNumber: "",
   featuredLodgeId: null,
@@ -318,6 +320,8 @@ export default function MyFreemasonryPage() {
           typeof data.lodgeName === "string" ? data.lodgeName.trim() : "";
         const profileLodgeNumber =
           typeof data.lodgeNumber === "string" ? data.lodgeNumber.trim() : "";
+        const profileCraftOffice =
+          typeof data.currentCraftOffice === "string" ? data.currentCraftOffice.trim() : "";
         let lodges = normaliseLodges(data.lodges);
         let featuredLodgeId: string | null = null;
         if (profileLodgeName) {
@@ -346,6 +350,7 @@ export default function MyFreemasonryPage() {
               : "Master Mason",
           isPastGrand: Boolean(data.isPastGrand),
           isSittingMaster: Boolean(data.isSittingMaster),
+          currentCraftOffice: profileCraftOffice,
           lodgeName: profileLodgeName,
           lodgeNumber: profileLodgeNumber,
           featuredLodgeId,
@@ -391,6 +396,19 @@ export default function MyFreemasonryPage() {
     [form.isPastGrand, grandRanks],
   );
 
+  const currentCraftOfficeChoices = useMemo(() => {
+    const trimmed = form.currentCraftOffice.trim();
+    if (
+      trimmed &&
+      !CRAFT_OFFICE_OPTIONS.includes(
+        trimmed as (typeof CRAFT_OFFICE_OPTIONS)[number],
+      )
+    ) {
+      return [...CRAFT_OFFICE_OPTIONS, trimmed];
+    }
+    return [...CRAFT_OFFICE_OPTIONS];
+  }, [form.currentCraftOffice]);
+
   const canFlagSittingMaster = useMemo(() => {
     if (form.rank === "Worshipful Master") return false;
     if (form.rank === "Past Master") return true;
@@ -411,6 +429,12 @@ export default function MyFreemasonryPage() {
       setForm((previous) => ({ ...previous, isSittingMaster: false }));
     }
   }, [canFlagSittingMaster, form.isSittingMaster]);
+
+  useEffect(() => {
+    if (form.rank === "Worshipful Master" && form.currentCraftOffice) {
+      setForm((previous) => ({ ...previous, currentCraftOffice: "" }));
+    }
+  }, [form.rank, form.currentCraftOffice]);
 
   useEffect(() => {
     if (!form.initiationDate) {
@@ -620,6 +644,8 @@ export default function MyFreemasonryPage() {
       const value = form.achievementMilestones[key]?.trim();
       achievementMilestones[key] = value ? value : null;
     }
+    const currentCraftOfficeForSave =
+      form.rank === "Worshipful Master" ? "" : form.currentCraftOffice.trim();
 
     try {
       const response = await fetch("/api/profile", {
@@ -630,6 +656,7 @@ export default function MyFreemasonryPage() {
           rank: form.rank,
           isPastGrand: form.isPastGrand,
           isSittingMaster: form.isSittingMaster,
+          currentCraftOffice: currentCraftOfficeForSave || null,
           lodgeName: lodgeNameForSave,
           lodgeNumber: lodgeNumberForSave,
           region: form.region.trim(),
@@ -674,6 +701,7 @@ export default function MyFreemasonryPage() {
         featuredLodgeId: selectedLodgeRecord ? selectedLodgeRecord.id : null,
         lodgeName: lodgeNameForSave ?? "",
         lodgeNumber: lodgeNumberForSave ?? "",
+        currentCraftOffice: currentCraftOfficeForSave,
       }));
     } catch (err) {
       console.error(err);
@@ -730,24 +758,6 @@ export default function MyFreemasonryPage() {
               />
             </label>
 
-            <div className="stat md:col-span-2">
-              <span className="label">Past Grand Rank</span>
-              <label className="card flex items-center gap-3" style={{ padding: ".6rem" }}>
-                <input
-                  type="checkbox"
-                  checked={form.isPastGrand}
-                  disabled={disableInputs}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      isPastGrand: event.target.checked,
-                    }))
-                  }
-                />
-                <span className="muted">Show as Past Grand Rank</span>
-              </label>
-            </div>
-
             <label className="stat md:col-span-2">
               <span className="label">Rank</span>
               <select
@@ -772,6 +782,49 @@ export default function MyFreemasonryPage() {
                 ))}
               </select>
             </label>
+
+            <div className="stat md:col-span-2">
+              <span className="label">Past Grand Rank</span>
+              <label className="card flex items-center gap-3" style={{ padding: ".6rem" }}>
+                <input
+                  type="checkbox"
+                  checked={form.isPastGrand}
+                  disabled={disableInputs}
+                  onChange={(event) =>
+                    setForm((previous) => ({
+                      ...previous,
+                      isPastGrand: event.target.checked,
+                    }))
+                  }
+                />
+                <span className="muted">Show as Past Grand Rank</span>
+              </label>
+            </div>
+
+            {form.rank !== "Worshipful Master" ? (
+              <label className="stat md:col-span-2">
+                <span className="label">Current Craft Office</span>
+                <select
+                  className="card"
+                  style={{ padding: ".6rem" }}
+                  value={form.currentCraftOffice}
+                  disabled={disableInputs}
+                  onChange={(event) =>
+                    setForm((previous) => ({
+                      ...previous,
+                      currentCraftOffice: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Select craft office</option>
+                  {currentCraftOfficeChoices.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
 
             {canFlagSittingMaster ? (
               <label className="stat md:col-span-2">

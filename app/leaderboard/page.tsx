@@ -107,6 +107,9 @@ function LeaderboardTable({ title, entries }: { title: string; entries: Leaderbo
           </div>
           <div className="text-right text-sm text-slate-600">
             {nameWithPostNominals}
+            {user?.currentCraftOffice ? (
+              <p className="text-xs text-slate-500">{user.currentCraftOffice}</p>
+            ) : null}
             <p className="text-xs text-slate-500">{formatLodge(user) || "—"}</p>
           </div>
         </div>
@@ -159,6 +162,11 @@ function LeaderboardTable({ title, entries }: { title: string; entries: Leaderbo
                           <span className="font-medium text-slate-900">{displayName}</span>
                           {postNominals ? (
                             <span className="font-medium text-slate-900">{postNominals}</span>
+                          ) : null}
+                          {user?.currentCraftOffice ? (
+                            <span className="basis-full text-xs text-slate-500">
+                              {user.currentCraftOffice}
+                            </span>
                           ) : null}
                         </div>
                       </td>

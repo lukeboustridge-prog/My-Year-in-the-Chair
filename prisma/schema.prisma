@@ -30,6 +30,7 @@ model User {
   postNominals  String[]
   rank          String?    // e.g., "Master Mason", "Grand Steward", "Deputy Grand Master", "Grand Master"
   isPastGrand   Boolean    @default(false)
+  currentCraftOffice String?
 
   lodgeName     String?
   lodgeNumber   String?

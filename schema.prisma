@@ -30,6 +30,7 @@ model User {
   rank          String?
   isPastGrand   Boolean    @default(false)
   isSittingMaster Boolean  @default(false)
+  currentCraftOffice String?
   lodgeName     String?
   lodgeNumber   String?
   region        String?
