@@ -43,6 +43,7 @@ model User {
   visits        Visit[]
   works         LodgeWork[]
   myWorks       MyWork[]
+  lodgeWorkRsvps LodgeWorkRsvp[]
   awards        Award[]
   role          String   @default("USER")
 }
@@ -64,6 +65,8 @@ model Visit {
   hasTracingBoards   Boolean  @default(false)
   notes              String?
   createdAt     DateTime @default(now())
+
+  lodgeWorkRsvp LodgeWorkRsvp? @relation("VisitRsvp")
 }
 
 model LodgeWork {
@@ -122,7 +125,7 @@ model LodgeWorkRsvp {
   lodgeWorkId  String
   user         User      @relation(fields: [userId], references: [id])
   userId       String
-  visit        Visit?    @relation(fields: [visitId], references: [id])
+  visit        Visit?    @relation("VisitRsvp", fields: [visitId], references: [id])
   visitId      String?
 
   createdAt    DateTime  @default(now())
