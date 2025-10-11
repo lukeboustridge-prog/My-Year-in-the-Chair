@@ -327,120 +327,213 @@ function WorkingCreateCard({ onClose, onSave, saving }: WorkingCreateCardProps) 
   };
 
   return (
-    <div className="rounded-xl border border-dashed border-slate-300 bg-white shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3">
-        <h2 className="font-semibold text-slate-800">Add lodge working</h2>
-        <button type="button" className="navlink" onClick={onClose}>
-          Close
-        </button>
-      </div>
-      <form onSubmit={handleSubmit} className="border-t border-slate-200 px-4 py-4 space-y-4 sm:px-5">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <label className="label">
-            <span>Date</span>
-            <input
-              className="input mt-1"
-              type="date"
-              value={form.date}
-              onChange={(event) => setForm((prev) => ({ ...prev, date: event.target.value }))}
-              required
-            />
-          </label>
-          <label className="label">
-            <span>Work of the evening</span>
-            <select
-              className="input mt-1"
-              value={form.work}
-              onChange={(event) =>
-                setForm((prev) => ({
-                  ...prev,
-                  work: event.target.value as WorkingRecord["work"],
-                }))
-              }
+    <div
+      className="fixed inset-0 z-50 overflow-x-hidden overflow-y-auto bg-slate-900/70"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
+        <div
+          className="card w-full max-w-2xl"
+          style={{ maxHeight: "90vh" }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="flex h-full flex-col" style={{ maxHeight: "min(90vh, 720px)" }}>
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
+              <div>
+                <h2 className="h2">Add lodge working</h2>
+                <p className="text-sm text-slate-500">
+                  Capture work details for your lodge throughout the year.
+                </p>
+              </div>
+              <button type="button" className="btn" onClick={onClose}>
+                Close
+              </button>
+            </div>
+            <form
+              onSubmit={handleSubmit}
+              className="flex-1 space-y-6 overflow-y-auto p-5 pt-4 sm:p-6 sm:pt-5"
             >
-              {WORK_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="label sm:col-span-2">
-            <span>Candidate name</span>
-            <input
-              className="input mt-1"
-              type="text"
-              value={form.candidateName ?? ""}
-              onChange={(event) => setForm((prev) => ({ ...prev, candidateName: event.target.value }))}
-              placeholder="If applicable"
-            />
-          </label>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <label className="label">
+                  <span>Date</span>
+                  <input
+                    className="input mt-1"
+                    type="date"
+                    value={form.date}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, date: event.target.value }))
+                    }
+                    required
+                  />
+                </label>
+                <label className="label">
+                  <span>Work of the evening</span>
+                  <select
+                    className="input mt-1"
+                    value={form.work}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        work: event.target.value as WorkingRecord["work"],
+                      }))
+                    }
+                  >
+                    {WORK_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="label md:col-span-2">
+                  <span>Candidate name</span>
+                  <input
+                    className="input mt-1"
+                    type="text"
+                    value={form.candidateName ?? ""}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, candidateName: event.target.value }))
+                    }
+                    placeholder="If applicable"
+                  />
+                </label>
+                <label className="label">
+                  <span>Emergency meeting</span>
+                  <select
+                    className="input mt-1"
+                    value={form.isEmergencyMeeting ? "yes" : "no"}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        isEmergencyMeeting: event.target.value === "yes",
+                      }))
+                    }
+                  >
+                    <option value="no">No</option>
+                    <option value="yes">Yes</option>
+                  </select>
+                </label>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={Boolean(form.isGrandLodgeVisit)}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        isGrandLodgeVisit: event.target.checked,
+                      }))
+                    }
+                  />
+                  Grand Lodge visit
+                </label>
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={Boolean(form.hasTracingBoards)}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        hasTracingBoards: event.target.checked,
+                      }))
+                    }
+                  />
+                  Tracing boards delivered
+                </label>
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={Boolean(form.grandMasterInAttendance)}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        grandMasterInAttendance: event.target.checked,
+                      }))
+                    }
+                  />
+                  Grand Master in attendance
+                </label>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={Boolean(form.hasFirstTracingBoard)}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        hasFirstTracingBoard: event.target.checked,
+                      }))
+                    }
+                  />
+                  First tracing board
+                </label>
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={Boolean(form.hasSecondTracingBoard)}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        hasSecondTracingBoard: event.target.checked,
+                      }))
+                    }
+                  />
+                  Second tracing board
+                </label>
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={Boolean(form.hasThirdTracingBoard)}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        hasThirdTracingBoard: event.target.checked,
+                      }))
+                    }
+                  />
+                  Third tracing board
+                </label>
+              </div>
+              <label className="label">
+                <span>Notes</span>
+                <textarea
+                  className="input mt-1 min-h-[6rem]"
+                  value={form.comments ?? ""}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, comments: event.target.value }))
+                  }
+                  placeholder="Optional notes"
+                />
+              </label>
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <button type="submit" className="btn-primary w-full sm:w-auto" disabled={saving}>
+                  {saving ? "Saving…" : "Save working"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-soft w-full sm:w-auto"
+                  onClick={onClose}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              className="h-4 w-4"
-              checked={Boolean(form.isGrandLodgeVisit)}
-              onChange={(event) => setForm((prev) => ({ ...prev, isGrandLodgeVisit: event.target.checked }))}
-            />
-            Grand Lodge visit
-          </label>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              className="h-4 w-4"
-              checked={Boolean(form.isEmergencyMeeting)}
-              onChange={(event) => setForm((prev) => ({ ...prev, isEmergencyMeeting: event.target.checked }))}
-            />
-            Emergency meeting
-          </label>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              className="h-4 w-4"
-              checked={Boolean(form.hasFirstTracingBoard)}
-              onChange={(event) => setForm((prev) => ({ ...prev, hasFirstTracingBoard: event.target.checked }))}
-            />
-            First tracing board
-          </label>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              className="h-4 w-4"
-              checked={Boolean(form.hasSecondTracingBoard)}
-              onChange={(event) => setForm((prev) => ({ ...prev, hasSecondTracingBoard: event.target.checked }))}
-            />
-            Second tracing board
-          </label>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              className="h-4 w-4"
-              checked={Boolean(form.hasThirdTracingBoard)}
-              onChange={(event) => setForm((prev) => ({ ...prev, hasThirdTracingBoard: event.target.checked }))}
-            />
-            Third tracing board
-          </label>
-        </div>
-        <label className="label">
-          <span>Notes</span>
-          <textarea
-            className="input mt-1 min-h-[6rem]"
-            value={form.comments ?? ""}
-            onChange={(event) => setForm((prev) => ({ ...prev, comments: event.target.value }))}
-            placeholder="Optional notes"
-          />
-        </label>
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <button type="submit" className="btn-primary w-full sm:w-auto" disabled={saving}>
-            {saving ? "Saving…" : "Save working"}
-          </button>
-          <button type="button" className="btn-soft w-full sm:w-auto" onClick={onClose} disabled={saving}>
-            Cancel
-          </button>
-        </div>
-      </form>
+      </div>
     </div>
   );
 }
