@@ -24,7 +24,10 @@ export async function GET() {
   if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
   const [user, items] = await Promise.all([
-    db.user.findUnique({ where: { id: userId }, select: { role: true } }),
+    db.user.findUnique({
+      where: { id: userId },
+      select: { role: true, isSittingMaster: true, currentCraftOffice: true },
+    }),
     db.lodgeWork.findMany({
       where: { userId },
       orderBy: [{ year: "asc" }, { month: "asc" }],
@@ -34,7 +37,7 @@ export async function GET() {
 
   if (!user) return new NextResponse("Unauthorized", { status: 401 });
 
-  const canManage = canManageEventVisibility(user.role);
+  const canManage = canManageEventVisibility(user);
 
   return NextResponse.json({
     items: items.map(({ _count, ...item }) => ({
@@ -55,9 +58,12 @@ export async function POST(req: Request) {
     const parsed = schema.safeParse(body);
     if (!parsed.success) return new NextResponse("Invalid input", { status: 400 });
     const d = parsed.data;
-    const user = await db.user.findUnique({ where: { id: userId }, select: { role: true } });
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { role: true, isSittingMaster: true, currentCraftOffice: true },
+    });
     if (!user) return new NextResponse("Unauthorized", { status: 401 });
-    const canManage = canManageEventVisibility(user.role);
+    const canManage = canManageEventVisibility(user);
     const item = await db.lodgeWork.create({
       data: {
         userId,

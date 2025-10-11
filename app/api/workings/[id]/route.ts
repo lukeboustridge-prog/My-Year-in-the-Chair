@@ -30,9 +30,12 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     return new NextResponse("Invalid input", { status: 400 });
   }
 
-  const user = await db.user.findUnique({ where: { id: userId }, select: { role: true } });
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { role: true, isSittingMaster: true, currentCraftOffice: true },
+  });
   if (!user) return new NextResponse("Unauthorized", { status: 401 });
-  const canManage = canManageEventVisibility(user.role);
+  const canManage = canManageEventVisibility(user);
 
   if (parsedBody.displayOnEventsPage !== undefined && !canManage) {
     return new NextResponse("Forbidden", { status: 403 });
