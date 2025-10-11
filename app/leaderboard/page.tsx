@@ -22,11 +22,16 @@ function formatPoints(value: number): string {
   return Number.isInteger(value) ? value.toString() : value.toFixed(1);
 }
 
+function formatAverage(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return "0";
+  return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+}
+
 type LeaderboardEntry = {
   rank: number;
   points: number;
   visits: number;
-  accompanying: number;
+  averageAccompanying: number;
   user: LeaderboardUser | undefined;
 };
 
@@ -57,12 +62,13 @@ async function getVisitLeaderboard(
   const scored = grouped
     .map((row) => {
       const visits = row._count._all;
-      const accompanying = row._sum.accompanyingBrethrenCount ?? 0;
+      const accompanyingTotal = row._sum.accompanyingBrethrenCount ?? 0;
+      const averageAccompanying = visits > 0 ? accompanyingTotal / visits : 0;
       return {
         userId: row.userId,
         visits,
-        accompanying,
-        points: calculatePoints(visits, accompanying),
+        averageAccompanying,
+        points: calculatePoints(visits, accompanyingTotal),
       };
     })
     .sort((a, b) => b.points - a.points)
@@ -74,7 +80,7 @@ async function getVisitLeaderboard(
     rank: index + 1,
     points: row.points,
     visits: row.visits,
-    accompanying: row.accompanying,
+    averageAccompanying: row.averageAccompanying,
     user: map.get(row.userId),
   }));
 }
@@ -109,7 +115,9 @@ function LeaderboardTable({ title, entries }: { title: string; entries: Leaderbo
         </div>
         <div className="text-xs text-slate-500">
           Visits: {entry.visits}
-          {entry.accompanying ? ` · Brethren: ${entry.accompanying}` : ""}
+          {entry.averageAccompanying
+            ? ` · Brethren avg: ${formatAverage(entry.averageAccompanying)}`
+            : ""}
         </div>
       </div>
     );
@@ -161,7 +169,9 @@ function LeaderboardTable({ title, entries }: { title: string; entries: Leaderbo
                         <div className="font-semibold text-slate-900">{formatPoints(entry.points)}</div>
                         <div className="text-xs text-slate-500">
                           Visits: {entry.visits}
-                          {entry.accompanying ? ` · Brethren: ${entry.accompanying}` : ""}
+                          {entry.averageAccompanying
+                            ? ` · Brethren avg: ${formatAverage(entry.averageAccompanying)}`
+                            : ""}
                         </div>
                       </td>
                     </tr>
@@ -228,7 +238,7 @@ export default async function LeaderboardPage({
             <h1 className="h1">Leaderboard</h1>
             <p className="subtle">Celebrating the busiest Masters across the Regions.</p>
             <p className="mt-2 text-sm text-slate-600">
-              Points are awarded as 1 per visit plus 0.5 for each accompanying Brother recorded by a Worshipful Master.
+              Points are awarded as 1 per visit plus 0.5 for each accompanying Brother recorded by a Worshipful Master. Brethren figures show the average companions per visit.
             </p>
           </div>
         </div>
@@ -249,7 +259,7 @@ export default async function LeaderboardPage({
           <h1 className="h1">Leaderboard</h1>
           <p className="subtle">Celebrating the busiest Masters across the Regions.</p>
           <p className="mt-2 text-sm text-slate-600">
-            Points are awarded as 1 per visit plus 0.5 for each accompanying Brother recorded by a Worshipful Master.
+            Points are awarded as 1 per visit plus 0.5 for each accompanying Brother recorded by a Worshipful Master. Brethren figures show the average companions per visit.
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:items-end">

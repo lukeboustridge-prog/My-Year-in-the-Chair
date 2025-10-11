@@ -23,13 +23,18 @@ function formatPoints(value: number): string {
   return Number.isInteger(value) ? value.toString() : value.toFixed(1);
 }
 
+function formatAverage(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return "0";
+  return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+}
+
 type MonthSummary = {
   label: string;
   entries: {
     rank: number;
     points: number;
     visits: number;
-    accompanying: number;
+    averageAccompanying: number;
     user: LeaderboardUser | undefined;
   }[];
 };
@@ -66,12 +71,13 @@ async function loadMonthlyLeaderboards(monthCount: number): Promise<MonthSummary
     rows
       .map((row) => {
         const visits = row._count._all;
-        const accompanying = row._sum.accompanyingBrethrenCount ?? 0;
+        const accompanyingTotal = row._sum.accompanyingBrethrenCount ?? 0;
+        const averageAccompanying = visits > 0 ? accompanyingTotal / visits : 0;
         return {
           userId: row.userId,
           visits,
-          accompanying,
-          points: calculatePoints(visits, accompanying),
+          averageAccompanying,
+          points: calculatePoints(visits, accompanyingTotal),
         };
       })
       .sort((a, b) => b.points - a.points)
@@ -87,7 +93,7 @@ async function loadMonthlyLeaderboards(monthCount: number): Promise<MonthSummary
       rank: idx + 1,
       points: row.points,
       visits: row.visits,
-      accompanying: row.accompanying,
+      averageAccompanying: row.averageAccompanying,
       user: users.get(row.userId),
     })),
   }));
@@ -172,7 +178,9 @@ export default async function Page() {
                             <div className="font-semibold text-slate-900">{formatPoints(entry.points)}</div>
                             <div className="text-xs text-slate-500">
                               Visits: {entry.visits}
-                              {entry.accompanying ? ` · Brethren: ${entry.accompanying}` : ""}
+                              {entry.averageAccompanying
+                                ? ` · Brethren avg: ${formatAverage(entry.averageAccompanying)}`
+                                : ""}
                             </div>
                           </td>
                         </tr>
@@ -206,7 +214,9 @@ export default async function Page() {
                       </div>
                       <div className="text-xs text-slate-500">
                         Visits: {entry.visits}
-                        {entry.accompanying ? ` · Brethren: ${entry.accompanying}` : ""}
+                        {entry.averageAccompanying
+                          ? ` · Brethren avg: ${formatAverage(entry.averageAccompanying)}`
+                          : ""}
                       </div>
                     </div>
                   ))

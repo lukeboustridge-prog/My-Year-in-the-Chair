@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 
-function isWorshipfulMaster(rank: string | null | undefined): boolean {
+function isWorshipfulMaster(
+  rank: string | null | undefined,
+  isSittingMaster: boolean | null | undefined,
+): boolean {
+  if (isSittingMaster) return true;
   if (!rank) return false;
   return rank.trim().toLowerCase() === "worshipful master";
 }
@@ -26,8 +30,11 @@ export async function POST(req: Request) {
   const uid = getUserId();
   if (!uid) return new NextResponse("Unauthorized", { status: 401 });
   const body = await req.json();
-  const viewer = await db.user.findUnique({ where: { id: uid }, select: { rank: true } });
-  const isMaster = isWorshipfulMaster(viewer?.rank);
+  const viewer = await db.user.findUnique({
+    where: { id: uid },
+    select: { rank: true, isSittingMaster: true },
+  });
+  const isMaster = isWorshipfulMaster(viewer?.rank, viewer?.isSittingMaster);
   const comments = body.comments ?? body.notes ?? null;
   const regionName =
     typeof body.regionName === "string" ? body.regionName.trim() || null : null;
@@ -63,8 +70,11 @@ export async function PUT(req: Request) {
   const existing = await db.visit.findUnique({ where: { id: body.id } });
   if (!existing || existing.userId !== uid) return new NextResponse("Not found", { status: 404 });
 
-  const viewer = await db.user.findUnique({ where: { id: uid }, select: { rank: true } });
-  const isMaster = isWorshipfulMaster(viewer?.rank);
+  const viewer = await db.user.findUnique({
+    where: { id: uid },
+    select: { rank: true, isSittingMaster: true },
+  });
+  const isMaster = isWorshipfulMaster(viewer?.rank, viewer?.isSittingMaster);
 
   const updateData: Record<string, unknown> = {
     date: body.date ? new Date(body.date) : existing.date,

@@ -38,7 +38,10 @@ export default function NewVisitPage() {
         if (!res.ok) return;
         const data = await res.json();
         const rank = typeof data?.rank === "string" ? data.rank : "";
-        setIsMaster(rank.trim().toLowerCase() === "worshipful master");
+        const isSittingMaster = Boolean(data?.isSittingMaster);
+        setIsMaster(
+          isSittingMaster || rank.trim().toLowerCase() === "worshipful master",
+        );
       } catch (err) {
         console.error("PROFILE_LOAD", err);
       }

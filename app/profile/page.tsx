@@ -11,6 +11,7 @@ type ProfileForm = {
   name: string;
   rank: Rank;
   isPastGrand: boolean;
+  isSittingMaster: boolean;
   lodgeName: string;
   lodgeNumber: string;
   region: string;
@@ -22,6 +23,7 @@ const DEFAULT_FORM: ProfileForm = {
   name: "",
   rank: "Master Mason",
   isPastGrand: false,
+  isSittingMaster: false,
   lodgeName: "",
   lodgeNumber: "",
   region: "",
@@ -46,6 +48,7 @@ export default function ProfilePage() {
               ? data.rank
               : "Master Mason",
           isPastGrand: data.isPastGrand ?? false,
+          isSittingMaster: data.isSittingMaster ?? false,
           lodgeName: data.lodgeName ?? "",
           lodgeNumber: data.lodgeNumber ?? "",
           region: data.region ?? "",
@@ -73,6 +76,12 @@ export default function ProfilePage() {
     [form.isPastGrand, grandRanks],
   );
 
+  const canFlagSittingMaster = useMemo(() => {
+    if (form.rank === "Worshipful Master") return false;
+    if (form.rank === "Past Master") return true;
+    return Boolean(RANK_META[form.rank]?.grand);
+  }, [form.rank]);
+
   useEffect(() => {
     if (!rankChoices.includes(form.rank)) {
       setForm((previous) => ({
@@ -81,6 +90,12 @@ export default function ProfilePage() {
       }));
     }
   }, [form.rank, rankChoices]);
+
+  useEffect(() => {
+    if (!canFlagSittingMaster && form.isSittingMaster) {
+      setForm((previous) => ({ ...previous, isSittingMaster: false }));
+    }
+  }, [canFlagSittingMaster, form.isSittingMaster]);
 
   const close = () => {
     if (typeof window === "undefined") return;
@@ -204,6 +219,30 @@ export default function ProfilePage() {
                     ))}
                   </select>
                 </label>
+
+                {canFlagSittingMaster ? (
+                  <label className="stat md:col-span-2">
+                    <span className="label">Also sitting as Worshipful Master</span>
+                    <label
+                      className="card flex items-center gap-3"
+                      style={{ padding: ".6rem" }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.isSittingMaster}
+                        onChange={(event) =>
+                          setForm((previous) => ({
+                            ...previous,
+                            isSittingMaster: event.target.checked,
+                          }))
+                        }
+                      />
+                      <span className="muted">
+                        Show master-only fields such as accompanying Brethren in visit logs.
+                      </span>
+                    </label>
+                  </label>
+                ) : null}
 
                 <label className="stat">
                   <span className="label">Lodge Name</span>

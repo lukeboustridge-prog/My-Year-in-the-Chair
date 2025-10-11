@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 
-function isWorshipfulMaster(rank: string | null | undefined): boolean {
+function isWorshipfulMaster(
+  rank: string | null | undefined,
+  isSittingMaster: boolean | null | undefined,
+): boolean {
+  if (isSittingMaster) return true;
   if (!rank) return false;
   return rank.trim().toLowerCase() === "worshipful master";
 }
@@ -20,8 +24,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (!uid) return new NextResponse("Unauthorized", { status: 401 });
   const body = await req.json();
 
-  const viewer = await db.user.findUnique({ where: { id: uid }, select: { rank: true } });
-  const isMaster = isWorshipfulMaster(viewer?.rank);
+  const viewer = await db.user.findUnique({
+    where: { id: uid },
+    select: { rank: true, isSittingMaster: true },
+  });
+  const isMaster = isWorshipfulMaster(viewer?.rank, viewer?.isSittingMaster);
 
   const data: Record<string, unknown> = {
     date: new Date(body.date),
